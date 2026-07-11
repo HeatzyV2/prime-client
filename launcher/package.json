@@ -32,6 +32,7 @@
     "electron": "^37.2.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^4.0.0",
+    "png-to-ico": "^3.0.2",
     "typescript": "^5.8.3",
     "vite": "^7.0.4"
   },
@@ -45,27 +46,25 @@
     },
     "files": [
       "out/**/*",
-      "resources/icon.ico",
+      "resources/icon.png",
       "package.json"
     ],
     "extraResources": [
       {
-        "from": "resources/icon.ico",
-        "to": "icon.ico"
+        "from": "resources/icon.png",
+        "to": "icon.png"
       }
     ],
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "resources/icon.ico"
+      "icon": "resources/icon.png"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "Prime-Launcher-Setup-${version}.${ext}",
-      "installerIcon": "resources/icon.ico",
-      "uninstallerIcon": "resources/icon.ico"
+      "artifactName": "Prime-Launcher-Setup-${version}.${ext}"
     },
     "publish": {
       "provider": "github",
