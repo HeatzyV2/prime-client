@@ -1,6 +1,6 @@
 {
   "name": "prime-launcher",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Official launcher for Prime Client — premium Minecraft platform",
   "main": "./out/main/index.js",
   "author": "Prime Client",
@@ -45,17 +45,27 @@
     },
     "files": [
       "out/**/*",
+      "build/icon.ico",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      }
     ],
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "Prime-Launcher-Setup-${version}.${ext}"
+      "artifactName": "Prime-Launcher-Setup-${version}.${ext}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     },
     "publish": {
       "provider": "github",

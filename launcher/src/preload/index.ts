@@ -9,7 +9,11 @@ const api = {
   },
   app: {
     getVersion: (): Promise<string> => ipcRenderer.invoke(IPC.APP_GET_VERSION),
-    getPlatform: (): Promise<string> => ipcRenderer.invoke(IPC.APP_GET_PLATFORM)
+    getPlatform: (): Promise<string> => ipcRenderer.invoke(IPC.APP_GET_PLATFORM),
+    restart: (): Promise<void> => ipcRenderer.invoke(IPC.APP_RESTART)
+  },
+  boot: {
+    initialize: (): Promise<void> => ipcRenderer.invoke(IPC.BOOT_INITIALIZE)
   },
   account: {
     getPrime: () => ipcRenderer.invoke(IPC.ACCOUNT_GET_PRIME),
@@ -22,8 +26,11 @@ const api = {
     refreshMicrosoft: (accountId: string) => ipcRenderer.invoke(IPC.ACCOUNT_REFRESH_MICROSOFT, accountId),
     syncPrime: () => ipcRenderer.invoke(IPC.ACCOUNT_SYNC_PRIME)
   },
+  bridge: {
+    syncToInstance: (instanceId: string) => ipcRenderer.invoke(IPC.BRIDGE_SYNC, instanceId)
+  },
   launch: {
-    game: (instanceId: string) => ipcRenderer.invoke(IPC.LAUNCH_GAME, instanceId),
+    game: (instanceId: string, serverAddress?: string) => ipcRenderer.invoke(IPC.LAUNCH_GAME, instanceId, serverAddress),
     onProgress: (listener: (payload: LaunchProgressDto) => void): (() => void) => {
       const handler = (_event: IpcRendererEvent, payload: LaunchProgressDto): void => {
         listener(payload)
@@ -108,10 +115,19 @@ const api = {
     add: (username: string, note?: string) => ipcRenderer.invoke(IPC.FRIENDS_ADD, username, note),
     remove: (friendId: string) => ipcRenderer.invoke(IPC.FRIENDS_REMOVE, friendId),
     updateNote: (friendId: string, note: string) =>
-      ipcRenderer.invoke(IPC.FRIENDS_UPDATE_NOTE, friendId, note)
+      ipcRenderer.invoke(IPC.FRIENDS_UPDATE_NOTE, friendId, note),
+    refreshAll: () => ipcRenderer.invoke(IPC.FRIENDS_REFRESH_ALL),
+    refresh: (friendId: string) => ipcRenderer.invoke(IPC.FRIENDS_REFRESH, friendId)
   },
   news: {
     list: () => ipcRenderer.invoke(IPC.NEWS_LIST)
+  },
+  servers: {
+    list: () => ipcRenderer.invoke(IPC.SERVERS_LIST),
+    add: (name: string, address: string) => ipcRenderer.invoke(IPC.SERVERS_ADD, name, address),
+    remove: (serverId: string) => ipcRenderer.invoke(IPC.SERVERS_REMOVE, serverId),
+    refresh: (serverId: string) => ipcRenderer.invoke(IPC.SERVERS_REFRESH, serverId),
+    refreshAll: () => ipcRenderer.invoke(IPC.SERVERS_REFRESH_ALL)
   },
   media: {
     list: (instanceId?: string) => ipcRenderer.invoke(IPC.MEDIA_LIST, instanceId),
@@ -132,7 +148,8 @@ const api = {
   },
   settings: {
     get: () => ipcRenderer.invoke(IPC.SETTINGS_GET),
-    update: (partial: Record<string, unknown>) => ipcRenderer.invoke(IPC.SETTINGS_UPDATE, partial)
+    update: (partial: Record<string, unknown>) => ipcRenderer.invoke(IPC.SETTINGS_UPDATE, partial),
+    listJava: () => ipcRenderer.invoke(IPC.SETTINGS_JAVA_LIST)
   },
   update: {
     check: () => ipcRenderer.invoke(IPC.UPDATE_CHECK),

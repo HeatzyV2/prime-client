@@ -1,0 +1,408 @@
+export const en = {
+  app: {
+    name: 'Prime Launcher'
+  },
+  nav: {
+    dashboard: 'Home',
+    accounts: 'Accounts',
+    instances: 'Instances',
+    mods: 'Mods',
+    resources: 'Resource Packs',
+    shaders: 'Shaders',
+    store: 'Prime Store',
+    cosmetics: 'Cosmetics',
+    servers: 'Servers',
+    friends: 'Friends',
+    news: 'News',
+    media: 'Media',
+    performance: 'Performance',
+    downloads: 'Downloads',
+    settings: 'Settings'
+  },
+  boot: {
+    core: 'Initializing Prime Core…',
+    updates: 'Checking for updates…',
+    minecraft: 'Loading Minecraft…',
+    ready: 'Ready.'
+  },
+  common: {
+    play: 'Play',
+    launching: 'Launching…',
+    join: 'Join',
+    saved: 'Saved',
+    guest: 'Guest',
+    never: 'Never',
+    free: 'Free',
+    prime: 'Prime',
+    primePlus: 'Prime Plus',
+    active: 'Active',
+    use: 'Use',
+    add: 'Add',
+    manage: 'Manage',
+    signIn: 'Sign in',
+    checkNow: 'Check now',
+    downloadUpdate: 'Download update',
+    automatic: 'Automatic'
+  },
+  newsTag: {
+    update: 'Update',
+    event: 'Event',
+    announcement: 'Announcement'
+  },
+  dashboard: {
+    signInTitle: 'Sign in to play',
+    signInHint: 'Connect Microsoft or use offline mode to launch Prime Client.',
+    addAccount: 'Add Account',
+    welcomeBack: 'Welcome back',
+    quickLaunch: 'Quick Launch',
+    profile: 'Profile',
+    instance: 'Instance',
+    primeAccount: 'Prime Account',
+    lastSession: 'Last Session',
+    news: 'News',
+    favoriteServers: 'Favorite Servers',
+    timePlayed: 'Time played',
+    mods: 'Mods',
+    ram: 'RAM',
+    version: 'Version'
+  },
+  settings: {
+    title: 'Settings',
+    subtitle: 'Saved locally — no account or cloud required.',
+    sections: {
+      general: 'General',
+      appearance: 'Appearance',
+      minecraft: 'Minecraft',
+      performance: 'Performance',
+      accounts: 'Accounts',
+      privacy: 'Privacy',
+      downloads: 'Downloads',
+      advanced: 'Advanced'
+    },
+    language: {
+      label: 'Language',
+      hint: 'Launcher display language',
+      en: 'English',
+      fr: 'Français'
+    },
+    closeOnLaunch: {
+      label: 'Close on game launch',
+      hint: 'Minimize launcher when Minecraft starts',
+      toggle: 'Close on launch'
+    },
+    checkUpdates: {
+      label: 'Check for updates',
+      hint: 'Compare with latest GitHub Release'
+    },
+    autoUpdate: {
+      label: 'Auto-update launcher',
+      toggle: 'Auto update'
+    },
+    theme: {
+      label: 'Theme',
+      dark: 'Prime Dark',
+      crimson: 'Crimson (Store unlock)'
+    },
+    hardwareAccel: {
+      label: 'Hardware acceleration',
+      toggle: 'Hardware acceleration'
+    },
+    backgroundNebula: {
+      label: 'Nebula background',
+      hint: 'Animated space background from the Store',
+      toggle: 'Nebula background'
+    },
+    restartRequired: 'Restart required to apply hardware acceleration.',
+    restartNow: 'Restart now',
+    javaPath: {
+      label: 'Default Java path',
+      hint: 'Auto-detected JDK 21+ at launch'
+    },
+    defaultRam: {
+      label: 'Default RAM allocation'
+    },
+    performancePreset: {
+      label: 'Performance preset on launch',
+      low: 'Low PC',
+      balanced: 'Balanced',
+      performance: 'Performance',
+      ultra: 'Ultra'
+    },
+    activeAccount: {
+      label: 'Active account',
+      none: 'No account — add one to play'
+    },
+    microsoftAccount: {
+      label: 'Microsoft account'
+    },
+    analytics: {
+      label: 'Analytics',
+      hint: 'Disabled by default — nothing is sent without a server',
+      toggle: 'Analytics'
+    },
+    discordRpc: {
+      label: 'Discord Rich Presence',
+      hint: 'Handled by Prime Client mod in-game',
+      toggle: 'Discord RPC'
+    },
+    concurrentDownloads: {
+      label: 'Concurrent downloads'
+    },
+    jvmArgs: {
+      label: 'JVM arguments',
+      hint: 'One per line — applied via Performance presets too'
+    },
+    developerMode: {
+      label: 'Developer mode',
+      toggle: 'Developer mode'
+    },
+    updateNotes: 'v{current} → latest v{latest} — {notes}'
+  },
+  pages: {
+    accounts: {
+      title: 'Accounts',
+      subtitle: 'Microsoft authentication, offline profiles, and Prime Account sync.'
+    },
+    instances: {
+      title: 'Instances',
+      subtitle: 'Create and manage Minecraft installations with Prime Client.'
+    },
+    mods: {
+      title: 'Mods',
+      subtitle: 'Manage mods for the active instance — local files and Modrinth.'
+    },
+    resources: {
+      title: 'Resource Packs',
+      subtitle: 'Import or install resource packs for the active instance.'
+    },
+    shaders: {
+      title: 'Shaders',
+      subtitle: 'Import or install shader packs for the active instance.'
+    },
+    store: {
+      title: 'Prime Store',
+      subtitle: 'Unlock cosmetics and themes with Prime Coins — all local, no payment server.'
+    },
+    cosmetics: {
+      title: 'Cosmetics',
+      subtitle: 'Owned items from the Store — equip locally (syncs to Prime profile file).'
+    },
+    servers: {
+      title: 'Server Hub',
+      subtitle: 'Favorite servers with live player count, ping, and quick join.'
+    },
+    friends: {
+      title: 'Friends',
+      subtitle: 'Local friends list — notes and scrim dates stay on this PC.'
+    },
+    news: {
+      title: 'News',
+      subtitle: 'Bundled announcements — no remote news server.'
+    },
+    media: {
+      title: 'Media',
+      subtitle: 'Screenshots and recordings from your instance folder.'
+    },
+    performance: {
+      title: 'Performance',
+      subtitle: 'Hardware info and launch presets — RAM, render distance, JVM flags.'
+    },
+    downloads: {
+      title: 'Downloads',
+      subtitle: 'Modrinth installs and launcher tasks.'
+    }
+  },
+  modals: {
+    login: {
+      title: 'Sign in to Prime',
+      subtitle: 'Use your Microsoft account for official Minecraft, or play offline with a custom username.',
+      microsoft: 'Sign in with Microsoft',
+      offlineDivider: '— or offline —',
+      offlinePlaceholder: 'Offline username',
+      offlineContinue: 'Continue Offline',
+      cancel: 'Cancel',
+      loginFailed: 'Login failed.',
+      offlineFailed: 'Could not create offline account.'
+    },
+    instance: {
+      createTitle: 'New Instance',
+      editTitle: 'Configure Instance',
+      subtitle: 'Stored locally in AppData — Vanilla and Fabric supported, no server required.',
+      name: 'Name',
+      minecraftVersion: 'Minecraft version',
+      loader: 'Loader',
+      fabricLoader: 'Fabric loader',
+      includePrimeMod: 'Include Prime Client mod (+ Fabric API)',
+      ram: 'RAM (MB)',
+      jvmArgs: 'JVM args (one per line)',
+      createFailed: 'Could not create instance.',
+      saveFailed: 'Could not save instance.',
+      saving: 'Saving…',
+      create: 'Create'
+    },
+    modrinth: {
+      modsTitle: 'Browse Modrinth — Mods',
+      resourcePacksTitle: 'Browse Modrinth — Resource Packs',
+      shadersTitle: 'Browse Modrinth — Shaders',
+      subtitle: 'Public Modrinth API — downloads go directly to your active instance folder.',
+      searching: 'Searching…',
+      searchFailed: 'Search failed.',
+      installFailed: 'Install failed.',
+      close: 'Close'
+    }
+  },
+  accounts: {
+    addAccount: 'Add Account',
+    primeAccount: 'Prime Account',
+    quickAdd: 'Quick Add',
+    quickAddHint: 'Microsoft opens a secure login window (Xbox Live → Minecraft Services).',
+    signInMicrosoft: 'Sign in with Microsoft',
+    offlinePlaceholder: 'Offline username',
+    addOffline: 'Add Offline Account',
+    minecraftAccounts: 'Minecraft Accounts',
+    noAccounts: 'No accounts yet.',
+    addOne: 'Add one',
+    toPlay: 'to play.',
+    level: 'Level {level}',
+    syncDescription: 'Sync configs, HUD, cosmetics, and stats locally.',
+    syncButton: 'Sync Prime Profile',
+    refreshMicrosoft: 'Refresh token',
+    refreshSuccess: 'Microsoft token refreshed.',
+    refreshFailed: 'Token refresh failed.',
+    microsoft: 'Microsoft',
+    offline: 'Offline'
+  },
+  servers: {
+    addServer: 'Add Server',
+    serverName: 'Server name',
+    serverAddress: 'Address (host or host:port)',
+    refresh: 'Refresh status',
+    remove: 'Remove',
+    empty: 'No favorite servers yet.',
+    joinNeedsAccount: 'Sign in to join a server.',
+    added: 'Server added.',
+    addFailed: 'Could not add server.'
+  },
+  friends: {
+    addFriend: 'Add Friend',
+    usernamePrompt: 'Minecraft username',
+    notePrompt: 'Note (optional)',
+    notePlaceholder: 'Edit note…',
+    saveNote: 'Save',
+    remove: 'Remove',
+    empty: 'No friends yet. Add Minecraft usernames you play with.',
+    offline: 'Offline',
+    addFailed: 'Could not add friend.',
+    refreshStatus: 'Refresh status'
+  },
+  actions: {
+    import: 'Import',
+    browseModrinth: 'Browse Modrinth',
+    openFolder: 'Open Folder',
+    configure: 'Configure',
+    folder: 'Folder',
+    duplicate: 'Duplicate',
+    delete: 'Delete',
+    equip: 'Equip',
+    unequip: 'Unequip',
+    owned: 'Owned',
+    buy: 'Buy',
+    claim: 'Claim',
+    free: 'Free',
+    applyPreset: 'Apply Preset',
+    applying: 'Applying…',
+    clearCompleted: 'Clear completed',
+    refresh: 'Refresh',
+    cancel: 'Cancel',
+    save: 'Save',
+    searchMods: 'Search mods…',
+    searchModrinth: 'Search Modrinth…',
+    install: 'Install',
+    installing: 'Installing…',
+    importJar: 'Import .jar',
+    close: 'Close',
+    create: 'Create'
+  },
+  mods: {
+    all: 'All',
+    enabled: 'Enabled',
+    disabled: 'Disabled'
+  },
+  empty: {
+    noMods: 'No mods in this instance.',
+    noResourcePacks: 'No resource packs yet. Import a .zip or install from Modrinth.',
+    noShaders: 'No shader packs yet. Install Iris (mod) first, then add packs here.',
+    noDownloads: 'No downloads yet.',
+    noDownloadsHint: 'No recent downloads. Launch Minecraft to see progress here.',
+    noScreenshots: 'No media yet. Press F2 for screenshots, or record clips with Prime Client (Creator → Clip Recorder).',
+    loadingInstance: 'Loading instance…'
+  },
+  resources: {
+    importZip: 'Import .zip',
+    active: 'Active'
+  },
+  confirm: {
+    deleteInstance: 'Delete "{name}"? Game files can be kept or removed.',
+    deleteFiles: 'Also delete saves and mods on disk?',
+    removeMod: 'Remove {name}?',
+    removePack: 'Remove {name}?',
+    removeShader: 'Remove {name}?'
+  },
+  errors: {
+    deleteInstance: 'Could not delete instance.'
+  },
+  performance: {
+    detectedHardware: 'Detected Hardware',
+    cpu: 'CPU',
+    gpu: 'GPU',
+    ram: 'RAM',
+    applySuccess: 'Preset applied to active instance (RAM + options.txt).',
+    applyFailed: 'Failed to apply preset.',
+    detecting: 'Detecting hardware…',
+    systemRam: 'System RAM',
+    chunks: '{count} chunks'
+  },
+  store: {
+    coins: '{balance} Prime Coins',
+    unlocked: '{name} unlocked! Equip cosmetics from the Cosmetics page.',
+    purchaseFailed: 'Purchase failed.',
+    coinsPrice: '{price} coins',
+    categories: {
+      all: 'All',
+      cosmetic: 'Cosmetics',
+      theme: 'Themes',
+      background: 'Backgrounds',
+      badge: 'Badges'
+    }
+  },
+  cosmetics: {
+    characterPreview: 'Character Preview',
+    previewHint: '2D head preview — full viewer in Prime Client mod',
+    all: 'All',
+    capes: 'Capes',
+    wings: 'Wings',
+    pets: 'Pets',
+    emotes: 'Emotes',
+    badges: 'Badges',
+    emptyOwned: 'No cosmetics owned yet — visit the Store.'
+  },
+  instances: {
+    vanilla: 'Vanilla',
+    fabric: 'Fabric',
+    primeClient: 'Prime Client',
+    play: 'Play',
+    default: 'Default',
+    loading: 'Loading instances…',
+    signInToPlay: 'Sign in to play.',
+    lastPlayed: 'Last played {date}',
+    ramBadge: '{mb} MB RAM',
+    modsBadge: '{count} mods'
+  },
+  media: {
+    openFolder: 'Open clips folder',
+    refresh: 'Refresh',
+    replaysNote: 'Replays and clips appear here when exported by Prime Client (config/primeclient/clips).'
+  }
+} 
+
+export type LocaleCatalog = typeof en

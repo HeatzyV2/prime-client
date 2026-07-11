@@ -5,9 +5,11 @@ import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button, SearchInput, Tabs, Toggle } from '@renderer/design-system/components'
 import { ModrinthBrowseModal } from '@renderer/components/ModrinthBrowseModal'
 import { useActiveInstance } from '@renderer/hooks/useActiveInstance'
+import { useI18n } from '@renderer/context/I18nProvider'
 import type { ModEntry } from '@shared/content-types'
 
 export function ModsPage() {
+  const { t } = useI18n()
   const { instance, instanceId, loading: instanceLoading, refresh: refreshInstance } = useActiveInstance()
   const [mods, setMods] = useState<ModEntry[]>([])
   const [search, setSearch] = useState('')
@@ -60,7 +62,7 @@ export function ModsPage() {
   }
 
   async function handleRemove(mod: ModEntry) {
-    if (!instanceId || !confirm(`Remove ${mod.name}?`)) {
+    if (!instanceId || !confirm(t('confirm.removeMod', { name: mod.name }))) {
       return
     }
     await window.primeLauncher.content.removeMod(mod.fileName, instanceId)
@@ -70,30 +72,26 @@ export function ModsPage() {
 
   return (
     <PageShell
-      title="Mod Manager"
-      subtitle={
-        instance
-          ? `Mods for ${instance.name} (${instance.minecraftVersion}) — local folder + Modrinth.`
-          : 'Loading instance…'
-      }
+      title={t('pages.mods.title')}
+      subtitle={t('pages.mods.subtitle')}
       actions={
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="secondary" icon={<Upload size={16} />} disabled={busy} onClick={() => void handleImport()}>
-            Import .jar
+            {t('actions.importJar')}
           </Button>
           <Button variant="primary" icon={<Download size={16} />} onClick={() => setShowBrowse(true)}>
-            Browse Modrinth
+            {t('actions.browseModrinth')}
           </Button>
         </div>
       }
     >
       <div className="page-toolbar">
-        <SearchInput value={search} onChange={setSearch} placeholder="Search mods..." />
+        <SearchInput value={search} onChange={setSearch} placeholder={t('actions.searchMods')} />
         <Tabs
           tabs={[
-            { id: 'all', label: 'All' },
-            { id: 'enabled', label: 'Enabled' },
-            { id: 'disabled', label: 'Disabled' }
+            { id: 'all', label: t('mods.all') },
+            { id: 'enabled', label: t('mods.enabled') },
+            { id: 'disabled', label: t('mods.disabled') }
           ]}
           active={filter}
           onChange={setFilter}
@@ -105,15 +103,15 @@ export function ModsPage() {
             icon={<FolderOpen size={14} />}
             onClick={() => void window.primeLauncher.instance.openFolder(instanceId)}
           >
-            Open folder
+            {t('actions.openFolder')}
           </Button>
         )}
       </div>
 
       {instanceLoading ? (
-        <p className="text-caption">Loading…</p>
+        <p className="text-caption">{t('empty.loadingInstance')}</p>
       ) : filtered.length === 0 ? (
-        <p className="text-caption">No mods in this instance. Import a .jar or browse Modrinth.</p>
+        <p className="text-caption">{t('empty.noMods')}</p>
       ) : (
         <div className="page-list">
           {filtered.map((mod) => (

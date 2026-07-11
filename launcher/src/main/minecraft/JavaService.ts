@@ -1,12 +1,18 @@
 import { execFile } from 'child_process'
 import { existsSync } from 'fs'
 import { readdir } from 'fs/promises'
-import { join } from 'path'
+import { basename, join } from 'path'
 import { promisify } from 'util'
 
 const execFileAsync = promisify(execFile)
 
 const MIN_JAVA_MAJOR = 21
+
+export interface JavaInstallation {
+  path: string
+  major: number
+  label: string
+}
 
 function parseJavaMajor(versionOutput: string): number | null {
   const quoted = versionOutput.match(/version "(\d+)/)
@@ -20,20 +26,28 @@ function parseJavaMajor(versionOutput: string): number | null {
   return null
 }
 
-async function probeJava(javaPath: string): Promise<string | null> {
+async function probeJava(javaPath: string): Promise<JavaInstallation | null> {
   try {
-    const { stdout } = await execFileAsync(javaPath, ['-version'], { timeout: 8000 })
-    const output = `${stdout}`
+    const { stdout, stderr } = await execFileAsync(javaPath, ['-version'], { timeout: 8000 })
+    const output = `${stdout}${stderr}`
     const major = parseJavaMajor(output)
     if (major !== null && major >= MIN_JAVA_MAJOR) {
-      return javaPath
+      return {
+        path: javaPath,
+        major,
+        label: `${basename(javaPath)} — Java ${major}`
+      }
     }
   } catch (err: unknown) {
     const execErr = err as { stderr?: string; stdout?: string }
     const output = `${execErr.stderr ?? ''}${execErr.stdout ?? ''}`
     const major = parseJavaMajor(output)
     if (major !== null && major >= MIN_JAVA_MAJOR) {
-      return javaPath
+      return {
+        path: javaPath,
+        major,
+        label: `${basename(javaPath)} — Java ${major}`
+      }
     }
   }
   return null
@@ -92,14 +106,38 @@ async function discoverJavaCandidates(): Promise<string[]> {
   return [...new Set(candidates)]
 }
 
-/** Finds a Java 21+ binary on the system. No bundled JRE yet. */
-export async function resolveJavaPath(): Promise<string> {
+export async function listJavaInstallations(): Promise<JavaInstallation[]> {
+  const found: JavaInstallation[] = []
+  const seen = new Set<string>()
+
+  for (const candidate of await discoverJavaCandidates()) {
+    const install = await probeJava(candidate)
+    if (install && !seen.has(install.path)) {
+      seen.add(install.path)
+      found.push(install)
+    }
+  }
+
+  return found.sort((a, b) => b.major - a.major)
+}
+
+/** Finds a Java 21+ binary — optional override from settings or instance. */
+export async function resolveJavaPath(overridePath?: string | null): Promise<string> {
+  if (overridePath?.trim()) {
+    const custom = await probeJava(overridePath.trim())
+    if (custom) {
+      return custom.path
+    }
+    throw new Error(`Configured Java is invalid or below Java ${MIN_JAVA_MAJOR}: ${overridePath}`)
+  }
+
   for (const candidate of await discoverJavaCandidates()) {
     const resolved = await probeJava(candidate)
     if (resolved) {
-      return resolved
+      return resolved.path
     }
   }
+
   throw new Error(
     `Java ${MIN_JAVA_MAJOR}+ is required. Install a JDK and ensure java is on PATH, or set JAVA_HOME.`
   )

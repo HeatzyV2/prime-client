@@ -3,6 +3,7 @@ import { Trash2, X } from 'lucide-react'
 import type { DownloadTask } from '@shared/content-types'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button, ProgressBar } from '@renderer/design-system/components'
+import { useI18n } from '@renderer/context/I18nProvider'
 
 const STATUS_VARIANT: Record<string, 'default' | 'red' | 'success' | 'prime'> = {
   downloading: 'red',
@@ -12,6 +13,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'red' | 'success' | 'prime'> = 
 }
 
 export function DownloadsPage() {
+  const { t } = useI18n()
   const [tasks, setTasks] = useState<DownloadTask[]>([])
 
   const refresh = useCallback(async () => {
@@ -32,16 +34,16 @@ export function DownloadsPage() {
 
   return (
     <PageShell
-      title="Download Center"
-      subtitle="Launch and CDN progress saved locally during Minecraft startup."
+      title={t('pages.downloads.title')}
+      subtitle={t('pages.downloads.subtitle')}
       actions={
         <Button variant="secondary" size="sm" icon={<Trash2 size={14} />} onClick={() => void window.primeLauncher.downloads.clearCompleted().then(refresh)}>
-          Clear completed
+          {t('actions.clearCompleted')}
         </Button>
       }
     >
       {tasks.length === 0 ? (
-        <p className="text-caption">No recent downloads. Launch Minecraft to see progress here.</p>
+        <p className="text-caption">{t('empty.noDownloadsHint')}</p>
       ) : (
         <div className="page-list">
           {tasks.map((task) => (

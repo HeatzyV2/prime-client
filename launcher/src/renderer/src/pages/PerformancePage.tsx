@@ -4,8 +4,10 @@ import type { HardwareProfile, PerformancePreset, PerformancePresetInfo } from '
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button, Card } from '@renderer/design-system/components'
 import { useActiveInstance } from '@renderer/hooks/useActiveInstance'
+import { useI18n } from '@renderer/context/I18nProvider'
 
 export function PerformancePage() {
+  const { t } = useI18n()
   const { instanceId } = useActiveInstance()
   const [selected, setSelected] = useState<PerformancePreset>('balanced')
   const [hw, setHw] = useState<HardwareProfile | null>(null)
@@ -31,16 +33,16 @@ export function PerformancePage() {
     setMessage(null)
     const result = await window.primeLauncher.performance.apply(selected, instanceId ?? undefined)
     setBusy(false)
-    setMessage(result.ok ? 'Preset applied to active instance (RAM + options.txt).' : result.error ?? 'Failed.')
+    setMessage(result.ok ? t('performance.applySuccess') : result.error ?? t('performance.applyFailed'))
   }
 
   return (
     <PageShell
-      title="Performance Center"
-      subtitle="Detects local hardware and applies Minecraft presets — no cloud optimizer."
+      title={t('pages.performance.title')}
+      subtitle={t('pages.performance.subtitle')}
       actions={
         <Button variant="primary" icon={<Zap size={16} />} disabled={busy} onClick={() => void handleApply()}>
-          {busy ? 'Applying…' : 'Apply Preset'}
+          {busy ? t('actions.applying') : t('actions.applyPreset')}
         </Button>
       }
     >
@@ -50,30 +52,30 @@ export function PerformancePage() {
         </p>
       )}
 
-      <Card title="Detected Hardware" glow>
+      <Card title={t('performance.detectedHardware')} glow>
         {hw ? (
           <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <Cpu size={20} style={{ color: 'var(--prime-red-bright)' }} />
               <div>
-                <div className="text-caption">CPU</div>
+                <div className="text-caption">{t('performance.cpu')}</div>
                 <div className="list-row__title">{hw.cpu}</div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <Monitor size={20} style={{ color: 'var(--prime-red-bright)' }} />
               <div>
-                <div className="text-caption">GPU</div>
+                <div className="text-caption">{t('performance.gpu')}</div>
                 <div className="list-row__title">{hw.gpu}</div>
               </div>
             </div>
             <div>
-              <div className="text-caption">System RAM</div>
+              <div className="text-caption">{t('performance.systemRam')}</div>
               <div className="list-row__title">{hw.ramGb} GB</div>
             </div>
           </div>
         ) : (
-          <p className="text-caption">Detecting hardware…</p>
+          <p className="text-caption">{t('performance.detecting')}</p>
         )}
       </Card>
 
@@ -89,8 +91,8 @@ export function PerformancePage() {
             <div className="tile__name">{preset.label}</div>
             <div className="tile__desc">{preset.description}</div>
             <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Badge variant="default">{preset.ramMb} MB RAM</Badge>
-              <Badge variant="default">{preset.renderDistance} chunks</Badge>
+              <Badge variant="default">{t('instances.ramBadge', { mb: preset.ramMb })}</Badge>
+              <Badge variant="default">{t('performance.chunks', { count: preset.renderDistance })}</Badge>
             </div>
           </div>
         ))}

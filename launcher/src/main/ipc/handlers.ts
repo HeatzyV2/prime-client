@@ -3,17 +3,20 @@ import { IPC } from '../../shared/ipc'
 import { accountService } from '../services/AccountService'
 import { profileService } from '../services/ProfileService'
 import { instanceService } from '../services/InstanceService'
-import { minecraftService } from '../services/MinecraftService'
+import { serverService } from '../services/ServerService'
 import { contentService } from '../services/ContentService'
 import { cloudService } from '../services/CloudService'
 import { cosmeticService } from '../services/CosmeticService'
 import { launchService } from '../services/LaunchService'
+import { launcherBridgeService } from '../services/LauncherBridgeService'
 import { storeService } from '../services/StoreService'
 import { friendsService } from '../services/FriendsService'
 import { newsService } from '../services/NewsService'
 import { mediaService } from '../services/MediaService'
 import { performanceService } from '../services/PerformanceService'
 import { downloadService } from '../services/DownloadService'
+import { bootService } from '../services/BootService'
+import { listJavaInstallations } from '../minecraft/JavaService'
 import { settingsService } from '../services/SettingsService'
 import { updateService } from '../services/UpdateService'
 import type { PerformancePreset } from '../../shared/content-types'
@@ -39,7 +42,11 @@ export function registerServiceHandlers(): void {
   )
   ipcMain.handle(IPC.ACCOUNT_SYNC_PRIME, () => accountService.syncPrimeCloud())
 
-  ipcMain.handle(IPC.LAUNCH_GAME, (_e, instanceId: string) => launchService.launch(instanceId))
+  ipcMain.handle(IPC.LAUNCH_GAME, (_e, instanceId: string, serverAddress?: string) =>
+    launchService.launch(instanceId, serverAddress)
+  )
+
+  ipcMain.handle(IPC.BRIDGE_SYNC, (_e, instanceId?: string) => launcherBridgeService.syncToInstance(instanceId!))
 
   ipcMain.handle(IPC.INSTANCE_LIST, () => instanceService.list())
   ipcMain.handle(IPC.INSTANCE_GET, (_e, id: string) => instanceService.getById(id))
@@ -58,9 +65,15 @@ export function registerServiceHandlers(): void {
 
   ipcMain.handle('profile:get-active', () => profileService.getActiveProfile())
   ipcMain.handle('profile:get-all', () => profileService.getProfiles())
-  ipcMain.handle('minecraft:get-instances', () => minecraftService.getInstances())
+  ipcMain.handle('minecraft:get-instances', () => instanceService.list())
   ipcMain.handle('minecraft:get-news', () => newsService.getNews())
-  ipcMain.handle('minecraft:get-favorite-servers', () => minecraftService.getFavoriteServers())
+  ipcMain.handle('minecraft:get-favorite-servers', () => serverService.list())
+
+  ipcMain.handle(IPC.SERVERS_LIST, () => serverService.list())
+  ipcMain.handle(IPC.SERVERS_ADD, (_e, name: string, address: string) => serverService.add(name, address))
+  ipcMain.handle(IPC.SERVERS_REMOVE, (_e, serverId: string) => serverService.remove(serverId))
+  ipcMain.handle(IPC.SERVERS_REFRESH, (_e, serverId: string) => serverService.refreshStatus(serverId))
+  ipcMain.handle(IPC.SERVERS_REFRESH_ALL, () => serverService.refreshAll())
 
   ipcMain.handle(IPC.CONTENT_MODS_LIST, (_e, instanceId?: string) => contentService.listMods(instanceId))
   ipcMain.handle(IPC.CONTENT_MODS_SET_ENABLED, (_e, fileName: string, enabled: boolean, instanceId?: string) =>
@@ -129,6 +142,11 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.FRIENDS_UPDATE_NOTE, (_e, friendId: string, note: string) =>
     friendsService.updateNote(friendId, note)
   )
+  ipcMain.handle(IPC.FRIENDS_REFRESH_ALL, () => friendsService.refreshAllStatuses())
+  ipcMain.handle(IPC.FRIENDS_REFRESH, (_e, friendId: string) => friendsService.refreshStatus(friendId))
+
+  ipcMain.handle(IPC.BOOT_INITIALIZE, () => bootService.initialize())
+  ipcMain.handle(IPC.SETTINGS_JAVA_LIST, () => listJavaInstallations())
 
   ipcMain.handle(IPC.NEWS_LIST, () => newsService.getNews())
   ipcMain.handle(IPC.MEDIA_LIST, (_e, instanceId?: string) => mediaService.list(instanceId))

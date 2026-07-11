@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { PrimeLogo, ProgressBar } from '@renderer/design-system/components'
+import { useI18n } from '@renderer/context/I18nProvider'
 import { BOOT_STEPS } from '@shared/types'
 import './SplashScreen.css'
 
@@ -10,6 +11,8 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ progress, stepIndex, version }: SplashScreenProps) {
+  const { t } = useI18n()
+  const step = BOOT_STEPS[stepIndex]
   const particles = Array.from({ length: 24 }, (_, i) => ({
     id: i,
     x: Math.random() * 100,
@@ -55,7 +58,7 @@ export function SplashScreen({ progress, stepIndex, version }: SplashScreenProps
           transition={{ delay: 0.3, duration: 0.5 }}
         >
           <div className={`splash__step${stepIndex >= 0 ? ' splash__step--active' : ''}`}>
-            {BOOT_STEPS[stepIndex]?.label ?? ''}
+            {step ? t(`boot.${step.id}`) : ''}
           </div>
           <ProgressBar value={progress} large />
         </motion.div>

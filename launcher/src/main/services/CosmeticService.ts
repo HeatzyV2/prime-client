@@ -5,7 +5,9 @@ import { ecosystemStore } from '../storage/EcosystemStore'
 export class CosmeticService {
   async list(): Promise<CosmeticItem[]> {
     const db = await ecosystemStore.load()
-    const ownedCosmeticIds = new Set<string>(['badge-veteran'])
+    const ownedCosmeticIds = new Set<string>()
+
+    ownedCosmeticIds.add('badge-veteran')
 
     for (const storeId of db.ownedStoreItems) {
       const cosmeticId = STORE_TO_COSMETIC[storeId]
@@ -13,7 +15,10 @@ export class CosmeticService {
         ownedCosmeticIds.add(cosmeticId)
       }
     }
-    ownedCosmeticIds.add('cape-prime')
+
+    if (db.ownedStoreItems.includes('cape-prime')) {
+      ownedCosmeticIds.add('cape-prime')
+    }
 
     return COSMETIC_CATALOG.filter((c) => ownedCosmeticIds.has(c.id)).map((c) => ({
       ...c,
@@ -48,6 +53,13 @@ export class CosmeticService {
 
       db.equippedCosmetics.push(cosmeticId)
     })
+
+    const { instanceService } = await import('./InstanceService')
+    const { launcherBridgeService } = await import('./LauncherBridgeService')
+    const instances = await instanceService.list()
+    await Promise.all(
+      instances.filter((inst) => inst.includePrimeMod).map((inst) => launcherBridgeService.syncToInstance(inst.id))
+    )
 
     return { ok: true }
   }

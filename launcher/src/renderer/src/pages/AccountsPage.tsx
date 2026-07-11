@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import '@renderer/components/LoginModal.css'
 import { Link } from 'react-router-dom'
-import { Cloud, KeyRound, Trash2, UserPlus } from 'lucide-react'
+import { Cloud, KeyRound, RefreshCw, Trash2, UserPlus } from 'lucide-react'
+import { useI18n } from '@renderer/context/I18nProvider'
+import { formatTier } from '@shared/format'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Avatar, Badge, Button, Card } from '@renderer/design-system/components'
 import { useAccounts } from '@renderer/context/AccountProvider'
@@ -9,6 +11,7 @@ import { LoginModal } from '@renderer/components/LoginModal'
 import { AnimatePresence } from 'framer-motion'
 
 export function AccountsPage() {
+  const { t, locale } = useI18n()
   const {
     prime,
     accounts,
@@ -17,7 +20,8 @@ export function AccountsPage() {
     addOffline,
     removeAccount,
     setActive,
-    syncPrime
+    syncPrime,
+    refresh
   } = useAccounts()
   const [showLogin, setShowLogin] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -31,6 +35,16 @@ export function AccountsPage() {
     setBusy(null)
   }
 
+  async function handleRefreshMicrosoft(accountId: string) {
+    setBusy(accountId)
+    const result = await window.primeLauncher.account.refreshMicrosoft(accountId)
+    setMessage(result.ok ? t('accounts.refreshSuccess') : result.error ?? t('accounts.refreshFailed'))
+    if (result.ok) {
+      await refresh()
+    }
+    setBusy(null)
+  }
+
   async function handleRemove(id: string) {
     setBusy(id)
     await removeAccount(id)
@@ -39,32 +53,32 @@ export function AccountsPage() {
 
   return (
     <PageShell
-      title="Accounts"
-      subtitle="Microsoft authentication, offline profiles, and Prime Account sync."
+      title={t('pages.accounts.title')}
+      subtitle={t('pages.accounts.subtitle')}
       actions={
         <Button variant="primary" icon={<UserPlus size={16} />} onClick={() => setShowLogin(true)}>
-          Add Account
+          {t('accounts.addAccount')}
         </Button>
       }
     >
       <div className="page-grid page-grid--2">
-        <Card title="Prime Account" glow>
+        <Card title={t('accounts.primeAccount')} glow>
           {prime && (
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
               <Avatar
                 alt={activeAccount?.username ?? prime.username}
+                uuid={activeAccount?.uuid}
                 size="lg"
                 glow
-                src={activeAccount?.skinUrl}
               />
               <div>
                 <div className="text-subtitle">{prime.username}</div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <Badge variant="prime">{prime.tier.toUpperCase()}</Badge>
-                  <Badge variant="default">Level {prime.level}</Badge>
+                  <Badge variant="prime">{formatTier(prime.tier, locale)}</Badge>
+                  <Badge variant="default">{t('accounts.level', { level: prime.level })}</Badge>
                 </div>
                 <p className="text-caption" style={{ marginTop: 12 }}>
-                  Sync configs, HUD, cosmetics, and stats across devices.
+                  {t('accounts.syncDescription')}
                 </p>
                 <Button
                   variant="secondary"
@@ -74,7 +88,7 @@ export function AccountsPage() {
                   disabled={busy === 'sync'}
                   onClick={() => void handleSync()}
                 >
-                  Sync Prime Profile
+                  {t('accounts.syncButton')}
                 </Button>
                 {message && (
                   <p className="text-caption" style={{ marginTop: 8, color: 'var(--prime-success)' }}>
@@ -86,9 +100,9 @@ export function AccountsPage() {
           )}
         </Card>
 
-        <Card title="Quick Add">
+        <Card title={t('accounts.quickAdd')}>
           <p className="text-caption" style={{ marginBottom: 16 }}>
-            Microsoft opens a secure login window (Xbox Live → Minecraft Services).
+            {t('accounts.quickAddHint')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Button
@@ -97,11 +111,11 @@ export function AccountsPage() {
               disabled={!!busy}
               onClick={() => void loginMicrosoft().then((r) => r.error && setMessage(r.error))}
             >
-              Sign in with Microsoft
+              {t('accounts.signInMicrosoft')}
             </Button>
             <input
               className="modal__field"
-              placeholder="Offline username"
+              placeholder={t('accounts.offlinePlaceholder')}
               value={offlineName}
               maxLength={16}
               onChange={(e) => setOfflineName(e.target.value)}
@@ -116,38 +130,49 @@ export function AccountsPage() {
                 })
               }
             >
-              Add Offline Account
+              {t('accounts.addOffline')}
             </Button>
           </div>
         </Card>
       </div>
 
-      <Card title="Minecraft Accounts">
+      <Card title={t('accounts.minecraftAccounts')}>
         {accounts.length === 0 ? (
           <p className="text-body" style={{ color: 'var(--prime-muted)' }}>
-            No accounts yet.{' '}
+            {t('accounts.noAccounts')}{' '}
             <Link to="#" onClick={() => setShowLogin(true)} style={{ color: 'var(--prime-red-bright)' }}>
-              Add one
+              {t('accounts.addOne')}
             </Link>{' '}
-            to play.
+            {t('accounts.toPlay')}
           </p>
         ) : (
           <div className="page-list">
             {accounts.map((acc) => (
               <div key={acc.id} className="list-row">
-                <Avatar alt={acc.username} size="sm" src={acc.skinUrl} glow={acc.id === activeAccount?.id} />
+                <Avatar alt={acc.username} uuid={acc.uuid} size="sm" glow={acc.id === activeAccount?.id} />
                 <div className="list-row__body">
                   <div className="list-row__title">{acc.username}</div>
                   <div className="list-row__desc">
-                    {acc.type === 'microsoft' ? 'Microsoft' : 'Offline'} · {acc.uuid}
+                    {acc.type === 'microsoft' ? t('accounts.microsoft') : t('accounts.offline')} · {acc.uuid}
                   </div>
                 </div>
                 <div className="list-row__meta">
                   {acc.id === activeAccount?.id ? (
-                    <Badge variant="prime">Active</Badge>
+                    <Badge variant="prime">{t('common.active')}</Badge>
                   ) : (
                     <Button variant="ghost" size="sm" onClick={() => void setActive(acc.id)}>
-                      Use
+                      {t('common.use')}
+                    </Button>
+                  )}
+                  {acc.type === 'microsoft' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy === acc.id}
+                      onClick={() => void handleRefreshMicrosoft(acc.id)}
+                      title={t('accounts.refreshMicrosoft')}
+                    >
+                      <RefreshCw size={14} />
                     </Button>
                   )}
                   <Button

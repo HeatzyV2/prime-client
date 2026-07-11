@@ -12,6 +12,7 @@ import type {
 } from '../storage/instance-types'
 import type { InstanceLaunchConfig } from '../minecraft/constants'
 import { getInstanceGameDir } from '../minecraft/paths'
+import { settingsStore } from '../storage/SettingsStore'
 
 const DEFAULT_FABRIC_LOADER = '0.19.3'
 const DEFAULT_FABRIC_API = '0.141.4+1.21.11'
@@ -114,6 +115,7 @@ export class InstanceService {
       return { ok: false, error: 'Only Vanilla and Fabric are supported locally.' }
     }
 
+    const settings = await settingsStore.load()
     const stored: StoredInstance = {
       id: randomUUID(),
       name,
@@ -125,7 +127,7 @@ export class InstanceService {
           ? input.fabricApiVersion ?? DEFAULT_FABRIC_API
           : input.fabricApiVersion,
       includePrimeMod: Boolean(input.includePrimeMod),
-      ramMb: clampRam(input.ramMb),
+      ramMb: clampRam(input.ramMb || settings.defaultRamMb),
       jvmArgs: input.jvmArgs ?? (loader === 'fabric' ? ['-XX:+UseG1GC'] : []),
       isDefault: false,
       createdAt: new Date().toISOString()

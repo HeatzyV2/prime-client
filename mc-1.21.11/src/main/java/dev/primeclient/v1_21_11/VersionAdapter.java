@@ -23,6 +23,8 @@ import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.core.particles.DustParticleOptions;
 import org.lwjgl.glfw.GLFW;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /** {@link MinecraftAdapter} for Minecraft 1.21.11. */
@@ -559,6 +561,29 @@ public final class VersionAdapter implements MinecraftAdapter {
                 mc.gameDirectory,
                 mc.getMainRenderTarget(),
                 message -> mc.execute(() -> mc.gui.getChat().addMessage(message)));
+    }
+
+    @Override
+    public boolean captureFrame(Path outputPath) {
+        Minecraft mc = Minecraft.getInstance();
+        try {
+            Files.createDirectories(outputPath.getParent());
+            final boolean[] ok = {false};
+            net.minecraft.client.Screenshot.takeScreenshot(
+                    mc.getMainRenderTarget(),
+                    image -> {
+                        try {
+                            image.writeToFile(outputPath);
+                            ok[0] = true;
+                        } catch (IOException ignored) {
+                        } finally {
+                            image.close();
+                        }
+                    });
+            return ok[0] && Files.isRegularFile(outputPath);
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     @Override

@@ -81,19 +81,23 @@ npm run typecheck
 This launcher:
 
 1. Downloads Minecraft + Fabric from official CDNs (first launch)
-2. Copies the Prime Client mod from your local Gradle build (or `PRIME_CLIENT_JAR`)
-3. Downloads Fabric API from Modrinth (public API)
-4. Keeps Prime profile / sync data **on disk only** — no Prime cloud server
-5. Launches the game with Microsoft or offline auth
+2. Installs the Prime Client mod from **GitHub Releases** (latest `prime-client-1.21.11*.jar`)
+3. Uses your **local Gradle build** when developing from the monorepo (takes priority)
+4. Downloads Fabric API from Modrinth (public API)
+5. Removes stale Prime Client jars from the instance `mods/` folder on each launch
+6. Keeps Prime profile / sync data **on disk only** — no Prime cloud server
+7. Launches the game with Microsoft or offline auth
 
-**Before first launch**, build the mod:
+**Development** (optional local mod build):
 
 ```powershell
 cd ..
 .\gradlew :mc-1.21.11:build
 ```
 
-Optional: `PRIME_CLIENT_JAR=C:\path\to\prime-client-1.21.11-1.1.0.jar`
+When `mc-1.21.11/build/libs/` contains a jar, the launcher uses it instead of GitHub.
+
+Optional override: `PRIME_CLIENT_JAR=C:\path\to\prime-client-1.21.11-1.2.0.jar`
 
 Runtime data lives in `%APPDATA%\prime-launcher\`:
 

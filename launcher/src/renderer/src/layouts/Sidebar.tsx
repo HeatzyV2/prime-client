@@ -17,8 +17,10 @@ import {
   Settings
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { formatTier } from '@shared/format'
 import { NAV_ITEMS, type NavSection } from '@shared/types'
 import { Avatar, Badge } from '@renderer/design-system/components'
+import { useI18n } from '@renderer/context/I18nProvider'
 import './Sidebar.css'
 
 const ICONS: Record<NavSection, LucideIcon> = {
@@ -42,10 +44,12 @@ const ICONS: Record<NavSection, LucideIcon> = {
 interface SidebarProps {
   username: string
   tier: string
-  skinUrl?: string
+  uuid?: string
 }
 
-export function Sidebar({ username, tier, skinUrl }: SidebarProps) {
+export function Sidebar({ username, tier, uuid }: SidebarProps) {
+  const { t, locale } = useI18n()
+
   return (
     <aside className="sidebar">
       <nav className="sidebar__nav">
@@ -61,7 +65,7 @@ export function Sidebar({ username, tier, skinUrl }: SidebarProps) {
               end={item.id === 'dashboard'}
             >
               <Icon size={18} />
-              {item.label}
+              {t(`nav.${item.id}`)}
             </NavLink>
           )
         })}
@@ -69,11 +73,11 @@ export function Sidebar({ username, tier, skinUrl }: SidebarProps) {
 
       <div className="sidebar__footer">
         <div className="sidebar__user">
-          <Avatar alt={username} size="sm" glow src={skinUrl} />
+          <Avatar alt={username} uuid={uuid} size="sm" glow />
           <div className="sidebar__user-info">
             <div className="sidebar__username">{username}</div>
             <div className="sidebar__tier">
-              <Badge variant="prime">{tier}</Badge>
+              <Badge variant="prime">{formatTier(tier, locale)}</Badge>
             </div>
           </div>
         </div>

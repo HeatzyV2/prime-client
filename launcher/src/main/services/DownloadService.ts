@@ -32,6 +32,48 @@ export class DownloadService {
     })
   }
 
+  async trackContentInstall(name: string): Promise<void> {
+    await downloadStore.mutate((db) => {
+      db.tasks.unshift({
+        id: randomUUID(),
+        name: name.slice(0, 80),
+        progress: 100,
+        speed: 'Modrinth',
+        size: '—',
+        eta: '—',
+        status: 'completed'
+      })
+    })
+  }
+
+  async beginDownload(name: string): Promise<string> {
+    const id = randomUUID()
+    await downloadStore.mutate((db) => {
+      db.tasks.unshift({
+        id,
+        name: name.slice(0, 80),
+        progress: 0,
+        speed: '—',
+        size: '—',
+        eta: '…',
+        status: 'downloading'
+      })
+    })
+    return id
+  }
+
+  async updateDownload(taskId: string, progress: number, speed: string): Promise<void> {
+    await downloadStore.mutate((db) => {
+      const task = db.tasks.find((t) => t.id === taskId)
+      if (task) {
+        task.progress = progress
+        task.speed = speed
+        task.status = progress >= 100 ? 'completed' : 'downloading'
+        task.eta = progress >= 100 ? '—' : '…'
+      }
+    })
+  }
+
   onLaunchProgress(payload: LaunchProgressDto): void {
     void this.trackProgress(payload)
   }

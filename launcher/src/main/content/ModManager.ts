@@ -4,6 +4,7 @@ import type { ModEntry } from '../../shared/content-types'
 import { getModsDir } from './paths'
 import { patchContentMeta, readContentMeta } from './contentMeta'
 import { downloadModrinthFile, getModrinthVersion } from './ModrinthClient'
+import { downloadService } from '../services/DownloadService'
 
 const DISABLED_SUFFIX = '.disabled'
 
@@ -127,7 +128,11 @@ export async function installModFromModrinth(
     const modsDir = getModsDir(instanceId)
     await mkdir(modsDir, { recursive: true })
     const dest = join(modsDir, file.filename)
-    await downloadModrinthFile(file.url, dest)
+
+    const taskId = await downloadService.beginDownload(`Mod: ${title}`)
+    await downloadModrinthFile(file.url, dest, (percent, speed) => {
+      void downloadService.updateDownload(taskId, percent, speed)
+    })
 
     await patchContentMeta(instanceId, (meta) => {
       meta.mods[file.filename] = {

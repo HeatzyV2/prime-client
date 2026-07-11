@@ -3,6 +3,7 @@
   background: var(--prime-surface-3);
   border: 2px solid var(--prime-border);
   image-rendering: pixelated;
+  object-fit: cover;
   flex-shrink: 0;
 }
 

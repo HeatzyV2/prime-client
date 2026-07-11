@@ -5,7 +5,8 @@ export const IPC = {
   WINDOW_CLOSE: 'window:close',
   APP_GET_VERSION: 'app:get-version',
   APP_GET_PLATFORM: 'app:get-platform',
-  BOOT_COMPLETE: 'boot:complete',
+  APP_RESTART: 'app:restart',
+  BOOT_INITIALIZE: 'boot:initialize',
 
   ACCOUNT_GET_PRIME: 'account:get-prime',
   ACCOUNT_GET_MINECRAFT: 'account:get-minecraft',
@@ -17,6 +18,7 @@ export const IPC = {
   ACCOUNT_REFRESH_MICROSOFT: 'account:refresh-microsoft',
   ACCOUNT_SYNC_PRIME: 'account:sync-prime',
   LAUNCH_GAME: 'launch:game',
+  BRIDGE_SYNC: 'bridge:sync',
   /** Main → renderer progress while downloading / launching. */
   LAUNCH_PROGRESS: 'launch:progress',
 
@@ -58,7 +60,14 @@ export const IPC = {
   FRIENDS_ADD: 'friends:add',
   FRIENDS_REMOVE: 'friends:remove',
   FRIENDS_UPDATE_NOTE: 'friends:update-note',
+  FRIENDS_REFRESH_ALL: 'friends:refresh-all',
+  FRIENDS_REFRESH: 'friends:refresh',
   NEWS_LIST: 'news:list',
+  SERVERS_LIST: 'servers:list',
+  SERVERS_ADD: 'servers:add',
+  SERVERS_REMOVE: 'servers:remove',
+  SERVERS_REFRESH: 'servers:refresh',
+  SERVERS_REFRESH_ALL: 'servers:refresh-all',
   MEDIA_LIST: 'media:list',
   MEDIA_OPEN_FOLDER: 'media:open-folder',
   MEDIA_OPEN_FILE: 'media:open-file',
@@ -71,6 +80,7 @@ export const IPC = {
   DOWNLOADS_REMOVE: 'downloads:remove',
   SETTINGS_GET: 'settings:get',
   SETTINGS_UPDATE: 'settings:update',
+  SETTINGS_JAVA_LIST: 'settings:java-list',
   UPDATE_CHECK: 'update:check',
   UPDATE_OPEN_RELEASE: 'update:open-release'
 } as const
@@ -81,6 +91,11 @@ export interface AuthResultDto {
   ok: boolean
   error?: string
   accountId?: string
+}
+
+export interface LaunchOptionsDto {
+  instanceId: string
+  serverAddress?: string
 }
 
 export interface LaunchResultDto {
@@ -144,6 +159,41 @@ export interface ContentMutationDto {
   ok: boolean
   error?: string
   fileName?: string
+}
+
+export interface BootStepDto {
+  id: string
+  labelKey: string
+}
+
+export interface JavaInstallationDto {
+  path: string
+  major: number
+  label: string
+}
+
+export interface LauncherSettingsDto {
+  language: 'en' | 'fr'
+  closeOnLaunch: boolean
+  autoUpdate: boolean
+  theme: 'prime-dark' | 'prime-crimson'
+  backgroundNebula: boolean
+  hardwareAccel: boolean
+  defaultRamMb: number
+  performancePreset: string
+  analytics: boolean
+  discordRpc: boolean
+  concurrentDownloads: number
+  developerMode: boolean
+  jvmArgs: string[]
+  defaultJavaPath: string | null
+  lastUpdateCheck?: string
+  lastPrimeSync?: string
+}
+
+export interface SettingsUpdateDto {
+  settings: LauncherSettingsDto
+  restartRequired?: boolean
 }
 
 export interface UpdateCheckDto {

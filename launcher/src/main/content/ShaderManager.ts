@@ -5,6 +5,7 @@ import { getShaderPacksDir } from './paths'
 import { getActiveShaderPack, setActiveShaderPack } from './options'
 import { patchContentMeta, readContentMeta } from './contentMeta'
 import { downloadModrinthFile, getModrinthVersion } from './ModrinthClient'
+import { downloadService } from '../services/DownloadService'
 
 function shaderId(fileName: string): string {
   return encodeURIComponent(fileName)
@@ -101,7 +102,10 @@ export async function installShaderFromModrinth(
     const dir = getShaderPacksDir(instanceId)
     await mkdir(dir, { recursive: true })
     const dest = join(dir, file.filename)
-    await downloadModrinthFile(file.url, dest)
+    const taskId = await downloadService.beginDownload(`Shader: ${title}`)
+    await downloadModrinthFile(file.url, dest, (percent, speed) => {
+      void downloadService.updateDownload(taskId, percent, speed)
+    })
 
     await patchContentMeta(instanceId, (meta) => {
       meta.shaders[file.filename] = {

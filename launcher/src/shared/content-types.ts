@@ -58,6 +58,8 @@ export interface MediaItem {
   date: string
   size: string
   filePath?: string
+  thumbnailUrl?: string
+  mediaUrl?: string
 }
 
 export interface DownloadTask {

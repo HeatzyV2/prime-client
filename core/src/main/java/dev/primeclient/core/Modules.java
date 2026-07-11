@@ -2,6 +2,7 @@ package dev.primeclient.core;
 
 import dev.primeclient.core.modules.creator.CameraZoomModule;
 import dev.primeclient.core.modules.creator.CinematicCameraModule;
+import dev.primeclient.core.modules.creator.ClipToolsModule;
 import dev.primeclient.core.modules.creator.ReplayToolsModule;
 import dev.primeclient.core.modules.creator.ScreenshotModeModule;
 import dev.primeclient.core.modules.creator.StreamerModeModule;
@@ -117,12 +118,13 @@ final class Modules {
         modules.register(new InventorySearchModule(hud, themes, adapter));
         modules.register(new ServerSwitcherModule(hud, themes, adapter));
 
-        // Creator (5)
+        // Creator (6)
         modules.register(new CinematicCameraModule(hud, themes, adapter));
         modules.register(new ScreenshotModeModule(adapter));
         modules.register(new StreamerModeModule(hud, adapter));
         modules.register(new CameraZoomModule(adapter));
         modules.register(new ReplayToolsModule(hud, themes, adapter, client.replaySession(), client.replayStorage()));
+        modules.register(new ClipToolsModule(hud, themes, adapter, client.clipRecorder(), client.keybinds()));
 
         // Prime (6)
         modules.register(new PrimeProfilesModule(client.profiles()));

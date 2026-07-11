@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import type { FriendEntry } from '../../shared/content-types'
+import type { FavoriteServer } from '../../shared/types'
 import { DEFAULT_EQUIPPED_COSMETICS, DEFAULT_OWNED_STORE } from '../../shared/ecosystem-catalog'
 
 export interface EcosystemDatabase {
@@ -10,6 +11,7 @@ export interface EcosystemDatabase {
   ownedStoreItems: string[]
   equippedCosmetics: string[]
   friends: FriendEntry[]
+  favoriteServers?: FavoriteServer[]
 }
 
 const DEFAULT_DB = (): EcosystemDatabase => ({

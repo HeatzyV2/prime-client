@@ -1,12 +1,46 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Camera, Film } from 'lucide-react'
+import { Camera, Film, PlayCircle, RefreshCw } from 'lucide-react'
 import type { MediaItem } from '@shared/content-types'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button } from '@renderer/design-system/components'
 import { useActiveInstance } from '@renderer/hooks/useActiveInstance'
+import { useI18n } from '@renderer/context/I18nProvider'
+
+function MediaPreview({ item }: { item: MediaItem }) {
+  if (item.type === 'clip' && item.mediaUrl) {
+    return (
+      <video
+        src={item.mediaUrl}
+        muted
+        playsInline
+        preload="metadata"
+        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
+      />
+    )
+  }
+
+  if (item.thumbnailUrl) {
+    return (
+      <img
+        src={item.thumbnailUrl}
+        alt={item.title}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
+      />
+    )
+  }
+
+  if (item.type === 'replay') {
+    return <PlayCircle size={28} />
+  }
+  if (item.type === 'clip') {
+    return <Film size={28} />
+  }
+  return <Camera size={28} />
+}
 
 export function MediaPage() {
-  const { instance, instanceId } = useActiveInstance()
+  const { t } = useI18n()
+  const { instanceId } = useActiveInstance()
   const [items, setItems] = useState<MediaItem[]>([])
 
   const refresh = useCallback(async () => {
@@ -19,20 +53,26 @@ export function MediaPage() {
 
   return (
     <PageShell
-      title="Media Center"
-      subtitle={
-        instance
-          ? `Screenshots from ${instance.name}/screenshots — taken in-game with F2.`
-          : 'Loading instance…'
-      }
+      title={t('pages.media.title')}
+      subtitle={t('pages.media.subtitle')}
       actions={
-        <Button variant="secondary" size="sm" onClick={() => void window.primeLauncher.media.openFolder(instanceId ?? undefined)}>
-          Open Folder
-        </Button>
+        <>
+          <Button variant="secondary" size="sm" onClick={() => void refresh()}>
+            <RefreshCw size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+            {t('media.refresh')}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void window.primeLauncher.media.openFolder(instanceId ?? undefined)}
+          >
+            {t('media.openFolder')}
+          </Button>
+        </>
       }
     >
       {items.length === 0 ? (
-        <p className="text-caption">No screenshots yet. Press F2 in Minecraft to capture.</p>
+        <p className="text-caption">{t('empty.noScreenshots')}</p>
       ) : (
         <div className="page-grid page-grid--3">
           {items.map((item) => (
@@ -44,7 +84,7 @@ export function MediaPage() {
               onClick={() => item.filePath && void window.primeLauncher.media.openFile(item.filePath)}
             >
               <div className="tile__preview">
-                <Camera size={28} />
+                <MediaPreview item={item} />
               </div>
               <div className="tile__name">{item.title}</div>
               <div className="tile__desc">
@@ -59,7 +99,7 @@ export function MediaPage() {
       )}
 
       <p className="text-caption" style={{ marginTop: 24 }}>
-        Replays and clips will appear here when Prime Client exports them locally.
+        {t('media.replaysNote')}
         <Film size={14} style={{ verticalAlign: 'middle', marginLeft: 6 }} />
       </p>
     </PageShell>

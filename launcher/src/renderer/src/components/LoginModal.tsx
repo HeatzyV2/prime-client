@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { KeyRound, User } from 'lucide-react'
 import { Button } from '@renderer/design-system/components'
 import { useAccounts } from '@renderer/context/AccountProvider'
+import { useI18n } from '@renderer/context/I18nProvider'
 import './LoginModal.css'
 
 interface LoginModalProps {
@@ -10,6 +11,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ onClose }: LoginModalProps) {
+  const { t } = useI18n()
   const { loginMicrosoft, addOffline } = useAccounts()
   const [username, setUsername] = useState('')
   const [busy, setBusy] = useState(false)
@@ -23,7 +25,7 @@ export function LoginModal({ onClose }: LoginModalProps) {
     if (result.ok) {
       onClose()
     } else {
-      setError(result.error ?? 'Login failed.')
+      setError(result.error ?? t('modals.login.loginFailed'))
     }
   }
 
@@ -35,7 +37,7 @@ export function LoginModal({ onClose }: LoginModalProps) {
     if (result.ok) {
       onClose()
     } else {
-      setError(result.error ?? 'Could not create offline account.')
+      setError(result.error ?? t('modals.login.offlineFailed'))
     }
   }
 
@@ -54,10 +56,8 @@ export function LoginModal({ onClose }: LoginModalProps) {
         exit={{ opacity: 0, scale: 0.95, y: 12 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="modal__title">Sign in to Prime</h2>
-        <p className="modal__subtitle">
-          Use your Microsoft account for official Minecraft, or play offline with a custom username.
-        </p>
+        <h2 className="modal__title">{t('modals.login.title')}</h2>
+        <p className="modal__subtitle">{t('modals.login.subtitle')}</p>
 
         <div className="modal__actions">
           <Button
@@ -68,17 +68,17 @@ export function LoginModal({ onClose }: LoginModalProps) {
             disabled={busy}
             onClick={() => void handleMicrosoft()}
           >
-            Sign in with Microsoft
+            {t('modals.login.microsoft')}
           </Button>
         </div>
 
         <p className="text-caption" style={{ textAlign: 'center', margin: '20px 0 12px' }}>
-          — or offline —
+          {t('modals.login.offlineDivider')}
         </p>
 
         <input
           className="modal__field"
-          placeholder="Offline username"
+          placeholder={t('modals.login.offlinePlaceholder')}
           value={username}
           maxLength={16}
           disabled={busy}
@@ -93,14 +93,14 @@ export function LoginModal({ onClose }: LoginModalProps) {
           disabled={busy || username.trim().length < 3}
           onClick={() => void handleOffline()}
         >
-          Continue Offline
+          {t('modals.login.offlineContinue')}
         </Button>
 
         {error && <div className="modal__error">{error}</div>}
 
         <div className="modal__footer">
           <Button variant="ghost" size="sm" onClick={onClose} disabled={busy}>
-            Cancel
+            {t('modals.login.cancel')}
           </Button>
         </div>
       </motion.div>

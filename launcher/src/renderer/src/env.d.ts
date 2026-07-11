@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import type { PrimeLauncherApi } from '../../preload/index'
 
 declare global {
@@ -5,5 +7,6 @@ declare global {
     primeLauncher: PrimeLauncherApi
   }
 }
+
 
 export {}

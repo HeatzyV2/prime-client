@@ -1,3 +1,6 @@
+import { writeFile } from 'fs/promises'
+import { downloadQueue } from '../utils/DownloadQueue'
+
 const MODRINTH_API = 'https://api.modrinth.com/v2'
 
 export interface ModrinthSearchHit {
@@ -81,12 +84,42 @@ export async function getModrinthVersion(
   return version
 }
 
-export async function downloadModrinthFile(url: string, destPath: string): Promise<void> {
-  const { createWriteStream } = await import('fs')
-  const { pipeline } = await import('stream/promises')
-  const response = await fetch(url)
-  if (!response.ok || !response.body) {
-    throw new Error(`Download failed (${response.status}).`)
-  }
-  await pipeline(response.body as unknown as NodeJS.ReadableStream, createWriteStream(destPath))
+export async function downloadModrinthFile(
+  url: string,
+  destPath: string,
+  onProgress?: (percent: number, speed: string) => void
+): Promise<void> {
+  await downloadQueue.run(async () => {
+    const response = await fetch(url)
+    if (!response.ok || !response.body) {
+      throw new Error(`Download failed (${response.status}).`)
+    }
+
+    const total = Number(response.headers.get('content-length') || 0)
+    const reader = response.body.getReader()
+    const chunks: Uint8Array[] = []
+    let received = 0
+    const start = Date.now()
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        break
+      }
+      if (value) {
+        chunks.push(value)
+        received += value.length
+        if (total > 0 && onProgress) {
+          const elapsed = Math.max(1, Date.now() - start) / 1000
+          const speed = `${(received / elapsed / 1024).toFixed(1)} KB/s`
+          onProgress(Math.round((received / total) * 100), speed)
+        }
+      }
+    }
+
+    const buffer = Buffer.concat(chunks)
+    const { writeFile } = await import('fs/promises')
+    await writeFile(destPath, buffer)
+    onProgress?.(100, 'Done')
+  })
 }

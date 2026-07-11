@@ -1,6 +1,7 @@
 import type { StoreItem } from '../../shared/content-types'
 import { STORE_CATALOG, STORE_TO_COSMETIC } from '../../shared/ecosystem-catalog'
 import { ecosystemStore } from '../storage/EcosystemStore'
+import { settingsStore } from '../storage/SettingsStore'
 
 export class StoreService {
   async getCatalog(): Promise<StoreItem[]> {
@@ -36,13 +37,21 @@ export class StoreService {
         db.primeCoins -= item.price
       }
       db.ownedStoreItems.push(itemId)
-      const cosmeticId = STORE_TO_COSMETIC[itemId]
-      if (cosmeticId && !db.equippedCosmetics.includes(cosmeticId)) {
-        // unlock only — equip from cosmetics page
-      }
     })
 
+    if (itemId === 'bg-nebula') {
+      await settingsStore.mutate((s) => {
+        s.backgroundNebula = true
+      })
+    }
+
     return { ok: true }
+  }
+
+  async grantLaunchReward(): Promise<void> {
+    await ecosystemStore.mutate((db) => {
+      db.primeCoins += 10
+    })
   }
 }
 

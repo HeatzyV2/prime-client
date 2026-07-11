@@ -5,9 +5,11 @@ import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button } from '@renderer/design-system/components'
 import { ModrinthBrowseModal } from '@renderer/components/ModrinthBrowseModal'
 import { useActiveInstance } from '@renderer/hooks/useActiveInstance'
+import { useI18n } from '@renderer/context/I18nProvider'
 import type { ResourcePackEntry } from '@shared/content-types'
 
 export function ResourcesPage() {
+  const { t } = useI18n()
   const { instance, instanceId, refresh: refreshInstance } = useActiveInstance()
   const [packs, setPacks] = useState<ResourcePackEntry[]>([])
   const [showBrowse, setShowBrowse] = useState(false)
@@ -42,7 +44,7 @@ export function ResourcesPage() {
   }
 
   async function handleRemove(pack: ResourcePackEntry) {
-    if (!instanceId || !confirm(`Remove ${pack.name}?`)) {
+    if (!instanceId || !confirm(t('confirm.removePack', { name: pack.name }))) {
       return
     }
     await window.primeLauncher.content.removeResourcePack(pack.fileName, instanceId)
@@ -51,25 +53,21 @@ export function ResourcesPage() {
 
   return (
     <PageShell
-      title="Resource Packs"
-      subtitle={
-        instance
-          ? `Texture packs for ${instance.name} — writes to options.txt when activated.`
-          : 'Loading instance…'
-      }
+      title={t('pages.resources.title')}
+      subtitle={t('pages.resources.subtitle')}
       actions={
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="secondary" icon={<Upload size={16} />} onClick={() => void handleImport()}>
-            Import .zip
+            {t('resources.importZip')}
           </Button>
           <Button variant="primary" icon={<Download size={16} />} onClick={() => setShowBrowse(true)}>
-            Browse Modrinth
+            {t('actions.browseModrinth')}
           </Button>
         </div>
       }
     >
       {packs.length === 0 ? (
-        <p className="text-caption">No resource packs yet. Import a .zip or install from Modrinth.</p>
+        <p className="text-caption">{t('empty.noResourcePacks')}</p>
       ) : (
         <div className="page-grid page-grid--3">
           {packs.map((pack) => (
@@ -88,7 +86,7 @@ export function ResourcesPage() {
               <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
                 <Badge variant={pack.active ? 'prime' : 'default'}>
                   {pack.resolution}
-                  {pack.active ? ' · Active' : ''}
+                  {pack.active ? ` · ${t('resources.active')}` : ''}
                 </Badge>
                 <Button
                   variant="ghost"

@@ -16,7 +16,7 @@ interface AccountContextValue {
   removeAccount: (id: string) => Promise<AuthResultDto>
   setActive: (id: string) => Promise<void>
   syncPrime: () => Promise<SyncResultDto>
-  launch: (instanceId: string) => Promise<LaunchResultDto>
+  launch: (instanceId: string, serverAddress?: string) => Promise<LaunchResultDto>
   clearLaunchMessage: () => void
   clearLaunchProgress: () => void
 }
@@ -109,8 +109,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   }, [refresh])
 
   const launch = useCallback(
-    async (instanceId: string) => {
-      const result = await window.primeLauncher.launch.game(instanceId)
+    async (instanceId: string, serverAddress?: string) => {
+      const result = await window.primeLauncher.launch.game(instanceId, serverAddress)
       setLaunchMessage(result.message)
       if (result.ok) {
         await refresh()

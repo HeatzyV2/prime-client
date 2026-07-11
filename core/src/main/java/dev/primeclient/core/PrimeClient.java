@@ -34,6 +34,8 @@ import dev.primeclient.core.notification.NotificationPreferences;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.replay.ReplaySession;
 import dev.primeclient.core.replay.ReplayStorage;
+import dev.primeclient.core.clip.ClipRecorder;
+import dev.primeclient.core.clip.ClipStorage;
 import dev.primeclient.core.theme.ThemeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +74,8 @@ public final class PrimeClient {
     private final LoadingOverlay loadingOverlay;
     private final ReplaySession replaySession;
     private final ReplayStorage replayStorage;
+    private final ClipStorage clipStorage;
+    private final ClipRecorder clipRecorder;
     private final TooltipRenderer tooltips;
     private final DiscordRpcService discordRpc;
 
@@ -107,6 +111,8 @@ public final class PrimeClient {
         RemoteCloudClient remoteCloud = new RemoteCloudClient(localCloud, account);
         this.cloudSync = new CloudSyncManager(remoteCloud, configManager, notifications);
         this.replayStorage = new ReplayStorage(modRoot);
+        this.clipStorage = new ClipStorage(modRoot);
+        this.clipRecorder = new ClipRecorder(clipStorage, notifications);
         this.profiles = new ProfileManager(configManager, modRoot);
         this.clickGui = new ClickGui(modules, themes, favorites, adapter, onboarding,
                 cloudSync, cosmetics, profiles, tooltips);
@@ -253,6 +259,8 @@ public final class PrimeClient {
     public LoadingOverlay loadingOverlay() { return loadingOverlay; }
     public ReplaySession replaySession() { return replaySession; }
     public ReplayStorage replayStorage() { return replayStorage; }
+    public ClipStorage clipStorage() { return clipStorage; }
+    public ClipRecorder clipRecorder() { return clipRecorder; }
     public TooltipRenderer tooltips() { return tooltips; }
     public DiscordRpcService discordRpc() { return discordRpc; }
 }

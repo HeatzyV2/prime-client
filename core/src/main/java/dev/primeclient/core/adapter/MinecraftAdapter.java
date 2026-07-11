@@ -329,6 +329,11 @@ public interface MinecraftAdapter {
     default void takeScreenshot() {
     }
 
+    /** Writes the current framebuffer to {@code outputPath} (PNG). Used by clip recorder. */
+    default boolean captureFrame(java.nio.file.Path outputPath) {
+        return false;
+    }
+
     default void setHudHidden(boolean hidden) {
     }
 

@@ -4,16 +4,20 @@ import { Plus, Play, Box, FolderOpen, Copy, Trash2, Star } from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button, Card } from '@renderer/design-system/components'
 import { InstanceModal, type InstancePreset } from '@renderer/components/InstanceModal'
+import { LoginModal } from '@renderer/components/LoginModal'
 import { useAccounts } from '@renderer/context/AccountProvider'
+import { useI18n } from '@renderer/context/I18nProvider'
 import type { GameInstance } from '@shared/types'
 
 export function InstancesPage() {
+  const { t, locale } = useI18n()
   const { launch, activeAccount } = useAccounts()
   const [instances, setInstances] = useState<GameInstance[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; preset?: InstancePreset; instance?: GameInstance } | null>(
     null
   )
+  const [showLogin, setShowLogin] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
@@ -28,6 +32,7 @@ export function InstancesPage() {
 
   async function handlePlay(inst: GameInstance) {
     if (!activeAccount) {
+      setShowLogin(true)
       return
     }
     setBusyId(inst.id)
@@ -48,13 +53,13 @@ export function InstancesPage() {
   }
 
   async function handleDelete(inst: GameInstance) {
-    if (!confirm(`Delete "${inst.name}"? Game files can be kept or removed.`)) {
+    if (!confirm(t('confirm.deleteInstance', { name: inst.name }))) {
       return
     }
-    const deleteFiles = confirm('Also delete saves and mods on disk?')
+    const deleteFiles = confirm(t('confirm.deleteFiles'))
     const result = await window.primeLauncher.instance.remove(inst.id, deleteFiles)
     if (!result.ok) {
-      alert(result.error ?? 'Could not delete instance.')
+      alert(result.error ?? t('errors.deleteInstance'))
       return
     }
     await refresh()
@@ -62,24 +67,24 @@ export function InstancesPage() {
 
   return (
     <PageShell
-      title="Instances"
-      subtitle="Create and manage local Minecraft installations — versions, RAM, mods, per folder."
+      title={t('pages.instances.title')}
+      subtitle={t('pages.instances.subtitle')}
       actions={
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="secondary" size="sm" onClick={() => setModal({ mode: 'create', preset: 'vanilla' })}>
-            Vanilla
+            {t('instances.vanilla')}
           </Button>
           <Button variant="secondary" size="sm" onClick={() => setModal({ mode: 'create', preset: 'fabric' })}>
-            Fabric
+            {t('instances.fabric')}
           </Button>
           <Button variant="primary" icon={<Plus size={16} />} onClick={() => setModal({ mode: 'create', preset: 'prime' })}>
-            Prime Client
+            {t('instances.primeClient')}
           </Button>
         </div>
       }
     >
       {loading ? (
-        <p className="text-caption">Loading instances…</p>
+        <p className="text-caption">{t('instances.loading')}</p>
       ) : (
         <div className="page-grid page-grid--3">
           {instances.map((inst) => (
@@ -100,14 +105,16 @@ export function InstancesPage() {
               </div>
 
               <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-                <Badge variant="default">{inst.ramMb} MB RAM</Badge>
-                <Badge variant="default">{inst.modCount} mods</Badge>
-                {inst.isDefault && <Badge variant="prime">Default</Badge>}
+                <Badge variant="default">{t('instances.ramBadge', { mb: inst.ramMb })}</Badge>
+                <Badge variant="default">{t('instances.modsBadge', { count: inst.modCount })}</Badge>
+                {inst.isDefault && <Badge variant="prime">{t('instances.default')}</Badge>}
               </div>
 
               {inst.lastPlayed && (
                 <p className="text-caption" style={{ marginBottom: 12 }}>
-                  Last played {new Date(inst.lastPlayed).toLocaleDateString()}
+                  {t('instances.lastPlayed', {
+                    date: new Date(inst.lastPlayed).toLocaleDateString(locale)
+                  })}
                 </p>
               )}
 
@@ -116,13 +123,13 @@ export function InstancesPage() {
                   variant="primary"
                   size="sm"
                   icon={<Play size={14} />}
-                  disabled={!activeAccount || busyId === inst.id}
+                  disabled={busyId === inst.id}
                   onClick={() => void handlePlay(inst)}
                 >
-                  Play
+                  {activeAccount ? t('instances.play') : t('instances.signInToPlay')}
                 </Button>
                 <Button variant="secondary" size="sm" onClick={() => setModal({ mode: 'edit', instance: inst })}>
-                  Configure
+                  {t('actions.configure')}
                 </Button>
                 <Button
                   variant="ghost"
@@ -130,7 +137,7 @@ export function InstancesPage() {
                   icon={<FolderOpen size={14} />}
                   onClick={() => void window.primeLauncher.instance.openFolder(inst.id)}
                 >
-                  Folder
+                  {t('actions.folder')}
                 </Button>
                 {!inst.isDefault && (
                   <Button
@@ -139,7 +146,7 @@ export function InstancesPage() {
                     icon={<Star size={14} />}
                     onClick={() => void handleSetDefault(inst.id)}
                   >
-                    Default
+                    {t('instances.default')}
                   </Button>
                 )}
                 <Button
@@ -148,7 +155,7 @@ export function InstancesPage() {
                   icon={<Copy size={14} />}
                   onClick={() => void handleDuplicate(inst.id)}
                 >
-                  Duplicate
+                  {t('actions.duplicate')}
                 </Button>
                 {instances.length > 1 && (
                   <Button
@@ -157,7 +164,7 @@ export function InstancesPage() {
                     icon={<Trash2 size={14} />}
                     onClick={() => void handleDelete(inst)}
                   >
-                    Delete
+                    {t('actions.delete')}
                   </Button>
                 )}
               </div>
@@ -176,6 +183,7 @@ export function InstancesPage() {
             onSaved={() => void refresh()}
           />
         )}
+        {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
       </AnimatePresence>
     </PageShell>
   )

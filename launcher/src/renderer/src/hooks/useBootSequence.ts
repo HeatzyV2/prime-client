@@ -1,7 +1,4 @@
 import { useEffect, useState } from 'react'
-import { BOOT_STEPS } from '@shared/types'
-
-const STEP_DURATION_MS = 900
 
 export function useBootSequence() {
   const [booting, setBooting] = useState(true)
@@ -9,32 +6,33 @@ export function useBootSequence() {
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
+    let cancelled = false
     let step = 0
-    let frame: number
-    let stepStart = performance.now()
+    const timer = setInterval(() => {
+      if (step < 3) {
+        step += 1
+        setStepIndex(step)
+        setProgress(Math.round((step / 3) * 90))
+      }
+    }, 500)
 
-    const tick = (now: number) => {
-      const elapsed = now - stepStart
-      const stepProgress = Math.min(1, elapsed / STEP_DURATION_MS)
-      const base = (step / BOOT_STEPS.length) * 100
-      const current = base + stepProgress * (100 / BOOT_STEPS.length)
-      setProgress(current)
-      setStepIndex(step)
-
-      if (stepProgress >= 1) {
-        step++
-        stepStart = now
-        if (step >= BOOT_STEPS.length) {
+    void (async () => {
+      try {
+        await window.primeLauncher.boot.initialize()
+      } finally {
+        clearInterval(timer)
+        if (!cancelled) {
+          setStepIndex(3)
           setProgress(100)
-          setTimeout(() => setBooting(false), 400)
-          return
+          setTimeout(() => setBooting(false), 300)
         }
       }
-      frame = requestAnimationFrame(tick)
-    }
+    })()
 
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
   }, [])
 
   return { booting, stepIndex, progress }

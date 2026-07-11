@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Card } from '@renderer/design-system/components'
+import { useI18n } from '@renderer/context/I18nProvider'
 import type { NewsItem } from '@shared/types'
 
 export function NewsPage() {
+  const { t } = useI18n()
   const [news, setNews] = useState<NewsItem[]>([])
 
   useEffect(() => {
@@ -11,13 +13,13 @@ export function NewsPage() {
   }, [])
 
   return (
-    <PageShell title="News" subtitle="Bundled announcements — no remote news server.">
+    <PageShell title={t('pages.news.title')} subtitle={t('pages.news.subtitle')}>
       <div className="page-list">
         {news.map((item) => (
           <Card key={item.id} hover>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
               <Badge variant={item.tag === 'update' ? 'red' : item.tag === 'event' ? 'success' : 'default'}>
-                {item.tag}
+                {t(`newsTag.${item.tag}`)}
               </Badge>
               <span className="text-mono" style={{ color: 'var(--prime-muted-2)' }}>
                 {item.date}

@@ -1,18 +1,29 @@
+import { isSkinTextureUrl, playerHeadUrl } from '@shared/format'
 import './Avatar.css'
 
 type Size = 'sm' | 'md' | 'lg' | 'xl'
 
+const HEAD_PIXELS: Record<Size, number> = {
+  sm: 32,
+  md: 48,
+  lg: 64,
+  xl: 80
+}
+
 interface AvatarProps {
+  uuid?: string
   src?: string
   alt: string
   size?: Size
   glow?: boolean
 }
 
-export function Avatar({ src, alt, size = 'md', glow }: AvatarProps) {
+export function Avatar({ uuid, src, alt, size = 'md', glow }: AvatarProps) {
+  const pixels = HEAD_PIXELS[size]
   const url =
-    src ??
-    `https://mc-heads.net/avatar/${encodeURIComponent(alt)}/${size === 'xl' ? 80 : size === 'lg' ? 64 : size === 'md' ? 48 : 32}`
+    src && !isSkinTextureUrl(src)
+      ? src
+      : playerHeadUrl(uuid, alt, pixels)
 
   return (
     <img

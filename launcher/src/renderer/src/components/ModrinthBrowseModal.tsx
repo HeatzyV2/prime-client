@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Download } from 'lucide-react'
 import { Button, SearchInput } from '@renderer/design-system/components'
+import { useI18n } from '@renderer/context/I18nProvider'
 import type { ModrinthSearchHitDto } from '@shared/ipc'
 import '@renderer/components/LoginModal.css'
 
@@ -13,6 +14,7 @@ interface ModrinthBrowseModalProps {
 }
 
 export function ModrinthBrowseModal({ type, instanceId, onClose, onInstalled }: ModrinthBrowseModalProps) {
+  const { t } = useI18n()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<ModrinthSearchHitDto[]>([])
   const [searching, setSearching] = useState(false)
@@ -37,7 +39,7 @@ export function ModrinthBrowseModal({ type, instanceId, onClose, onInstalled }: 
           )
           setResults(hits)
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Search failed.')
+          setError(err instanceof Error ? err.message : t('modals.modrinth.searchFailed'))
         } finally {
           setSearching(false)
         }
@@ -45,7 +47,7 @@ export function ModrinthBrowseModal({ type, instanceId, onClose, onInstalled }: 
     }, 350)
 
     return () => clearTimeout(timer)
-  }, [query, type, instanceId])
+  }, [query, type, instanceId, t])
 
   async function handleInstall(hit: ModrinthSearchHitDto) {
     setInstallingId(hit.project_id)
@@ -77,12 +79,16 @@ export function ModrinthBrowseModal({ type, instanceId, onClose, onInstalled }: 
       onInstalled()
       onClose()
     } else if (result.error !== 'Cancelled.') {
-      setError(result.error ?? 'Install failed.')
+      setError(result.error ?? t('modals.modrinth.installFailed'))
     }
   }
 
   const title =
-    type === 'mod' ? 'Browse Modrinth — Mods' : type === 'resourcepack' ? 'Browse Modrinth — Resource Packs' : 'Browse Modrinth — Shaders'
+    type === 'mod'
+      ? t('modals.modrinth.modsTitle')
+      : type === 'resourcepack'
+        ? t('modals.modrinth.resourcePacksTitle')
+        : t('modals.modrinth.shadersTitle')
 
   return (
     <motion.div
@@ -101,13 +107,11 @@ export function ModrinthBrowseModal({ type, instanceId, onClose, onInstalled }: 
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="modal__title">{title}</h2>
-        <p className="modal__subtitle">
-          Public Modrinth API — downloads go directly to your active instance folder.
-        </p>
+        <p className="modal__subtitle">{t('modals.modrinth.subtitle')}</p>
 
-        <SearchInput value={query} onChange={setQuery} placeholder="Search Modrinth…" />
+        <SearchInput value={query} onChange={setQuery} placeholder={t('actions.searchModrinth')} />
 
-        {searching && <p className="text-caption">Searching…</p>}
+        {searching && <p className="text-caption">{t('modals.modrinth.searching')}</p>}
         {error && <div className="modal__error">{error}</div>}
 
         <div className="page-list" style={{ marginTop: 16 }}>
@@ -136,7 +140,7 @@ export function ModrinthBrowseModal({ type, instanceId, onClose, onInstalled }: 
                 disabled={installingId === hit.project_id}
                 onClick={() => void handleInstall(hit)}
               >
-                {installingId === hit.project_id ? 'Installing…' : 'Install'}
+                {installingId === hit.project_id ? t('actions.installing') : t('actions.install')}
               </Button>
             </div>
           ))}
@@ -144,7 +148,7 @@ export function ModrinthBrowseModal({ type, instanceId, onClose, onInstalled }: 
 
         <div className="modal__footer">
           <Button variant="ghost" onClick={onClose}>
-            Close
+            {t('modals.modrinth.close')}
           </Button>
         </div>
       </motion.div>

@@ -1,11 +1,38 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import { existsSync } from 'fs'
 import { IPC } from '../shared/ipc'
 import { registerServiceHandlers } from './ipc/handlers'
+import { registerMediaScheme, registerMediaProtocol } from './protocol/mediaProtocol'
+import { readSettingsSync } from './utils/readSettingsSync'
+
+registerMediaScheme()
+
+const bootSettings = readSettingsSync()
+if (!bootSettings.hardwareAccel) {
+  app.disableHardwareAcceleration()
+}
 
 let mainWindow: BrowserWindow | null = null
 
+function resolveWindowIcon(): string | undefined {
+  const candidates = [
+    join(__dirname, '../../build/icon.ico'),
+    join(process.resourcesPath, 'icon.ico')
+  ]
+  return candidates.find((path) => existsSync(path))
+}
+
+async function openDevToolsIfNeeded(): Promise<void> {
+  const { settingsStore } = await import('./storage/SettingsStore')
+  const settings = await settingsStore.load()
+  if (settings.developerMode && mainWindow && !mainWindow.webContents.isDevToolsOpened()) {
+    mainWindow.webContents.openDevTools({ mode: 'detach' })
+  }
+}
+
 function createWindow(): void {
+  const icon = resolveWindowIcon()
   mainWindow = new BrowserWindow({
     width: 1320,
     height: 860,
@@ -15,16 +42,19 @@ function createWindow(): void {
     frame: false,
     backgroundColor: '#060608',
     title: 'Prime Launcher',
+    ...(icon ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: true,
+      devTools: true
     }
   })
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+    void openDevToolsIfNeeded()
   })
 
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -41,8 +71,10 @@ import { instanceStore } from './storage/InstanceStore'
 import { ecosystemStore } from './storage/EcosystemStore'
 import { settingsStore } from './storage/SettingsStore'
 import { downloadStore } from './storage/DownloadStore'
+import { updateService } from './services/UpdateService'
 
 app.whenReady().then(async () => {
+  registerMediaProtocol()
   await accountStore.load()
   await instanceStore.load()
   await ecosystemStore.load()
@@ -51,6 +83,11 @@ app.whenReady().then(async () => {
   registerServiceHandlers()
   registerWindowHandlers()
   createWindow()
+
+  const settings = await settingsStore.load()
+  if (settings.autoUpdate) {
+    void updateService.check()
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -68,6 +105,10 @@ app.on('window-all-closed', () => {
 function registerWindowHandlers(): void {
   ipcMain.handle(IPC.APP_GET_VERSION, () => app.getVersion())
   ipcMain.handle(IPC.APP_GET_PLATFORM, () => process.platform)
+  ipcMain.handle(IPC.APP_RESTART, () => {
+    app.relaunch()
+    app.exit(0)
+  })
 
   ipcMain.on(IPC.WINDOW_MINIMIZE, () => mainWindow?.minimize())
   ipcMain.on(IPC.WINDOW_MAXIMIZE, () => {

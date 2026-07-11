@@ -1,6 +1,7 @@
 import { dialog } from 'electron'
 import { profileService } from './ProfileService'
 import { instanceService } from './InstanceService'
+import { downloadService } from './DownloadService'
 import type { ModEntry, ResourcePackEntry, ShaderEntry } from '../../shared/content-types'
 import type { ModrinthSearchHit } from '../content/ModrinthClient'
 import { searchModrinth } from '../content/ModrinthClient'
@@ -67,13 +68,17 @@ export class ContentService {
     if (!stored) {
       return { ok: false, error: 'Instance not found.' }
     }
-    return ModManager.installModFromModrinth(
+    const result = await ModManager.installModFromModrinth(
       id,
       projectId,
       title,
       stored.minecraftVersion,
       await loaderForInstance(id)
     )
+    if (result.ok) {
+      await downloadService.trackContentInstall(`Mod: ${title}`)
+    }
+    return result
   }
 
   async listResourcePacks(instanceId?: string): Promise<ResourcePackEntry[]> {
@@ -107,12 +112,16 @@ export class ContentService {
     if (!stored) {
       return { ok: false, error: 'Instance not found.' }
     }
-    return ResourcePackManager.installResourcePackFromModrinth(
+    const result = await ResourcePackManager.installResourcePackFromModrinth(
       id,
       projectId,
       title,
       stored.minecraftVersion
     )
+    if (result.ok) {
+      await downloadService.trackContentInstall(`Resource pack: ${title}`)
+    }
+    return result
   }
 
   async listShaders(instanceId?: string): Promise<ShaderEntry[]> {
@@ -146,7 +155,11 @@ export class ContentService {
     if (!stored) {
       return { ok: false, error: 'Instance not found.' }
     }
-    return ShaderManager.installShaderFromModrinth(id, projectId, title, stored.minecraftVersion)
+    const result = await ShaderManager.installShaderFromModrinth(id, projectId, title, stored.minecraftVersion)
+    if (result.ok) {
+      await downloadService.trackContentInstall(`Shader: ${title}`)
+    }
+    return result
   }
 
   async searchModrinth(

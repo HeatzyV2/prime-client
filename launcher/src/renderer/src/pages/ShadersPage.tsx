@@ -5,9 +5,11 @@ import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button } from '@renderer/design-system/components'
 import { ModrinthBrowseModal } from '@renderer/components/ModrinthBrowseModal'
 import { useActiveInstance } from '@renderer/hooks/useActiveInstance'
+import { useI18n } from '@renderer/context/I18nProvider'
 import type { ShaderEntry } from '@shared/content-types'
 
 export function ShadersPage() {
+  const { t } = useI18n()
   const { instance, instanceId, refresh: refreshInstance } = useActiveInstance()
   const [shaders, setShaders] = useState<ShaderEntry[]>([])
   const [showBrowse, setShowBrowse] = useState(false)
@@ -42,7 +44,7 @@ export function ShadersPage() {
   }
 
   async function handleRemove(shader: ShaderEntry) {
-    if (!instanceId || !confirm(`Remove ${shader.name}?`)) {
+    if (!instanceId || !confirm(t('confirm.removeShader', { name: shader.name }))) {
       return
     }
     await window.primeLauncher.content.removeShader(shader.fileName, instanceId)
@@ -51,27 +53,21 @@ export function ShadersPage() {
 
   return (
     <PageShell
-      title="Shader Manager"
-      subtitle={
-        instance
-          ? `Iris shader packs for ${instance.name} — activation saved in options.txt.`
-          : 'Loading instance…'
-      }
+      title={t('pages.shaders.title')}
+      subtitle={t('pages.shaders.subtitle')}
       actions={
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="secondary" icon={<Upload size={16} />} onClick={() => void handleImport()}>
-            Import .zip
+            {t('resources.importZip')}
           </Button>
           <Button variant="primary" icon={<Download size={16} />} onClick={() => setShowBrowse(true)}>
-            Browse Modrinth
+            {t('actions.browseModrinth')}
           </Button>
         </div>
       }
     >
       {shaders.length === 0 ? (
-        <p className="text-caption">
-          No shader packs yet. Install Iris (mod) first, then add packs here.
-        </p>
+        <p className="text-caption">{t('empty.noShaders')}</p>
       ) : (
         <div className="page-grid page-grid--3">
           {shaders.map((shader) => (
@@ -89,7 +85,7 @@ export function ShadersPage() {
               <div className="tile__desc">{shader.description}</div>
               <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
                 <Badge variant={shader.backend === 'iris' ? 'red' : 'default'}>{shader.backend}</Badge>
-                {shader.active && <Badge variant="prime">Active</Badge>}
+                {shader.active && <Badge variant="prime">{t('resources.active')}</Badge>}
                 <Button
                   variant="ghost"
                   size="sm"

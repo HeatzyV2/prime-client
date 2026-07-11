@@ -5,6 +5,8 @@ import { AppShell } from '@renderer/layouts/AppShell'
 import { SplashScreen } from '@renderer/pages/SplashScreen'
 import { AppRoutes } from '@renderer/routes/AppRoutes'
 import { AccountProvider } from '@renderer/context/AccountProvider'
+import { I18nProvider } from '@renderer/context/I18nProvider'
+import { ThemeProvider } from '@renderer/context/ThemeProvider'
 import { useBootSequence } from '@renderer/hooks/useBootSequence'
 import type { FavoriteServer, NewsItem } from '@shared/types'
 
@@ -16,8 +18,8 @@ function LauncherApp() {
   useEffect(() => {
     void (async () => {
       const [newsItems, favServers] = await Promise.all([
-        window.primeLauncher.minecraft.getNews(),
-        window.primeLauncher.minecraft.getFavoriteServers()
+        window.primeLauncher.news.list(),
+        window.primeLauncher.servers.refreshAll()
       ])
       setNews(newsItems)
       setServers(favServers)
@@ -47,9 +49,13 @@ export default function App() {
   }, [])
 
   return (
-    <AccountProvider>
-      <AnimatePresence>{booting && <SplashScreen progress={progress} stepIndex={stepIndex} version={version} />}</AnimatePresence>
-      {!booting && <LauncherApp />}
-    </AccountProvider>
+    <I18nProvider>
+      <ThemeProvider>
+        <AccountProvider>
+          <AnimatePresence>{booting && <SplashScreen progress={progress} stepIndex={stepIndex} version={version} />}</AnimatePresence>
+          {!booting && <LauncherApp />}
+        </AccountProvider>
+      </ThemeProvider>
+    </I18nProvider>
   )
 }

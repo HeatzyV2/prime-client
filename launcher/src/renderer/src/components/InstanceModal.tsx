@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@renderer/design-system/components'
+import { useI18n } from '@renderer/context/I18nProvider'
 import type { GameInstance } from '@shared/types'
 import type { CreateInstanceDto } from '@shared/ipc'
 import '@renderer/components/LoginModal.css'
@@ -49,6 +50,7 @@ const PRESETS: Record<
 }
 
 export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSaved }: InstanceModalProps) {
+  const { t } = useI18n()
   const base = mode === 'edit' && instance ? instance : PRESETS[preset]
   const [name, setName] = useState(
     mode === 'edit' && instance ? instance.name : PRESETS[preset].defaultName
@@ -100,7 +102,7 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
         onSaved()
         onClose()
       } else {
-        setError(result.error ?? 'Could not create instance.')
+        setError(result.error ?? t('modals.instance.createFailed'))
       }
       return
     }
@@ -125,7 +127,7 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
       onSaved()
       onClose()
     } else {
-      setError(result.error ?? 'Could not save instance.')
+      setError(result.error ?? t('modals.instance.saveFailed'))
     }
   }
 
@@ -145,15 +147,15 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
         exit={{ opacity: 0, scale: 0.95, y: 12 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="modal__title">{mode === 'create' ? 'New Instance' : 'Configure Instance'}</h2>
-        <p className="modal__subtitle">
-          Stored locally in AppData — Vanilla and Fabric supported, no server required.
-        </p>
+        <h2 className="modal__title">
+          {mode === 'create' ? t('modals.instance.createTitle') : t('modals.instance.editTitle')}
+        </h2>
+        <p className="modal__subtitle">{t('modals.instance.subtitle')}</p>
 
-        <label className="text-caption">Name</label>
+        <label className="text-caption">{t('modals.instance.name')}</label>
         <input className="modal__field" value={name} onChange={(e) => setName(e.target.value)} />
 
-        <label className="text-caption">Minecraft version</label>
+        <label className="text-caption">{t('modals.instance.minecraftVersion')}</label>
         <input
           className="modal__field"
           value={minecraftVersion}
@@ -161,19 +163,19 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
           placeholder="1.21.11"
         />
 
-        <label className="text-caption">Loader</label>
+        <label className="text-caption">{t('modals.instance.loader')}</label>
         <select
           className="modal__field"
           value={loader}
           onChange={(e) => setLoader(e.target.value as 'vanilla' | 'fabric')}
         >
-          <option value="fabric">Fabric</option>
-          <option value="vanilla">Vanilla</option>
+          <option value="fabric">{t('instances.fabric')}</option>
+          <option value="vanilla">{t('instances.vanilla')}</option>
         </select>
 
         {loader === 'fabric' && (
           <>
-            <label className="text-caption">Fabric loader</label>
+            <label className="text-caption">{t('modals.instance.fabricLoader')}</label>
             <input
               className="modal__field"
               value={fabricLoaderVersion}
@@ -186,12 +188,12 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
                 checked={includePrimeMod}
                 onChange={(e) => setIncludePrimeMod(e.target.checked)}
               />
-              Include Prime Client mod (+ Fabric API)
+              {t('modals.instance.includePrimeMod')}
             </label>
           </>
         )}
 
-        <label className="text-caption">RAM (MB)</label>
+        <label className="text-caption">{t('modals.instance.ram')}</label>
         <input
           className="modal__field"
           type="number"
@@ -202,7 +204,7 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
           onChange={(e) => setRamMb(Number(e.target.value))}
         />
 
-        <label className="text-caption">JVM args (one per line)</label>
+        <label className="text-caption">{t('modals.instance.jvmArgs')}</label>
         <textarea
           className="modal__field"
           style={{ height: 72, padding: '10px 12px', resize: 'vertical' }}
@@ -214,10 +216,14 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
 
         <div className="modal__footer">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
-            Cancel
+            {t('actions.cancel')}
           </Button>
           <Button variant="primary" disabled={busy} onClick={() => void handleSubmit()}>
-            {busy ? 'Saving…' : mode === 'create' ? 'Create' : 'Save'}
+            {busy
+              ? t('modals.instance.saving')
+              : mode === 'create'
+                ? t('modals.instance.create')
+                : t('actions.save')}
           </Button>
         </div>
       </motion.div>

@@ -73,3 +73,16 @@
   --sidebar-width: 240px;
   --titlebar-height: 40px;
 }
+
+html[data-theme='prime-crimson'] {
+  --prime-red: #dc2626;
+  --prime-red-bright: #f87171;
+  --prime-red-dim: #7f1d1d;
+  --prime-red-subtle: rgba(220, 38, 38, 0.14);
+  --prime-black: #080608;
+  --prime-black-elevated: #100a0c;
+  --prime-surface: #161018;
+  --prime-surface-2: #1c1420;
+  --prime-surface-3: #241a28;
+}
+

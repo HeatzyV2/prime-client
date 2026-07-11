@@ -3,28 +3,34 @@ import { Link } from 'react-router-dom'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Toggle } from '@renderer/design-system/components'
 import { useAccounts } from '@renderer/context/AccountProvider'
+import { useI18n } from '@renderer/context/I18nProvider'
+import { useTheme } from '@renderer/context/ThemeProvider'
+import { LOCALES } from '@shared/i18n'
 import type { PerformancePreset } from '@shared/content-types'
-import type { UpdateCheckDto } from '@shared/ipc'
+import type { StoreItem } from '@shared/content-types'
+import type { UpdateCheckDto, JavaInstallationDto, SettingsUpdateDto } from '@shared/ipc'
 import './SettingsPage.css'
 
-const SECTIONS = [
-  { id: 'general', label: 'General' },
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'minecraft', label: 'Minecraft' },
-  { id: 'performance', label: 'Performance' },
-  { id: 'accounts', label: 'Accounts' },
-  { id: 'privacy', label: 'Privacy' },
-  { id: 'downloads', label: 'Downloads' },
-  { id: 'advanced', label: 'Advanced' }
-]
+const SECTION_IDS = [
+  'general',
+  'appearance',
+  'minecraft',
+  'performance',
+  'accounts',
+  'privacy',
+  'downloads',
+  'advanced'
+] as const
 
 interface SettingsState {
   language: 'en' | 'fr'
   closeOnLaunch: boolean
   autoUpdate: boolean
   theme: 'prime-dark' | 'prime-crimson'
+  backgroundNebula: boolean
   hardwareAccel: boolean
   defaultRamMb: number
+  defaultJavaPath: string | null
   performancePreset: PerformancePreset
   analytics: boolean
   discordRpc: boolean
@@ -34,11 +40,17 @@ interface SettingsState {
 }
 
 export function SettingsPage() {
+  const { t, setLocale } = useI18n()
+  const { refreshTheme } = useTheme()
   const { accounts, activeAccount, loginMicrosoft } = useAccounts()
-  const [section, setSection] = useState('general')
+  const [section, setSection] = useState<(typeof SECTION_IDS)[number]>('general')
   const [settings, setSettings] = useState<SettingsState | null>(null)
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckDto | null>(null)
   const [saved, setSaved] = useState(false)
+  const [ownsCrimson, setOwnsCrimson] = useState(false)
+  const [ownsNebula, setOwnsNebula] = useState(false)
+  const [javaInstalls, setJavaInstalls] = useState<JavaInstallationDto[]>([])
+  const [restartRequired, setRestartRequired] = useState(false)
 
   const load = useCallback(async () => {
     const s = await window.primeLauncher.settings.get()
@@ -47,8 +59,10 @@ export function SettingsPage() {
       closeOnLaunch: s.closeOnLaunch,
       autoUpdate: s.autoUpdate,
       theme: s.theme,
+      backgroundNebula: s.backgroundNebula,
       hardwareAccel: s.hardwareAccel,
       defaultRamMb: s.defaultRamMb,
+      defaultJavaPath: s.defaultJavaPath,
       performancePreset: s.performancePreset,
       analytics: s.analytics,
       discordRpc: s.discordRpc,
@@ -56,6 +70,10 @@ export function SettingsPage() {
       developerMode: s.developerMode,
       jvmArgs: s.jvmArgs.join('\n')
     })
+    const catalog = await window.primeLauncher.store.catalog()
+    setOwnsCrimson(catalog.some((item: StoreItem) => item.id === 'theme-crimson' && item.owned))
+    setOwnsNebula(catalog.some((item: StoreItem) => item.id === 'bg-nebula' && item.owned))
+    setJavaInstalls(await window.primeLauncher.settings.listJava())
   }, [])
 
   useEffect(() => {
@@ -68,13 +86,23 @@ export function SettingsPage() {
     }
     const next = { ...settings, ...partial }
     setSettings(next)
-    await window.primeLauncher.settings.update({
+
+    if (partial.language) {
+      setLocale(partial.language)
+    }
+    if (partial.theme !== undefined || partial.backgroundNebula !== undefined) {
+      void refreshTheme()
+    }
+
+    const result = (await window.primeLauncher.settings.update({
       language: next.language,
       closeOnLaunch: next.closeOnLaunch,
       autoUpdate: next.autoUpdate,
       theme: next.theme,
+      backgroundNebula: next.backgroundNebula,
       hardwareAccel: next.hardwareAccel,
       defaultRamMb: next.defaultRamMb,
+      defaultJavaPath: next.defaultJavaPath,
       performancePreset: next.performancePreset,
       analytics: next.analytics,
       discordRpc: next.discordRpc,
@@ -84,7 +112,9 @@ export function SettingsPage() {
         .split('\n')
         .map((l) => l.trim())
         .filter(Boolean)
-    })
+    })) as SettingsUpdateDto
+
+    setRestartRequired(Boolean(result.restartRequired))
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -100,19 +130,27 @@ export function SettingsPage() {
 
   return (
     <PageShell
-      title="Settings"
-      subtitle="Saved to AppData — no account or cloud required."
-      actions={saved ? <span className="text-caption">Saved</span> : undefined}
+      title={t('settings.title')}
+      subtitle={t('settings.subtitle')}
+      actions={saved ? <span className="text-caption">{t('common.saved')}</span> : undefined}
     >
+      {restartRequired && (
+        <p className="text-caption" style={{ marginBottom: 12, color: 'var(--prime-muted)' }}>
+          {t('settings.restartRequired')}{' '}
+          <button className="settings__select" style={{ cursor: 'pointer' }} onClick={() => void window.primeLauncher.app.restart()}>
+            {t('settings.restartNow')}
+          </button>
+        </p>
+      )}
       <div className="settings">
         <nav className="settings__nav">
-          {SECTIONS.map((s) => (
+          {SECTION_IDS.map((id) => (
             <button
-              key={s.id}
-              className={`settings__nav-item${section === s.id ? ' settings__nav-item--active' : ''}`}
-              onClick={() => setSection(s.id)}
+              key={id}
+              className={`settings__nav-item${section === id ? ' settings__nav-item--active' : ''}`}
+              onClick={() => setSection(id)}
             >
-              {s.label}
+              {t(`settings.sections.${id}`)}
             </button>
           ))}
         </nav>
@@ -122,42 +160,49 @@ export function SettingsPage() {
             <>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Language</div>
-                  <div className="settings__hint">Launcher display language</div>
+                  <div className="settings__label">{t('settings.language.label')}</div>
+                  <div className="settings__hint">{t('settings.language.hint')}</div>
                 </div>
                 <select
                   className="settings__select"
                   value={settings.language}
                   onChange={(e) => void patch({ language: e.target.value as 'en' | 'fr' })}
                 >
-                  <option value="en">English</option>
-                  <option value="fr">Français</option>
+                  {LOCALES.map((lang) => (
+                    <option key={lang.id} value={lang.id}>
+                      {lang.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Close on game launch</div>
-                  <div className="settings__hint">Minimize launcher when Minecraft starts</div>
+                  <div className="settings__label">{t('settings.closeOnLaunch.label')}</div>
+                  <div className="settings__hint">{t('settings.closeOnLaunch.hint')}</div>
                 </div>
                 <Toggle
                   checked={settings.closeOnLaunch}
                   onChange={(v) => void patch({ closeOnLaunch: v })}
-                  label="Close on launch"
+                  label={t('settings.closeOnLaunch.toggle')}
                 />
               </div>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Check for updates</div>
-                  <div className="settings__hint">Compare with latest GitHub Release</div>
+                  <div className="settings__label">{t('settings.checkUpdates.label')}</div>
+                  <div className="settings__hint">{t('settings.checkUpdates.hint')}</div>
                 </div>
                 <button className="settings__select" style={{ cursor: 'pointer' }} onClick={() => void handleCheckUpdate()}>
-                  Check now
+                  {t('common.checkNow')}
                 </button>
               </div>
               {updateInfo && (
                 <div style={{ padding: '0 16px 16px' }}>
                   <p className="text-caption" style={{ color: 'var(--prime-muted)', marginBottom: 8 }}>
-                    v{updateInfo.current} → latest v{updateInfo.latest} — {updateInfo.notes}
+                    {t('settings.updateNotes', {
+                      current: updateInfo.current,
+                      latest: updateInfo.latest,
+                      notes: updateInfo.notes
+                    })}
                   </p>
                   {updateInfo.updateAvailable && (
                     <button
@@ -169,16 +214,20 @@ export function SettingsPage() {
                         )
                       }
                     >
-                      Download update
+                      {t('common.downloadUpdate')}
                     </button>
                   )}
                 </div>
               )}
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Auto-update launcher</div>
+                  <div className="settings__label">{t('settings.autoUpdate.label')}</div>
                 </div>
-                <Toggle checked={settings.autoUpdate} onChange={(v) => void patch({ autoUpdate: v })} label="Auto update" />
+                <Toggle
+                  checked={settings.autoUpdate}
+                  onChange={(v) => void patch({ autoUpdate: v })}
+                  label={t('settings.autoUpdate.toggle')}
+                />
               </div>
             </>
           )}
@@ -187,25 +236,38 @@ export function SettingsPage() {
             <>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Theme</div>
+                  <div className="settings__label">{t('settings.theme.label')}</div>
                 </div>
                 <select
                   className="settings__select"
                   value={settings.theme}
                   onChange={(e) => void patch({ theme: e.target.value as 'prime-dark' | 'prime-crimson' })}
                 >
-                  <option value="prime-dark">Prime Dark</option>
-                  <option value="prime-crimson">Crimson (Store unlock)</option>
+                  <option value="prime-dark">{t('settings.theme.dark')}</option>
+                  {ownsCrimson && <option value="prime-crimson">{t('settings.theme.crimson')}</option>}
                 </select>
               </div>
+              {ownsNebula && (
+                <div className="settings__row">
+                  <div>
+                    <div className="settings__label">{t('settings.backgroundNebula.label')}</div>
+                    <div className="settings__hint">{t('settings.backgroundNebula.hint')}</div>
+                  </div>
+                  <Toggle
+                    checked={settings.backgroundNebula}
+                    onChange={(v) => void patch({ backgroundNebula: v })}
+                    label={t('settings.backgroundNebula.toggle')}
+                  />
+                </div>
+              )}
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Hardware acceleration</div>
+                  <div className="settings__label">{t('settings.hardwareAccel.label')}</div>
                 </div>
                 <Toggle
                   checked={settings.hardwareAccel}
                   onChange={(v) => void patch({ hardwareAccel: v })}
-                  label="Hardware acceleration"
+                  label={t('settings.hardwareAccel.toggle')}
                 />
               </div>
             </>
@@ -215,16 +277,29 @@ export function SettingsPage() {
             <>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Default Java path</div>
-                  <div className="settings__hint">Auto-detected JDK 21+ at launch</div>
+                  <div className="settings__label">{t('settings.javaPath.label')}</div>
+                  <div className="settings__hint">{t('settings.javaPath.hint')}</div>
                 </div>
-                <select className="settings__select" defaultValue="auto" disabled>
-                  <option value="auto">Automatic</option>
+                <select
+                  className="settings__select"
+                  value={settings.defaultJavaPath ?? 'auto'}
+                  onChange={(e) =>
+                    void patch({
+                      defaultJavaPath: e.target.value === 'auto' ? null : e.target.value
+                    })
+                  }
+                >
+                  <option value="auto">{t('common.automatic')}</option>
+                  {javaInstalls.map((java) => (
+                    <option key={java.path} value={java.path}>
+                      {java.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Default RAM allocation</div>
+                  <div className="settings__label">{t('settings.defaultRam.label')}</div>
                 </div>
                 <select
                   className="settings__select"
@@ -243,17 +318,17 @@ export function SettingsPage() {
           {section === 'performance' && (
             <div className="settings__row">
               <div>
-                <div className="settings__label">Performance preset on launch</div>
+                <div className="settings__label">{t('settings.performancePreset.label')}</div>
               </div>
               <select
                 className="settings__select"
                 value={settings.performancePreset}
                 onChange={(e) => void patch({ performancePreset: e.target.value as PerformancePreset })}
               >
-                <option value="low">Low PC</option>
-                <option value="balanced">Balanced</option>
-                <option value="performance">Performance</option>
-                <option value="ultra">Ultra</option>
+                <option value="low">{t('settings.performancePreset.low')}</option>
+                <option value="balanced">{t('settings.performancePreset.balanced')}</option>
+                <option value="performance">{t('settings.performancePreset.performance')}</option>
+                <option value="ultra">{t('settings.performancePreset.ultra')}</option>
               </select>
             </div>
           )}
@@ -262,25 +337,25 @@ export function SettingsPage() {
             <>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Active account</div>
+                  <div className="settings__label">{t('settings.activeAccount.label')}</div>
                   <div className="settings__hint">
                     {activeAccount
                       ? `${activeAccount.username} (${activeAccount.type})`
-                      : 'No account — add one to play'}
+                      : t('settings.activeAccount.none')}
                   </div>
                 </div>
                 <Link to="/accounts">
                   <button className="settings__select" style={{ cursor: 'pointer' }}>
-                    Manage ({accounts.length})
+                    {t('common.manage')} ({accounts.length})
                   </button>
                 </Link>
               </div>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Microsoft account</div>
+                  <div className="settings__label">{t('settings.microsoftAccount.label')}</div>
                 </div>
                 <button className="settings__select" style={{ cursor: 'pointer' }} onClick={() => void loginMicrosoft()}>
-                  Sign in
+                  {t('common.signIn')}
                 </button>
               </div>
             </>
@@ -290,17 +365,25 @@ export function SettingsPage() {
             <>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Analytics</div>
-                  <div className="settings__hint">Disabled by default — nothing is sent without a server</div>
+                  <div className="settings__label">{t('settings.analytics.label')}</div>
+                  <div className="settings__hint">{t('settings.analytics.hint')}</div>
                 </div>
-                <Toggle checked={settings.analytics} onChange={(v) => void patch({ analytics: v })} label="Analytics" />
+                <Toggle
+                  checked={settings.analytics}
+                  onChange={(v) => void patch({ analytics: v })}
+                  label={t('settings.analytics.toggle')}
+                />
               </div>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Discord Rich Presence</div>
-                  <div className="settings__hint">Handled by Prime Client mod in-game</div>
+                  <div className="settings__label">{t('settings.discordRpc.label')}</div>
+                  <div className="settings__hint">{t('settings.discordRpc.hint')}</div>
                 </div>
-                <Toggle checked={settings.discordRpc} onChange={(v) => void patch({ discordRpc: v })} label="Discord RPC" />
+                <Toggle
+                  checked={settings.discordRpc}
+                  onChange={(v) => void patch({ discordRpc: v })}
+                  label={t('settings.discordRpc.toggle')}
+                />
               </div>
             </>
           )}
@@ -308,7 +391,7 @@ export function SettingsPage() {
           {section === 'downloads' && (
             <div className="settings__row">
               <div>
-                <div className="settings__label">Concurrent downloads</div>
+                <div className="settings__label">{t('settings.concurrentDownloads.label')}</div>
               </div>
               <select
                 className="settings__select"
@@ -326,8 +409,8 @@ export function SettingsPage() {
             <>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">JVM arguments</div>
-                  <div className="settings__hint">One per line — applied via Performance presets too</div>
+                  <div className="settings__label">{t('settings.jvmArgs.label')}</div>
+                  <div className="settings__hint">{t('settings.jvmArgs.hint')}</div>
                 </div>
               </div>
               <textarea
@@ -338,12 +421,12 @@ export function SettingsPage() {
               />
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">Developer mode</div>
+                  <div className="settings__label">{t('settings.developerMode.label')}</div>
                 </div>
                 <Toggle
                   checked={settings.developerMode}
                   onChange={(v) => void patch({ developerMode: v })}
-                  label="Developer mode"
+                  label={t('settings.developerMode.toggle')}
                 />
               </div>
             </>

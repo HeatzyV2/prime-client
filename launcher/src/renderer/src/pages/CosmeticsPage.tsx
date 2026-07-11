@@ -1,18 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import type { CosmeticItem } from '@shared/content-types'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Avatar, Badge, Button, Card, Tabs } from '@renderer/design-system/components'
 import { useAccounts } from '@renderer/context/AccountProvider'
-
-const TYPE_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'cape', label: 'Capes' },
-  { id: 'wings', label: 'Wings' },
-  { id: 'pet', label: 'Pets' },
-  { id: 'emote', label: 'Emotes' },
-  { id: 'badge', label: 'Badges' }
-]
+import { useI18n } from '@renderer/context/I18nProvider'
 
 const RARITY_VARIANT: Record<CosmeticItem['rarity'], 'default' | 'red' | 'prime' | 'success'> = {
   common: 'default',
@@ -22,9 +14,22 @@ const RARITY_VARIANT: Record<CosmeticItem['rarity'], 'default' | 'red' | 'prime'
 }
 
 export function CosmeticsPage() {
+  const { t } = useI18n()
   const { activeAccount } = useAccounts()
   const [filter, setFilter] = useState('all')
   const [cosmetics, setCosmetics] = useState<CosmeticItem[]>([])
+
+  const typeTabs = useMemo(
+    () => [
+      { id: 'all', label: t('cosmetics.all') },
+      { id: 'cape', label: t('cosmetics.capes') },
+      { id: 'wings', label: t('cosmetics.wings') },
+      { id: 'pet', label: t('cosmetics.pets') },
+      { id: 'emote', label: t('cosmetics.emotes') },
+      { id: 'badge', label: t('cosmetics.badges') }
+    ],
+    [t]
+  )
 
   const refresh = useCallback(async () => {
     setCosmetics(await window.primeLauncher.cosmetic.list())
@@ -43,14 +48,14 @@ export function CosmeticsPage() {
 
   return (
     <PageShell
-      title="Cosmetics"
-      subtitle="Owned items from the Store — equip locally (syncs to Prime profile file)."
+      title={t('pages.cosmetics.title')}
+      subtitle={t('pages.cosmetics.subtitle')}
     >
       <div className="page-grid page-grid--2">
-        <Card title="Character Preview" glow className="cosmetics-preview">
+        <Card title={t('cosmetics.characterPreview')} glow className="cosmetics-preview">
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '24px 0' }}>
-            <Avatar alt={activeAccount?.username ?? 'Steve'} size="xl" glow src={activeAccount?.skinUrl} />
-            <p className="text-caption">2D preview — 3D viewer ships with Prime Client mod</p>
+            <Avatar alt={activeAccount?.username ?? 'Steve'} uuid={activeAccount?.uuid} size="xl" glow />
+            <p className="text-caption">{t('cosmetics.previewHint')}</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
               {cosmetics
                 .filter((c) => c.equipped)
@@ -64,10 +69,10 @@ export function CosmeticsPage() {
         </Card>
 
         <div>
-          <Tabs tabs={TYPE_TABS} active={filter} onChange={setFilter} />
+          <Tabs tabs={typeTabs} active={filter} onChange={setFilter} />
           <div className="page-list" style={{ marginTop: 16 }}>
             {items.length === 0 ? (
-              <p className="text-caption">No cosmetics owned yet — visit the Store.</p>
+              <p className="text-caption">{t('cosmetics.emptyOwned')}</p>
             ) : (
               items.map((item) => (
                 <div key={item.id} className="list-row">
@@ -85,7 +90,7 @@ export function CosmeticsPage() {
                       size="sm"
                       onClick={() => void handleToggle(item)}
                     >
-                      {item.equipped ? 'Unequip' : 'Equip'}
+                      {item.equipped ? t('actions.unequip') : t('actions.equip')}
                     </Button>
                   </div>
                 </div>

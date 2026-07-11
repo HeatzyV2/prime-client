@@ -9,6 +9,7 @@ import { emitLaunchProgress } from './launchProgress'
 import { getInstanceGameDir, getRuntimeRoot } from './paths'
 import { accountService } from '../services/AccountService'
 import { instanceService } from '../services/InstanceService'
+import { settingsStore } from '../storage/SettingsStore'
 
 let activeProcess: ChildProcessWithoutNullStreams | null = null
 
@@ -69,7 +70,10 @@ export class MinecraftEngine {
     return activeProcess !== null && !activeProcess.killed
   }
 
-  async launchInstance(instanceId: string): Promise<{ username: string; primeModInstalled: boolean }> {
+  async launchInstance(
+    instanceId: string,
+    joinServer?: { host: string; port: number }
+  ): Promise<{ username: string; primeModInstalled: boolean }> {
     const stored = await instanceService.getStoredById(instanceId)
     if (!stored) {
       throw new Error(`Unknown instance "${instanceId}".`)
@@ -99,7 +103,10 @@ export class MinecraftEngine {
     const gameDirectory = getInstanceGameDir(instanceId)
     await mkdir(gameDirectory, { recursive: true })
 
-    const javaPath = config.javaPath?.trim() || (await resolveJavaPath())
+    const settings = await settingsStore.load()
+    const javaPath = await resolveJavaPath(config.javaPath?.trim() || settings.defaultJavaPath)
+
+    const mergedJvm = [...new Set([...(settings.jvmArgs ?? []), ...(config.jvmArgs ?? [])])]
 
     emitLaunchProgress({
       phase: 'launch',
@@ -122,7 +129,12 @@ export class MinecraftEngine {
         max: `${config.ramMb}M`,
         min: '512M'
       },
-      customArgs: config.jvmArgs,
+      customArgs: mergedJvm,
+      ...(joinServer
+        ? {
+            customLaunchArgs: ['--server', joinServer.host, '--port', String(joinServer.port)]
+          }
+        : {}),
       overrides: {
         gameDirectory,
         detached: true

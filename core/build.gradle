@@ -18,6 +18,10 @@ dependencies {
 	// Provided at runtime by Minecraft itself (both 1.21.11 and 26.2 ship Gson).
 	compileOnly "com.google.code.gson:gson:${gson_version}"
 
+	// Pure-Java MP4 encoder for Creator clip export (no ffmpeg required).
+	api 'org.jcodec:jcodec:0.2.5'
+	api 'org.jcodec:jcodec-javase:0.2.5'
+
 	testImplementation "com.google.code.gson:gson:${gson_version}"
 	testImplementation platform("org.junit:junit-bom:${junit_version}")
 	testImplementation 'org.junit.jupiter:junit-jupiter'

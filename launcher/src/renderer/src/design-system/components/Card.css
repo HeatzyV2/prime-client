@@ -39,8 +39,7 @@
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--prime-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: -0.01em;
 }
 
 .prime-card__body {

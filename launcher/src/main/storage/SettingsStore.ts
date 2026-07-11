@@ -9,6 +9,7 @@ export interface LauncherSettings {
   closeOnLaunch: boolean
   autoUpdate: boolean
   theme: 'prime-dark' | 'prime-crimson'
+  backgroundNebula: boolean
   hardwareAccel: boolean
   defaultRamMb: number
   performancePreset: PerformancePreset
@@ -17,7 +18,9 @@ export interface LauncherSettings {
   concurrentDownloads: number
   developerMode: boolean
   jvmArgs: string[]
+  defaultJavaPath: string | null
   lastUpdateCheck?: string
+  lastPrimeSync?: string
 }
 
 const DEFAULT_SETTINGS = (): LauncherSettings => ({
@@ -26,6 +29,7 @@ const DEFAULT_SETTINGS = (): LauncherSettings => ({
   closeOnLaunch: true,
   autoUpdate: true,
   theme: 'prime-dark',
+  backgroundNebula: false,
   hardwareAccel: true,
   defaultRamMb: 4096,
   performancePreset: 'balanced',
@@ -33,7 +37,8 @@ const DEFAULT_SETTINGS = (): LauncherSettings => ({
   discordRpc: true,
   concurrentDownloads: 3,
   developerMode: false,
-  jvmArgs: ['-XX:+UseG1GC']
+  jvmArgs: ['-XX:+UseG1GC'],
+  defaultJavaPath: null
 })
 
 export class SettingsStore {
