@@ -41,16 +41,16 @@
     "copyright": "Copyright © Prime Client",
     "directories": {
       "output": "release",
-      "buildResources": "build"
+      "buildResources": "resources"
     },
     "files": [
       "out/**/*",
-      "build/icon.ico",
+      "resources/icon.ico",
       "package.json"
     ],
     "extraResources": [
       {
-        "from": "build/icon.ico",
+        "from": "resources/icon.ico",
         "to": "icon.ico"
       }
     ],
@@ -58,14 +58,14 @@
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.ico"
+      "icon": "resources/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "artifactName": "Prime-Launcher-Setup-${version}.${ext}",
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
+      "installerIcon": "resources/icon.ico",
+      "uninstallerIcon": "resources/icon.ico"
     },
     "publish": {
       "provider": "github",
