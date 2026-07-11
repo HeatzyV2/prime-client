@@ -1,0 +1,56 @@
+import type { CosmeticItem } from '../../shared/content-types'
+import { COSMETIC_CATALOG, STORE_TO_COSMETIC } from '../../shared/ecosystem-catalog'
+import { ecosystemStore } from '../storage/EcosystemStore'
+
+export class CosmeticService {
+  async list(): Promise<CosmeticItem[]> {
+    const db = await ecosystemStore.load()
+    const ownedCosmeticIds = new Set<string>(['badge-veteran'])
+
+    for (const storeId of db.ownedStoreItems) {
+      const cosmeticId = STORE_TO_COSMETIC[storeId]
+      if (cosmeticId) {
+        ownedCosmeticIds.add(cosmeticId)
+      }
+    }
+    ownedCosmeticIds.add('cape-prime')
+
+    return COSMETIC_CATALOG.filter((c) => ownedCosmeticIds.has(c.id)).map((c) => ({
+      ...c,
+      equipped: db.equippedCosmetics.includes(c.id)
+    }))
+  }
+
+  async toggleEquip(cosmeticId: string): Promise<{ ok: boolean; error?: string }> {
+    const cosmetic = COSMETIC_CATALOG.find((c) => c.id === cosmeticId)
+    if (!cosmetic) {
+      return { ok: false, error: 'Cosmetic not found.' }
+    }
+
+    const items = await this.list()
+    if (!items.find((c) => c.id === cosmeticId)) {
+      return { ok: false, error: 'Cosmetic not owned. Get it from the Store.' }
+    }
+
+    await ecosystemStore.mutate((db) => {
+      const equipped = db.equippedCosmetics.includes(cosmeticId)
+      if (equipped) {
+        db.equippedCosmetics = db.equippedCosmetics.filter((id) => id !== cosmeticId)
+        return
+      }
+
+      if (cosmetic.type !== 'badge') {
+        db.equippedCosmetics = db.equippedCosmetics.filter((id) => {
+          const meta = COSMETIC_CATALOG.find((c) => c.id === id)
+          return meta?.type !== cosmetic.type
+        })
+      }
+
+      db.equippedCosmetics.push(cosmeticId)
+    })
+
+    return { ok: true }
+  }
+}
+
+export const cosmeticService = new CosmeticService()

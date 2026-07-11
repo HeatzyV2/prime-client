@@ -1,0 +1,100 @@
+.prime-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  border-radius: var(--radius-md);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    background var(--duration-fast),
+    border-color var(--duration-fast);
+  white-space: nowrap;
+}
+
+.prime-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.prime-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Sizes */
+.prime-btn--sm {
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.prime-btn--md {
+  height: 40px;
+  padding: 0 var(--space-4);
+}
+
+.prime-btn--lg {
+  height: 48px;
+  padding: 0 var(--space-6);
+  font-size: var(--text-base);
+}
+
+.prime-btn--xl {
+  height: 56px;
+  padding: 0 var(--space-8);
+  font-size: var(--text-lg);
+  border-radius: var(--radius-lg);
+  letter-spacing: 0.02em;
+}
+
+/* Variants */
+.prime-btn--primary {
+  background: linear-gradient(135deg, var(--prime-red-bright), var(--prime-red));
+  color: white;
+  box-shadow: 0 4px 24px rgba(225, 29, 46, 0.35);
+}
+
+.prime-btn--primary:hover:not(:disabled) {
+  box-shadow: 0 6px 32px rgba(255, 45, 66, 0.5);
+  transform: translateY(-1px);
+}
+
+.prime-btn--secondary {
+  background: var(--prime-surface-2);
+  border: 1px solid var(--prime-border);
+  color: var(--prime-white);
+}
+
+.prime-btn--secondary:hover:not(:disabled) {
+  background: var(--prime-surface-3);
+  border-color: var(--prime-border-hover);
+}
+
+.prime-btn--ghost {
+  background: transparent;
+  color: var(--prime-muted);
+}
+
+.prime-btn--ghost:hover:not(:disabled) {
+  color: var(--prime-white);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.prime-btn--danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--prime-error);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.prime-btn--icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+}
+
+.prime-btn--block {
+  width: 100%;
+}

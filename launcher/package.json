@@ -1,0 +1,66 @@
+{
+  "name": "prime-launcher",
+  "version": "0.8.0",
+  "description": "Official launcher for Prime Client — premium Minecraft platform",
+  "main": "./out/main/index.js",
+  "author": "Prime Client",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
+    "dist": "npm run build && electron-builder --win",
+    "dist:dir": "npm run build && electron-builder --win --dir"
+  },
+  "dependencies": {
+    "@xmcl/installer": "^6.1.2",
+    "framer-motion": "^12.23.12",
+    "lucide-react": "^0.525.0",
+    "minecraft-launcher-core": "^3.18.2",
+    "msmc": "^5.0.5",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.13",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "electron": "^37.2.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^4.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.4"
+  },
+  "build": {
+    "appId": "gg.primeclient.launcher",
+    "productName": "Prime Launcher",
+    "copyright": "Copyright © Prime Client",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Prime-Launcher-Setup-${version}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "HeatzyV2",
+      "repo": "prime-client"
+    }
+  }
+}

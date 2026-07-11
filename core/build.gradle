@@ -1,0 +1,41 @@
+// Common Core — pure Java, zero Minecraft/Fabric dependency.
+// Everything version-independent lives here: module system, event bus, config,
+// themes, notifications, profiles, HUD layout model, utils.
+// Minecraft access goes exclusively through the adapter interfaces in
+// dev.primeclient.core.adapter, implemented by each version layer.
+plugins {
+	id 'java-library'
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// Provided at runtime by Fabric Loader; never bundled.
+	api "org.slf4j:slf4j-api:${slf4j_version}"
+
+	// Provided at runtime by Minecraft itself (both 1.21.11 and 26.2 ship Gson).
+	compileOnly "com.google.code.gson:gson:${gson_version}"
+
+	testImplementation "com.google.code.gson:gson:${gson_version}"
+	testImplementation platform("org.junit:junit-bom:${junit_version}")
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+	useJUnitPlatform()
+}
+
+// Java 21: lowest common denominator (1.21.11 targets 21, 26.2 targets 25).
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}

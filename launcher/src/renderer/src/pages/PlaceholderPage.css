@@ -1,0 +1,26 @@
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  gap: var(--space-4);
+}
+
+.placeholder__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+  background: var(--prime-red-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--prime-red-bright);
+}
+
+.placeholder__phase {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--prime-muted-2);
+}

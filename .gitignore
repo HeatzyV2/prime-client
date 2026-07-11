@@ -1,0 +1,40 @@
+# Gradle
+.gradle/
+build/
+out/
+classes/
+
+# Launcher (Electron)
+launcher/node_modules/
+launcher/out/
+launcher/release/
+launcher/dist/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+
+# Fabric / Loom
+run/
+remappedSrc/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets & local user data
+.env
+.env.*
+*.pem
+accounts.json
+instances.json
+ecosystem.json
+settings.json
+downloads.json

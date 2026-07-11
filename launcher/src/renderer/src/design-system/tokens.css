@@ -1,0 +1,75 @@
+/* Prime Launcher — Design System Tokens */
+
+:root {
+  /* Brand */
+  --prime-red: #e11d2e;
+  --prime-red-bright: #ff2d42;
+  --prime-red-glow: rgba(255, 45, 66, 0.45);
+  --prime-red-dim: #991b1b;
+  --prime-red-subtle: rgba(225, 29, 46, 0.12);
+
+  /* Neutrals */
+  --prime-black: #060608;
+  --prime-black-elevated: #0c0c10;
+  --prime-surface: #111116;
+  --prime-surface-2: #18181f;
+  --prime-surface-3: #1f1f28;
+  --prime-border: rgba(255, 255, 255, 0.06);
+  --prime-border-hover: rgba(255, 255, 255, 0.12);
+  --prime-white: #f8f9fc;
+  --prime-muted: #8b8fa3;
+  --prime-muted-2: #5c6070;
+
+  /* Semantic */
+  --prime-success: #22c55e;
+  --prime-warning: #f59e0b;
+  --prime-error: #ef4444;
+  --prime-info: #3b82f6;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Shadows & effects */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --shadow-glow: 0 0 40px var(--prime-red-glow);
+  --blur-glass: blur(20px);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 450ms;
+
+  /* Layout */
+  --sidebar-width: 240px;
+  --titlebar-height: 40px;
+}

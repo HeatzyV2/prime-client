@@ -1,0 +1,110 @@
+# Prime Launcher
+
+Official launcher for **Prime Client** — premium Minecraft platform.
+
+> Releases & updates via [GitHub](https://github.com/HeatzyV2/prime-client) — see [docs/GITHUB.md](../docs/GITHUB.md)
+
+## Stack
+
+| Layer | Tech |
+|-------|------|
+| Shell | Electron 37 |
+| UI | React 19 + TypeScript |
+| Routing | React Router 7 |
+| Motion | Framer Motion |
+| Icons | Lucide React |
+| Build | electron-vite + Vite 7 |
+
+## Structure
+
+```
+launcher/
+├── src/
+│   ├── main/                 # Electron main process
+│   │   ├── index.ts          # Window, lifecycle
+│   │   ├── ipc/handlers.ts   # IPC registration
+│   │   └── services/         # Backend services (stubs → full impl)
+│   ├── preload/              # Secure contextBridge API
+│   ├── shared/               # Types + IPC channels (main ↔ renderer)
+│   └── renderer/
+│       └── src/
+│           ├── design-system/   # Tokens, components, motion
+│           ├── layouts/         # TitleBar, Sidebar, AppShell
+│           ├── pages/           # Splash, Dashboard, placeholders
+│           └── hooks/
+```
+
+## Design System
+
+Prime identity:
+
+- **Colors**: deep black `#060608`, premium red `#e11d2e`, bright red `#ff2d42`
+- **Typography**: Inter (UI) + JetBrains Mono (status/code)
+- **Components**: Button, Card, Badge, Avatar, ProgressBar, PrimeLogo
+- **Effects**: glow, particles, glass blur, spring transitions
+
+## Development
+
+```bash
+cd launcher
+npm install
+npm run dev
+```
+
+```bash
+npm run build    # Production build
+npm run typecheck
+```
+
+## Roadmap
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **1** | Architecture + Design System + Splash + Dashboard shell | ✅ Done |
+| **2** | Full UI — all pages (Instances, Mods, Store, Settings…) | ✅ Done |
+| **3** | Account System (Microsoft OAuth, offline, Prime Account, PLAY prep) | ✅ Done |
+| **4** | Minecraft Engine (local launch, Fabric, downloader) | ✅ Done |
+| **5** | Instance Manager (CRUD, per-folder saves/mods) | ✅ Done |
+| **6** | Mods / Resource Packs / Shaders (local + Modrinth) | ✅ Done |
+| **7** | Prime Ecosystem (Store, Cosmetics, Friends, News, Media — local) | ✅ Done |
+| **8** | Performance, Downloads, Settings, Updates | ✅ Done |
+
+## Security
+
+- `contextIsolation: true`
+- `nodeIntegration: false`
+- `sandbox: true`
+- All main-process access via typed preload bridge
+
+## Relation to Prime Client
+
+This launcher:
+
+1. Downloads Minecraft + Fabric from official CDNs (first launch)
+2. Copies the Prime Client mod from your local Gradle build (or `PRIME_CLIENT_JAR`)
+3. Downloads Fabric API from Modrinth (public API)
+4. Keeps Prime profile / sync data **on disk only** — no Prime cloud server
+5. Launches the game with Microsoft or offline auth
+
+**Before first launch**, build the mod:
+
+```powershell
+cd ..
+.\gradlew :mc-1.21.11:build
+```
+
+Optional: `PRIME_CLIENT_JAR=C:\path\to\prime-client-1.21.11-1.1.0.jar`
+
+Runtime data lives in `%APPDATA%\prime-launcher\`:
+
+| File / folder | Purpose |
+|---------------|---------|
+| `accounts.json` | Microsoft / offline accounts |
+| `instances.json` | Instance configs |
+| `ecosystem.json` | Store ownership, cosmetics, friends, Prime Coins |
+| `settings.json` | Launcher preferences |
+| `downloads.json` | Recent launch/download progress |
+| `runtime/` | Shared Minecraft versions |
+| `instances/<id>/game/` | Per-instance saves, mods, screenshots |
+
+The mod project lives in the parent repo (`core/`, `mc-*/`).

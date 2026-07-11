@@ -1,0 +1,32 @@
+package dev.primeclient.core.module;
+
+/** The five Prime Client module families, in ClickGUI display order. */
+public enum ModuleCategory {
+    PVP("PvP", "P", 0xFFEF4444),
+    PERFORMANCE("Performance", "F", 0xFF22C55E),
+    QOL("QoL", "Q", 0xFF3B82F6),
+    CREATOR("Creator", "C", 0xFFA855F7),
+    PRIME("Prime", "★", 0xFFF59E0B);
+
+    private final String displayName;
+    private final String icon;
+    private final int accent;
+
+    ModuleCategory(String displayName, String icon, int accent) {
+        this.displayName = displayName;
+        this.icon = icon;
+        this.accent = accent;
+    }
+
+    public String displayName() {
+        return displayName;
+    }
+
+    public String icon() {
+        return icon;
+    }
+
+    public int accent() {
+        return accent;
+    }
+}

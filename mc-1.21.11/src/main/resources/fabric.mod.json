@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 1,
+	"id": "primeclient",
+	"version": "${version}",
+	"name": "Prime Client",
+	"description": "All-in-One Minecraft client: PvP, performance, QoL, content creation, customization.",
+	"icon": "assets/primeclient/icon.png",
+	"authors": [
+		"Prime Client Team"
+	],
+	"license": "All-Rights-Reserved",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"dev.primeclient.v1_21_11.PrimeClientEntrypoint"
+		]
+	},
+	"mixins": [
+		"primeclient.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
