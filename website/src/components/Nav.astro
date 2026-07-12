@@ -1,5 +1,6 @@
 ---
-const base = import.meta.env.BASE_URL
+import PrimeLogo from './PrimeLogo.astro'
+
 const links = [
   { href: '#features', label: 'Fonctionnalités' },
   { href: '#modules', label: 'Modules' },
@@ -11,8 +12,8 @@ const links = [
 
 <header class="nav">
   <div class="container nav__inner">
-    <a class="nav__brand" href={base}>
-      <img src={`${base}logo.png`} alt="Prime Client" width="36" height="20" class="nav__logo" />
+    <a class="nav__brand" href={import.meta.env.BASE_URL}>
+      <PrimeLogo width={36} height={20} class="nav__logo" />
       <span>Prime Client</span>
     </a>
     <nav class="nav__links" aria-label="Navigation principale">

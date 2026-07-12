@@ -1,5 +1,5 @@
 ---
-const base = import.meta.env.BASE_URL
+import PrimeLogo from './PrimeLogo.astro'
 ---
 
 <section class="hero">
@@ -52,7 +52,7 @@ const base = import.meta.env.BASE_URL
           <span></span><span></span><span></span>
         </div>
         <div class="hero__mockup-body">
-          <img src={`${base}logo.png`} alt="" class="hero__mockup-logo" />
+          <PrimeLogo alt="" class="hero__mockup-logo" height={48} />
           <div class="hero__mockup-buttons">
             <div class="hero__mockup-btn">Singleplayer</div>
             <div class="hero__mockup-btn">Multiplayer</div>
