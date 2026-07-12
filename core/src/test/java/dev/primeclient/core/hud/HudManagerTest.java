@@ -5,6 +5,7 @@ import dev.primeclient.core.adapter.RenderContext;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
@@ -78,5 +79,23 @@ class HudManagerTest {
         assertEquals(-8f, restored.offsetX());
         assertEquals(12f, restored.offsetY());
         assertEquals(1.5f, restored.scale());
+    }
+
+    @Test
+    void layoutAndConfigRoundTripVisibility() {
+        HudManager manager = new HudManager();
+        BoxElement box = manager.register(new BoxElement("box"));
+        box.setVisible(false);
+
+        manager.layout(new FakeRenderContext(200, 100));
+        assertEquals(20f, box.lastWidth());
+
+        JsonObject saved = manager.saveConfig().getAsJsonObject();
+        assertFalse(saved.getAsJsonObject("box").get("visible").getAsBoolean());
+
+        HudManager fresh = new HudManager();
+        fresh.loadConfig(saved);
+        BoxElement restored = fresh.register(new BoxElement("box"));
+        assertFalse(restored.isVisible());
     }
 }

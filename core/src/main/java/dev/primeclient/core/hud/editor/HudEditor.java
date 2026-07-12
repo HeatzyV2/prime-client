@@ -44,7 +44,7 @@ public final class HudEditor {
     }
 
     public boolean mousePressed(double mouseX, double mouseY) {
-        HudElement hit = hud.elementAt(mouseX, mouseY);
+        HudElement hit = hud.elementAt(mouseX, mouseY, true);
         this.selected = hit;
         this.dragging = hit;
         if (hit != null) {
@@ -81,7 +81,7 @@ public final class HudEditor {
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollDelta, boolean shiftDown, boolean ctrlDown) {
         HudElement target = selected != null && selected.containsPoint(mouseX, mouseY)
                 ? selected
-                : hud.elementAt(mouseX, mouseY);
+                : hud.elementAt(mouseX, mouseY, true);
         if (target == null) {
             return false;
         }
@@ -98,7 +98,7 @@ public final class HudEditor {
         return true;
     }
 
-    /** R cycles tint; G toggles grid. */
+    /** R cycles tint; G toggles grid; V toggles visibility. */
     public boolean keyPressed(int glfwKey) {
         if (glfwKey == 71) {
             showGrid = !showGrid;
@@ -106,6 +106,10 @@ public final class HudEditor {
         }
         if (selected == null) {
             return false;
+        }
+        if (glfwKey == 86) {
+            selected.setVisible(!selected.isVisible());
+            return true;
         }
         if (glfwKey == 82) {
             tintPresetIndex = (tintPresetIndex + 1) % TINT_PRESETS.length;
@@ -121,11 +125,19 @@ public final class HudEditor {
             drawGrid(ctx, theme);
         }
         for (HudElement element : hud.all()) {
-            if (!element.isVisible()) {
-                continue;
-            }
             boolean isSelected = element == selected;
             boolean isHovered = element.containsPoint(mouseX, mouseY);
+            if (!element.isVisible()) {
+                if (isSelected || isHovered) {
+                    drawBorder(ctx,
+                            Math.round(element.lastX()) - 1,
+                            Math.round(element.lastY()) - 1,
+                            Math.round(element.lastWidth()) + 2,
+                            Math.round(element.lastHeight()) + 2,
+                            theme.foregroundMuted() & 0x80FFFFFF);
+                }
+                continue;
+            }
             if (isSelected || isHovered) {
                 int color = isSelected ? theme.accent() : theme.foregroundMuted();
                 drawBorder(ctx,
@@ -137,8 +149,9 @@ public final class HudEditor {
             }
         }
         if (selected != null) {
-            String props = String.format("%s — Scale %.1fx  Rot %.0f°  Opacity %.0f%%",
-                    selected.name(), selected.scale(), selected.rotation(), selected.opacity() * 100f);
+            String visibility = selected.isVisible() ? "Visible" : "Hidden";
+            String props = String.format("%s — %s — Scale %.1fx  Rot %.0f°  Opacity %.0f%%",
+                    selected.name(), visibility, selected.scale(), selected.rotation(), selected.opacity() * 100f);
             ctx.drawText(props, 8, ctx.screenHeight() - 36, theme.foreground(), true);
         }
     }

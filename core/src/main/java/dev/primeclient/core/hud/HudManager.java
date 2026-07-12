@@ -64,9 +64,6 @@ public final class HudManager implements ConfigBinding {
         HudElement[] elements = this.renderList;
         for (int i = 0; i < elements.length; i++) {
             HudElement element = elements[i];
-            if (!element.isVisible()) {
-                continue;
-            }
             float scale = element.scale();
             int localWidth = element.measureWidth(ctx);
             int localHeight = element.measureHeight(ctx);
@@ -112,10 +109,16 @@ public final class HudManager implements ConfigBinding {
     }
 
     public HudElement elementAt(double x, double y) {
+        return elementAt(x, y, false);
+    }
+
+    /** Editor hit-test — includes hidden elements so they can be re-selected. */
+    public HudElement elementAt(double x, double y, boolean includeHidden) {
         HudElement[] elements = this.renderList;
         for (int i = elements.length - 1; i >= 0; i--) {
-            if (elements[i].isVisible() && elements[i].containsPoint(x, y)) {
-                return elements[i];
+            HudElement element = elements[i];
+            if ((includeHidden || element.isVisible()) && element.containsPoint(x, y)) {
+                return element;
             }
         }
         return null;
@@ -137,6 +140,7 @@ public final class HudManager implements ConfigBinding {
             section.addProperty("scale", element.scale());
             section.addProperty("rotation", element.rotation());
             section.addProperty("opacity", element.opacity());
+            section.addProperty("visible", element.isVisible());
             if (element.tintArgb() != 0) {
                 section.addProperty("tint", element.tintArgb());
             }
@@ -177,6 +181,9 @@ public final class HudManager implements ConfigBinding {
         }
         if (json.has("opacity")) {
             element.setOpacity(json.get("opacity").getAsFloat());
+        }
+        if (json.has("visible")) {
+            element.setVisible(json.get("visible").getAsBoolean());
         }
         if (json.has("tint")) {
             element.setTintArgb(json.get("tint").getAsInt());

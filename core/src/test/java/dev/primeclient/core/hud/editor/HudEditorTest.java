@@ -110,4 +110,14 @@ class HudEditorTest {
         assertTrue(editor.keyPressed(82));
         assertEquals(0xFFFFFFFF, box.tintArgb());
     }
+
+    @Test
+    void vKeyTogglesVisibility() {
+        editor.mousePressed(5, 5);
+        assertTrue(box.isVisible());
+        assertTrue(editor.keyPressed(86));
+        assertFalse(box.isVisible());
+        assertTrue(editor.keyPressed(86));
+        assertTrue(box.isVisible());
+    }
 }
