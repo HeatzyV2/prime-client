@@ -4,9 +4,8 @@ import { ecosystemStore } from '../storage/EcosystemStore'
 import { settingsStore } from '../storage/SettingsStore'
 import { downloadStore } from '../storage/DownloadStore'
 import { updateService } from './UpdateService'
-import { friendsService } from './FriendsService'
 
-/** Real boot tasks — stores, optional update check, friend status refresh. */
+/** Real boot tasks — stores and optional update check. */
 export class BootService {
   async initialize(): Promise<void> {
     await Promise.all([
@@ -24,12 +23,6 @@ export class BootService {
       } catch {
         // offline — continue boot
       }
-    }
-
-    try {
-      await friendsService.refreshAllStatuses()
-    } catch {
-      // non-blocking
     }
   }
 }

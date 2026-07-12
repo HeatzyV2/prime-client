@@ -22,6 +22,7 @@ import { settingsService } from '../services/SettingsService'
 import { updateService } from '../services/UpdateService'
 import type { PerformancePreset } from '../../shared/content-types'
 import type { LauncherSettings } from '../storage/SettingsStore'
+import { settingsStore } from '../storage/SettingsStore'
 
 /** Registers IPC handlers for all launcher services. */
 export function registerServiceHandlers(): void {
@@ -95,13 +96,13 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.CONTENT_MODS_IMPORT, (_e, instanceId?: string) => contentService.importMod(instanceId))
   ipcMain.handle(
     IPC.CONTENT_MODS_INSTALL_MODRINTH,
-    (_e, projectId: string, title: string, instanceId?: string) =>
-      contentService.installModFromModrinth(projectId, title, instanceId)
+    (_e, projectId: string, title: string, instanceId?: string, versionId?: string) =>
+      contentService.installModFromModrinth(projectId, title, instanceId, versionId)
   )
   ipcMain.handle(
     IPC.CONTENT_MODS_INSTALL_CURSEFORGE,
-    (_e, projectId: string, title: string, instanceId?: string) =>
-      contentService.installModFromCurseForge(projectId, title, instanceId)
+    (_e, projectId: string, title: string, instanceId?: string, fileId?: string) =>
+      contentService.installModFromCurseForge(projectId, title, instanceId, fileId)
   )
 
   ipcMain.handle(IPC.CONTENT_RESOURCE_LIST, (_e, instanceId?: string) =>
@@ -118,13 +119,13 @@ export function registerServiceHandlers(): void {
   )
   ipcMain.handle(
     IPC.CONTENT_RESOURCE_INSTALL_MODRINTH,
-    (_e, projectId: string, title: string, instanceId?: string) =>
-      contentService.installResourcePackFromModrinth(projectId, title, instanceId)
+    (_e, projectId: string, title: string, instanceId?: string, versionId?: string) =>
+      contentService.installResourcePackFromModrinth(projectId, title, instanceId, versionId)
   )
   ipcMain.handle(
     IPC.CONTENT_RESOURCE_INSTALL_CURSEFORGE,
-    (_e, projectId: string, title: string, instanceId?: string) =>
-      contentService.installResourcePackFromCurseForge(projectId, title, instanceId)
+    (_e, projectId: string, title: string, instanceId?: string, fileId?: string) =>
+      contentService.installResourcePackFromCurseForge(projectId, title, instanceId, fileId)
   )
 
   ipcMain.handle(IPC.CONTENT_SHADER_LIST, (_e, instanceId?: string) => contentService.listShaders(instanceId))
@@ -137,13 +138,13 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.CONTENT_SHADER_IMPORT, (_e, instanceId?: string) => contentService.importShader(instanceId))
   ipcMain.handle(
     IPC.CONTENT_SHADER_INSTALL_MODRINTH,
-    (_e, projectId: string, title: string, instanceId?: string) =>
-      contentService.installShaderFromModrinth(projectId, title, instanceId)
+    (_e, projectId: string, title: string, instanceId?: string, versionId?: string) =>
+      contentService.installShaderFromModrinth(projectId, title, instanceId, versionId)
   )
   ipcMain.handle(
     IPC.CONTENT_SHADER_INSTALL_CURSEFORGE,
-    (_e, projectId: string, title: string, instanceId?: string) =>
-      contentService.installShaderFromCurseForge(projectId, title, instanceId)
+    (_e, projectId: string, title: string, instanceId?: string, fileId?: string) =>
+      contentService.installShaderFromCurseForge(projectId, title, instanceId, fileId)
   )
 
   ipcMain.handle(IPC.CONTENT_MODRINTH_SEARCH, (_e, query: string, type: 'mod' | 'resourcepack' | 'shader', instanceId?: string) =>
@@ -151,6 +152,16 @@ export function registerServiceHandlers(): void {
   )
   ipcMain.handle(IPC.CONTENT_CURSEFORGE_SEARCH, (_e, query: string, type: 'mod' | 'resourcepack' | 'shader', instanceId?: string) =>
     contentService.searchCurseForge(query, type, instanceId)
+  )
+  ipcMain.handle(
+    IPC.CONTENT_VERSIONS_LIST,
+    (
+      _e,
+      projectId: string,
+      type: 'mod' | 'resourcepack' | 'shader',
+      source: 'modrinth' | 'curseforge',
+      instanceId?: string
+    ) => contentService.listContentVersions(projectId, type, source, instanceId)
   )
 
   ipcMain.handle('mod:list', () => contentService.listMods())
@@ -174,7 +185,12 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.FRIENDS_REFRESH, (_e, friendId: string) => friendsService.refreshStatus(friendId))
 
   ipcMain.handle(IPC.BOOT_INITIALIZE, () => bootService.initialize())
-  ipcMain.handle(IPC.SETTINGS_JAVA_LIST, () => listJavaInstallations())
+  ipcMain.handle(IPC.SETTINGS_JAVA_LIST, async () => {
+    const settings = await settingsStore.load()
+    return listJavaInstallations(settings.customJavaPaths ?? [])
+  })
+  ipcMain.handle(IPC.SETTINGS_JAVA_BROWSE, () => settingsService.browseJavaExecutable())
+  ipcMain.handle(IPC.SETTINGS_JAVA_ADD, (_e, javaPath: string) => settingsService.addCustomJavaPath(javaPath))
 
   ipcMain.handle(IPC.NEWS_LIST, () => newsService.getNews())
   ipcMain.handle(IPC.MEDIA_LIST, (_e, instanceId?: string) => mediaService.list(instanceId))
@@ -195,6 +211,10 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.SETTINGS_GET, () => settingsService.get())
   ipcMain.handle(IPC.SETTINGS_UPDATE, (_e, partial: Partial<LauncherSettings>) => settingsService.update(partial))
 
-  ipcMain.handle(IPC.UPDATE_CHECK, () => updateService.check())
+  ipcMain.handle(IPC.UPDATE_CHECK, (_e, force?: boolean) => updateService.check(Boolean(force)))
+  ipcMain.handle(IPC.UPDATE_GET_STATUS, () => updateService.getStatus())
+  ipcMain.handle(IPC.UPDATE_INSTALL_LAUNCHER, () => updateService.installLauncher())
+  ipcMain.handle(IPC.UPDATE_INSTALL_MOD, (_e, instanceId?: string) => updateService.installMod(instanceId))
+  ipcMain.handle(IPC.UPDATE_DISMISS, () => updateService.dismissBanner())
   ipcMain.handle(IPC.UPDATE_OPEN_RELEASE, (_e, url?: string) => updateService.openReleasePage(url))
 }

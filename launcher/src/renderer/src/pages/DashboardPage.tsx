@@ -6,7 +6,9 @@ import { Avatar, Badge, Button, Card } from '@renderer/design-system/components'
 import { useAccounts } from '@renderer/context/AccountProvider'
 import { useI18n } from '@renderer/context/I18nProvider'
 import { LoginModal } from '@renderer/components/LoginModal'
+import { UpdateModal } from '@renderer/components/UpdateModal'
 import { CrashReportPanel } from '@renderer/components/CrashReportPanel'
+import type { UpdateStatusDto } from '@shared/ipc'
 import { formatLoader, formatTier } from '@shared/format'
 import type { FavoriteServer, GameInstance, NewsItem } from '@shared/types'
 import './DashboardPage.css'
@@ -29,6 +31,22 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
   const [launching, setLaunching] = useState(false)
   const [instance, setInstance] = useState<GameInstance | null>(null)
   const [crashDismissed, setCrashDismissed] = useState(false)
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatusDto | null>(null)
+  const [showUpdate, setShowUpdate] = useState(false)
+
+  useEffect(() => {
+    void (async () => {
+      const status = await window.primeLauncher.update.check()
+      setUpdateStatus(status)
+      if (status.anyUpdateAvailable) {
+        const settings = await window.primeLauncher.settings.get()
+        const key = `launcher:${status.launcher.latest}|mod:${status.mod.latest}`
+        if (settings.dismissedUpdateBanner !== key) {
+          setShowUpdate(true)
+        }
+      }
+    })()
+  }, [])
 
   useEffect(() => {
     if (launchProgress?.phase === 'crashed') {
@@ -239,6 +257,15 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
       </div>
 
       <AnimatePresence>{showLogin && <LoginModal onClose={() => setShowLogin(false)} />}</AnimatePresence>
+      <AnimatePresence>
+        {showUpdate && updateStatus && (
+          <UpdateModal
+            status={updateStatus}
+            onClose={() => setShowUpdate(false)}
+            onUpdated={() => void window.primeLauncher.update.check(true).then(setUpdateStatus)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Button } from '@renderer/design-system/components'
 import { useI18n } from '@renderer/context/I18nProvider'
 import type { GameInstance } from '@shared/types'
-import type { CreateInstanceDto } from '@shared/ipc'
+import type { CreateInstanceDto, JavaInstallationDto } from '@shared/ipc'
 import '@renderer/components/LoginModal.css'
 
 export type InstancePreset = 'prime' | 'fabric' | 'vanilla'
@@ -61,8 +61,14 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
   const [fabricLoaderVersion, setFabricLoaderVersion] = useState(instance?.fabricLoaderVersion ?? '0.19.3')
   const [includePrimeMod, setIncludePrimeMod] = useState(instance?.includePrimeMod ?? preset === 'prime')
   const [jvmArgsText, setJvmArgsText] = useState((instance?.jvmArgs ?? PRESETS[preset].jvmArgs ?? []).join('\n'))
+  const [javaPath, setJavaPath] = useState(instance?.javaPath ?? '')
+  const [javaInstalls, setJavaInstalls] = useState<JavaInstallationDto[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void window.primeLauncher.settings.listJava().then(setJavaInstalls)
+  }, [])
 
   useEffect(() => {
     if (mode === 'create') {
@@ -74,6 +80,7 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
       setFabricLoaderVersion(p.fabricLoaderVersion ?? '0.19.3')
       setIncludePrimeMod(Boolean(p.includePrimeMod))
       setJvmArgsText((p.jvmArgs ?? []).join('\n'))
+      setJavaPath('')
     }
   }, [mode, preset])
 
@@ -120,7 +127,8 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
       fabricLoaderVersion: loader === 'fabric' ? fabricLoaderVersion : undefined,
       includePrimeMod: loader === 'fabric' ? includePrimeMod : false,
       ramMb,
-      jvmArgs
+      jvmArgs,
+      javaPath: javaPath || undefined
     })
     setBusy(false)
     if (result.ok) {
@@ -211,6 +219,49 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
           value={jvmArgsText}
           onChange={(e) => setJvmArgsText(e.target.value)}
         />
+
+        {mode === 'edit' && (
+          <>
+            <label className="text-caption">{t('modals.instance.javaPath')}</label>
+            <p className="text-caption" style={{ margin: '0 0 8px', color: 'var(--prime-muted)' }}>
+              {t('modals.instance.javaPathHint')}
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <select
+                className="modal__field"
+                style={{ flex: 1 }}
+                value={javaPath || 'auto'}
+                onChange={(e) => setJavaPath(e.target.value === 'auto' ? '' : e.target.value)}
+              >
+                <option value="auto">{t('common.automatic')}</option>
+                {javaInstalls.map((java) => (
+                  <option key={java.path} value={java.path}>
+                    {java.label}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  void (async () => {
+                    const result = await window.primeLauncher.settings.browseJava()
+                    if (!result.ok || !result.install) {
+                      if (result.error && result.error !== 'Cancelled.') {
+                        setError(result.error)
+                      }
+                      return
+                    }
+                    await window.primeLauncher.settings.addJavaPath(result.install.path)
+                    setJavaPath(result.install.path)
+                    setJavaInstalls(await window.primeLauncher.settings.listJava())
+                  })()
+                }
+              >
+                {t('settings.javaPath.addPath')}
+              </Button>
+            </div>
+          </>
+        )}
 
         {error && <div className="modal__error">{error}</div>}
 

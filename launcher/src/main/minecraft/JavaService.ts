@@ -1,14 +1,14 @@
 import { execFile } from 'child_process'
 import { existsSync } from 'fs'
 import { readdir } from 'fs/promises'
-import { basename, join } from 'path'
+import { basename, dirname, join } from 'path'
 import { promisify } from 'util'
 
 const execFileAsync = promisify(execFile)
 
 const MIN_JAVA_MAJOR = 21
 const PREFERRED_JAVA_MAJOR = 21
-const MAX_JAVA_MAJOR = 21
+const MAX_JAVA_MAJOR = 99
 
 export interface JavaInstallation {
   path: string
@@ -28,27 +28,53 @@ function parseJavaMajor(versionOutput: string): number | null {
   return null
 }
 
+/** Prefer java.exe over javaw.exe for probing and launch. */
+export function normalizeJavaExecutable(javaPath: string): string {
+  const trimmed = javaPath.trim()
+  if (!trimmed) {
+    return trimmed
+  }
+
+  if (process.platform === 'win32' && /javaw\.exe$/i.test(trimmed)) {
+    const javaExe = join(dirname(trimmed), 'java.exe')
+    if (existsSync(javaExe)) {
+      return javaExe
+    }
+  }
+
+  return trimmed
+}
+
+function isSupportedJavaMajor(major: number): boolean {
+  return major >= MIN_JAVA_MAJOR && major <= MAX_JAVA_MAJOR
+}
+
 async function probeJava(javaPath: string): Promise<JavaInstallation | null> {
+  const normalized = normalizeJavaExecutable(javaPath)
+  if (!normalized) {
+    return null
+  }
+
   try {
-    const { stdout, stderr } = await execFileAsync(javaPath, ['-version'], { timeout: 8000 })
+    const { stdout, stderr } = await execFileAsync(normalized, ['-version'], { timeout: 8000 })
     const output = `${stdout}${stderr}`
     const major = parseJavaMajor(output)
-    if (major !== null && major >= MIN_JAVA_MAJOR && major <= MAX_JAVA_MAJOR) {
+    if (major !== null && isSupportedJavaMajor(major)) {
       return {
-        path: javaPath,
+        path: normalized,
         major,
-        label: `${basename(javaPath)} — Java ${major}`
+        label: `${basename(normalized)} — Java ${major}`
       }
     }
   } catch (err: unknown) {
     const execErr = err as { stderr?: string; stdout?: string }
     const output = `${execErr.stderr ?? ''}${execErr.stdout ?? ''}`
     const major = parseJavaMajor(output)
-    if (major !== null && major >= MIN_JAVA_MAJOR && major <= MAX_JAVA_MAJOR) {
+    if (major !== null && isSupportedJavaMajor(major)) {
       return {
-        path: javaPath,
+        path: normalized,
         major,
-        label: `${basename(javaPath)} — Java ${major}`
+        label: `${basename(normalized)} — Java ${major}`
       }
     }
   }
@@ -89,6 +115,10 @@ async function discoverJavaOnWindows(): Promise<string[]> {
     if (existsSync(bin)) {
       candidates.push(bin)
     }
+    const javaw = join(root, 'bin', 'javaw.exe')
+    if (existsSync(javaw)) {
+      candidates.push(javaw)
+    }
     if (existsSync(root)) {
       try {
         const entries = await readdir(root, { withFileTypes: true })
@@ -96,9 +126,13 @@ async function discoverJavaOnWindows(): Promise<string[]> {
           if (!entry.isDirectory()) {
             continue
           }
-          const nested = join(root, entry.name, 'bin', 'java.exe')
-          if (existsSync(nested)) {
-            candidates.push(nested)
+          const nestedJava = join(root, entry.name, 'bin', 'java.exe')
+          if (existsSync(nestedJava)) {
+            candidates.push(nestedJava)
+          }
+          const nestedJavaw = join(root, entry.name, 'bin', 'javaw.exe')
+          if (existsSync(nestedJavaw)) {
+            candidates.push(nestedJavaw)
           }
         }
       } catch {
@@ -125,11 +159,17 @@ async function discoverJavaCandidates(): Promise<string[]> {
   return [...new Set(candidates)]
 }
 
-export async function listJavaInstallations(): Promise<JavaInstallation[]> {
+export async function validateJavaExecutable(javaPath: string): Promise<JavaInstallation | null> {
+  return probeJava(javaPath)
+}
+
+export async function listJavaInstallations(extraPaths: string[] = []): Promise<JavaInstallation[]> {
   const found: JavaInstallation[] = []
   const seen = new Set<string>()
 
-  for (const candidate of await discoverJavaCandidates()) {
+  const candidates = [...(await discoverJavaCandidates()), ...extraPaths.map(normalizeJavaExecutable)]
+
+  for (const candidate of candidates) {
     const install = await probeJava(candidate)
     if (install && !seen.has(install.path)) {
       seen.add(install.path)
@@ -165,6 +205,6 @@ export async function resolveJavaPath(overridePath?: string | null): Promise<str
   }
 
   throw new Error(
-    `Java ${PREFERRED_JAVA_MAJOR} is required for Minecraft. Install Temurin 21 or let the launcher download it automatically.`
+    `Java ${PREFERRED_JAVA_MAJOR}+ is required for Minecraft. Install Temurin 21+ or let the launcher download it automatically.`
   )
 }

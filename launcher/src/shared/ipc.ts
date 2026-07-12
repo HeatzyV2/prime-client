@@ -62,6 +62,7 @@ export const IPC = {
   CONTENT_SHADER_INSTALL_CURSEFORGE: 'content:shader-install-curseforge',
   CONTENT_MODRINTH_SEARCH: 'content:modrinth-search',
   CONTENT_CURSEFORGE_SEARCH: 'content:curseforge-search',
+  CONTENT_VERSIONS_LIST: 'content:versions-list',
 
   STORE_CATALOG: 'store:catalog',
   STORE_BALANCE: 'store:balance',
@@ -93,8 +94,16 @@ export const IPC = {
   SETTINGS_GET: 'settings:get',
   SETTINGS_UPDATE: 'settings:update',
   SETTINGS_JAVA_LIST: 'settings:java-list',
+  SETTINGS_JAVA_BROWSE: 'settings:java-browse',
+  SETTINGS_JAVA_ADD: 'settings:java-add',
   UPDATE_CHECK: 'update:check',
-  UPDATE_OPEN_RELEASE: 'update:open-release'
+  UPDATE_GET_STATUS: 'update:get-status',
+  UPDATE_INSTALL_LAUNCHER: 'update:install-launcher',
+  UPDATE_INSTALL_MOD: 'update:install-mod',
+  UPDATE_DISMISS: 'update:dismiss',
+  UPDATE_OPEN_RELEASE: 'update:open-release',
+  /** Main → renderer download / install progress. */
+  UPDATE_PROGRESS: 'update:progress'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -223,6 +232,21 @@ export interface ContentMutationDto {
   fileName?: string
 }
 
+export interface ContentVersionDto {
+  id: string
+  versionNumber: string
+  gameVersions: string[]
+  loaders: string[]
+  fileName?: string
+  recommended?: boolean
+}
+
+export interface JavaBrowseResultDto {
+  ok: boolean
+  install?: JavaInstallationDto
+  error?: string
+}
+
 export interface BootStepDto {
   id: string
   labelKey: string
@@ -250,11 +274,13 @@ export interface LauncherSettingsDto {
   developerMode: boolean
   jvmArgs: string[]
   defaultJavaPath: string | null
+  customJavaPaths: string[]
   gameWidth: number
   gameHeight: number
   gameDisplayMode: 'windowed' | 'borderless' | 'fullscreen'
   lastUpdateCheck?: string
   lastPrimeSync?: string
+  dismissedUpdateBanner?: string
 }
 
 export interface SettingsUpdateDto {
@@ -262,12 +288,41 @@ export interface SettingsUpdateDto {
   restartRequired?: boolean
 }
 
-export interface UpdateCheckDto {
+export interface UpdateComponentDto {
   current: string
   latest: string
   updateAvailable: boolean
-  notes: string
-  checkedAt: string
-  releaseUrl?: string
   downloadUrl?: string
+  fileName?: string
+}
+
+export interface UpdateStatusDto {
+  checkedAt: string
+  notes: string
+  releaseUrl?: string
+  launcher: UpdateComponentDto
+  mod: UpdateComponentDto
+  anyUpdateAvailable: boolean
+}
+
+/** @deprecated Use UpdateStatusDto — kept for gradual migration. */
+export interface UpdateCheckDto extends UpdateStatusDto {
+  current: string
+  latest: string
+  updateAvailable: boolean
+  downloadUrl?: string
+}
+
+export interface UpdateInstallResultDto {
+  ok: boolean
+  error?: string
+  errorKey?: string
+  version?: string
+}
+
+export interface UpdateProgressDto {
+  target: 'launcher' | 'mod'
+  phase: 'downloading' | 'installing' | 'done' | 'error'
+  percent: number
+  detail?: string
 }

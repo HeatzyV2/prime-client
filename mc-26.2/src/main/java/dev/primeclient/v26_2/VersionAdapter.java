@@ -309,7 +309,8 @@ public final class VersionAdapter implements MinecraftAdapter {
 
     @Override
     public int potionEffectCount() {
-        return Minecraft.getInstance().player.getActiveEffects().size();
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player == null ? 0 : player.getActiveEffects().size();
     }
 
     @Override
@@ -654,7 +655,11 @@ public final class VersionAdapter implements MinecraftAdapter {
     }
 
     private static MobEffectInstance effectAt(int index) {
-        var effects = Minecraft.getInstance().player.getActiveEffects();
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return null;
+        }
+        var effects = player.getActiveEffects();
         if (index < 0 || index >= effects.size()) {
             return null;
         }
@@ -668,7 +673,11 @@ public final class VersionAdapter implements MinecraftAdapter {
     }
 
     private static ItemContainerContents shulkerContents() {
-        ItemStack stack = Minecraft.getInstance().player.getMainHandItem();
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return null;
+        }
+        ItemStack stack = player.getMainHandItem();
         return stack.get(DataComponents.CONTAINER);
     }
 

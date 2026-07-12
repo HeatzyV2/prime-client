@@ -87,12 +87,19 @@ const api = {
     removeMod: (fileName: string, instanceId?: string) =>
       ipcRenderer.invoke(IPC.CONTENT_MODS_REMOVE, fileName, instanceId),
     importMod: (instanceId?: string) => ipcRenderer.invoke(IPC.CONTENT_MODS_IMPORT, instanceId),
-    installMod: (projectId: string, title: string, instanceId?: string, source?: 'modrinth' | 'curseforge') =>
+    installMod: (
+      projectId: string,
+      title: string,
+      instanceId?: string,
+      source?: 'modrinth' | 'curseforge',
+      versionId?: string
+    ) =>
       ipcRenderer.invoke(
         source === 'curseforge' ? IPC.CONTENT_MODS_INSTALL_CURSEFORGE : IPC.CONTENT_MODS_INSTALL_MODRINTH,
         projectId,
         title,
-        instanceId
+        instanceId,
+        versionId
       ),
     listResourcePacks: (instanceId?: string) =>
       ipcRenderer.invoke(IPC.CONTENT_RESOURCE_LIST, instanceId),
@@ -102,12 +109,19 @@ const api = {
       ipcRenderer.invoke(IPC.CONTENT_RESOURCE_REMOVE, fileName, instanceId),
     importResourcePack: (instanceId?: string) =>
       ipcRenderer.invoke(IPC.CONTENT_RESOURCE_IMPORT, instanceId),
-    installResourcePack: (projectId: string, title: string, instanceId?: string, source?: 'modrinth' | 'curseforge') =>
+    installResourcePack: (
+      projectId: string,
+      title: string,
+      instanceId?: string,
+      source?: 'modrinth' | 'curseforge',
+      versionId?: string
+    ) =>
       ipcRenderer.invoke(
         source === 'curseforge' ? IPC.CONTENT_RESOURCE_INSTALL_CURSEFORGE : IPC.CONTENT_RESOURCE_INSTALL_MODRINTH,
         projectId,
         title,
-        instanceId
+        instanceId,
+        versionId
       ),
     listShaders: (instanceId?: string) => ipcRenderer.invoke(IPC.CONTENT_SHADER_LIST, instanceId),
     setShaderActive: (fileName: string | null, instanceId?: string) =>
@@ -115,12 +129,19 @@ const api = {
     removeShader: (fileName: string, instanceId?: string) =>
       ipcRenderer.invoke(IPC.CONTENT_SHADER_REMOVE, fileName, instanceId),
     importShader: (instanceId?: string) => ipcRenderer.invoke(IPC.CONTENT_SHADER_IMPORT, instanceId),
-    installShader: (projectId: string, title: string, instanceId?: string, source?: 'modrinth' | 'curseforge') =>
+    installShader: (
+      projectId: string,
+      title: string,
+      instanceId?: string,
+      source?: 'modrinth' | 'curseforge',
+      versionId?: string
+    ) =>
       ipcRenderer.invoke(
         source === 'curseforge' ? IPC.CONTENT_SHADER_INSTALL_CURSEFORGE : IPC.CONTENT_SHADER_INSTALL_MODRINTH,
         projectId,
         title,
-        instanceId
+        instanceId,
+        versionId
       ),
     searchModrinth: (
       query: string,
@@ -131,7 +152,13 @@ const api = {
       query: string,
       type: 'mod' | 'resourcepack' | 'shader',
       instanceId?: string
-    ) => ipcRenderer.invoke(IPC.CONTENT_CURSEFORGE_SEARCH, query, type, instanceId)
+    ) => ipcRenderer.invoke(IPC.CONTENT_CURSEFORGE_SEARCH, query, type, instanceId),
+    listVersions: (
+      projectId: string,
+      type: 'mod' | 'resourcepack' | 'shader',
+      source: 'modrinth' | 'curseforge',
+      instanceId?: string
+    ) => ipcRenderer.invoke(IPC.CONTENT_VERSIONS_LIST, projectId, type, source, instanceId)
   },
   cloud: {
     getSyncStatus: () => ipcRenderer.invoke('cloud:sync-status'),
@@ -185,11 +212,24 @@ const api = {
   settings: {
     get: () => ipcRenderer.invoke(IPC.SETTINGS_GET),
     update: (partial: Record<string, unknown>) => ipcRenderer.invoke(IPC.SETTINGS_UPDATE, partial),
-    listJava: () => ipcRenderer.invoke(IPC.SETTINGS_JAVA_LIST)
+    listJava: () => ipcRenderer.invoke(IPC.SETTINGS_JAVA_LIST),
+    browseJava: () => ipcRenderer.invoke(IPC.SETTINGS_JAVA_BROWSE),
+    addJavaPath: (javaPath: string) => ipcRenderer.invoke(IPC.SETTINGS_JAVA_ADD, javaPath)
   },
   update: {
-    check: () => ipcRenderer.invoke(IPC.UPDATE_CHECK),
-    openRelease: (url?: string) => ipcRenderer.invoke(IPC.UPDATE_OPEN_RELEASE, url)
+    check: (force?: boolean) => ipcRenderer.invoke(IPC.UPDATE_CHECK, force),
+    getStatus: () => ipcRenderer.invoke(IPC.UPDATE_GET_STATUS),
+    installLauncher: () => ipcRenderer.invoke(IPC.UPDATE_INSTALL_LAUNCHER),
+    installMod: (instanceId?: string) => ipcRenderer.invoke(IPC.UPDATE_INSTALL_MOD, instanceId),
+    dismiss: () => ipcRenderer.invoke(IPC.UPDATE_DISMISS),
+    openRelease: (url?: string) => ipcRenderer.invoke(IPC.UPDATE_OPEN_RELEASE, url),
+    onProgress: (listener: (payload: import('../shared/ipc').UpdateProgressDto) => void): (() => void) => {
+      const handler = (_event: IpcRendererEvent, payload: import('../shared/ipc').UpdateProgressDto): void => {
+        listener(payload)
+      }
+      ipcRenderer.on(IPC.UPDATE_PROGRESS, handler)
+      return () => ipcRenderer.removeListener(IPC.UPDATE_PROGRESS, handler)
+    }
   }
 }
 

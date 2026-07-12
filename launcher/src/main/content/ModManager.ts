@@ -3,8 +3,8 @@ import { join, basename } from 'path'
 import type { ModEntry } from '../../shared/content-types'
 import { getModsDir } from './paths'
 import { patchContentMeta, readContentMeta } from './contentMeta'
-import { downloadModrinthFile, getModrinthVersion } from './ModrinthClient'
-import { downloadCurseForgeFile, getCurseForgeFile } from './CurseForgeClient'
+import { downloadModrinthFile, getModrinthVersion, getModrinthVersionById } from './ModrinthClient'
+import { downloadCurseForgeFile, getCurseForgeFile, getCurseForgeFileById } from './CurseForgeClient'
 import { downloadService } from '../services/DownloadService'
 
 const DISABLED_SUFFIX = '.disabled'
@@ -117,10 +117,13 @@ export async function installModFromModrinth(
   projectId: string,
   title: string,
   minecraftVersion: string,
-  loader: 'fabric' | 'forge' | 'quilt' = 'fabric'
+  loader: 'fabric' | 'forge' | 'quilt' = 'fabric',
+  versionId?: string
 ): Promise<{ ok: boolean; error?: string; fileName?: string }> {
   try {
-    const version = await getModrinthVersion(projectId, minecraftVersion, loader)
+    const version = versionId
+      ? await getModrinthVersionById(versionId)
+      : await getModrinthVersion(projectId, minecraftVersion, loader)
     const file = version.files.find((f) => f.primary) ?? version.files[0]
     if (!file) {
       return { ok: false, error: 'No downloadable file for this project.' }
@@ -155,10 +158,13 @@ export async function installModFromCurseForge(
   modId: string,
   title: string,
   minecraftVersion: string,
-  loader: 'fabric' | 'forge' | 'quilt' = 'fabric'
+  loader: 'fabric' | 'forge' | 'quilt' = 'fabric',
+  fileId?: string
 ): Promise<{ ok: boolean; error?: string; fileName?: string }> {
   try {
-    const file = await getCurseForgeFile(modId, minecraftVersion, loader)
+    const file = fileId
+      ? await getCurseForgeFileById(modId, Number.parseInt(fileId, 10))
+      : await getCurseForgeFile(modId, minecraftVersion, loader)
 
     const modsDir = getModsDir(instanceId)
     await mkdir(modsDir, { recursive: true })

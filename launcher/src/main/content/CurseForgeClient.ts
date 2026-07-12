@@ -49,6 +49,8 @@ interface CurseForgeFile {
   id: number
   fileName: string
   downloadUrl: string
+  gameVersions: string[]
+  modLoaders?: { id: number; name: string }[]
 }
 
 async function apiKey(): Promise<string> {
@@ -121,14 +123,16 @@ export async function searchCurseForge(
   return result.data.map((mod) => toHit(mod, projectType))
 }
 
-export async function getCurseForgeFile(
+export async function listCurseForgeFiles(
   modId: string,
   minecraftVersion: string,
   loader?: 'fabric' | 'forge' | 'quilt'
-): Promise<CurseForgeFile> {
+): Promise<CurseForgeFile[]> {
   const params: Record<string, string> = {
     gameVersion: minecraftVersion,
-    pageSize: '1'
+    pageSize: '50',
+    sortField: '2',
+    sortOrder: 'desc'
   }
   if (loader) {
     params.modLoaderType = String(LOADER_TYPES[loader])
@@ -138,7 +142,21 @@ export async function getCurseForgeFile(
     `/mods/${modId}/files`,
     params
   )
-  const file = result.data[0]
+  return result.data
+}
+
+export async function getCurseForgeFileById(modId: string, fileId: number): Promise<CurseForgeFile> {
+  const result = await curseForgeFetch<CurseForgeResponse<CurseForgeFile>>(`/mods/${modId}/files/${fileId}`)
+  return result.data
+}
+
+export async function getCurseForgeFile(
+  modId: string,
+  minecraftVersion: string,
+  loader?: 'fabric' | 'forge' | 'quilt'
+): Promise<CurseForgeFile> {
+  const files = await listCurseForgeFiles(modId, minecraftVersion, loader)
+  const file = files[0]
   if (!file) {
     throw new Error(`No compatible CurseForge file for Minecraft ${minecraftVersion}.`)
   }

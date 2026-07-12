@@ -19,7 +19,7 @@ function LauncherApp() {
     void (async () => {
       const [newsItems, favServers] = await Promise.all([
         window.primeLauncher.news.list(),
-        window.primeLauncher.servers.refreshAll()
+        window.primeLauncher.servers.list()
       ])
       setNews(newsItems)
       setServers(favServers)

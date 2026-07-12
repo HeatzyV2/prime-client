@@ -21,7 +21,11 @@ interface ModCacheManifest {
   tag: string
   fileName: string
   downloadedAt: string
+  lastGitHubCheckAt?: string
 }
+
+/** Skip GitHub API + jar download if a local jar exists and we checked recently. */
+const GITHUB_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000
 
 type SemVer = [major: number, minor: number, patch: number]
 
@@ -86,6 +90,26 @@ async function readModCacheManifest(): Promise<ModCacheManifest | null> {
 async function writeModCacheManifest(manifest: ModCacheManifest): Promise<void> {
   await mkdir(modCacheDir(), { recursive: true })
   await writeFile(modCacheManifestPath(), JSON.stringify(manifest, null, 2), 'utf8')
+}
+
+function isGitHubCheckStale(manifest: ModCacheManifest | null): boolean {
+  if (!manifest?.lastGitHubCheckAt) {
+    return true
+  }
+  const elapsed = Date.now() - new Date(manifest.lastGitHubCheckAt).getTime()
+  return elapsed >= GITHUB_CHECK_INTERVAL_MS
+}
+
+async function touchGitHubCheck(manifest: ModCacheManifest | null): Promise<void> {
+  const base: ModCacheManifest = manifest ?? {
+    tag: '',
+    fileName: '',
+    downloadedAt: new Date(0).toISOString()
+  }
+  await writeModCacheManifest({
+    ...base,
+    lastGitHubCheckAt: new Date().toISOString()
+  })
 }
 
 async function candidateFromPath(path: string, source: string): Promise<JarCandidate | null> {
@@ -206,33 +230,44 @@ async function resolvePrimeClientSource(instanceId: string): Promise<JarCandidat
 
   let best = pickNewestCandidate(candidates)
 
-  emitLaunchProgress({
-    phase: 'mods',
-    detail: 'Checking GitHub Releases for Prime Client mod…',
-    percent: 36
-  })
+  const shouldCheckGitHub = !best || isGitHubCheckStale(manifest)
+  if (shouldCheckGitHub) {
+    emitLaunchProgress({
+      phase: 'mods',
+      detail: 'Checking GitHub Releases for Prime Client mod…',
+      percent: 36
+    })
 
-  const release = await fetchLatestGitHubRelease()
-  if (release) {
-    const asset = pickPrimeModAsset(release, PRIME_JAR_PREFIX)
-    const remoteVersion = asset ? parseJarVersion(asset.name) : null
+    const release = await fetchLatestGitHubRelease()
+    await touchGitHubCheck(manifest)
 
-    const shouldDownload =
-      asset?.browser_download_url &&
-      remoteVersion &&
-      (!best || compareSemVer(remoteVersion, best.version) > 0)
+    if (release) {
+      const asset = pickPrimeModAsset(release, PRIME_JAR_PREFIX)
+      const remoteVersion = asset ? parseJarVersion(asset.name) : null
 
-    if (shouldDownload) {
-      const downloaded = await downloadPrimeModFromRelease(release)
-      if (downloaded && (!best || compareSemVer(downloaded.version, best.version) > 0)) {
-        best = downloaded
-      }
-    } else if (asset && remoteVersion && !best) {
-      const downloaded = await downloadPrimeModFromRelease(release)
-      if (downloaded) {
-        best = downloaded
+      const shouldDownload =
+        asset?.browser_download_url &&
+        remoteVersion &&
+        (!best || compareSemVer(remoteVersion, best.version) > 0)
+
+      if (shouldDownload) {
+        const downloaded = await downloadPrimeModFromRelease(release)
+        if (downloaded && (!best || compareSemVer(downloaded.version, best.version) > 0)) {
+          best = downloaded
+        }
+      } else if (asset && remoteVersion && !best) {
+        const downloaded = await downloadPrimeModFromRelease(release)
+        if (downloaded) {
+          best = downloaded
+        }
       }
     }
+  } else if (best) {
+    emitLaunchProgress({
+      phase: 'mods',
+      detail: `Using Prime Client ${best.version.join('.')} (cached, no remote check)`,
+      percent: 38
+    })
   }
 
   if (best) {
@@ -339,6 +374,15 @@ export async function installInstanceMods(
   await removeStalePrimeJars(modsDir, primeDestName)
 
   const primeDest = join(modsDir, primeDestName)
+  try {
+    const [srcInfo, destInfo] = await Promise.all([stat(primeCandidate.path), stat(primeDest)])
+    if (srcInfo.size === destInfo.size && srcInfo.mtimeMs <= destInfo.mtimeMs) {
+      return { primeJar: primeDest, fabricApiJar }
+    }
+  } catch {
+    // copy below
+  }
+
   emitLaunchProgress({
     phase: 'mods',
     detail: `Installing Prime Client mod ${primeCandidate.version.join('.')}…`,

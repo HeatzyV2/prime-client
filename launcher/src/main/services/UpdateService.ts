@@ -1,109 +1,391 @@
+import { createWriteStream } from 'fs'
+import { copyFile, mkdir, readdir, unlink, writeFile } from 'fs/promises'
 import { app, shell } from 'electron'
-import { GITHUB_REPO_SLUG, GITHUB_RELEASES_URL } from '../../shared/github'
+import { join } from 'path'
+import { spawn } from 'child_process'
+import { GITHUB_RELEASES_URL } from '../../shared/github'
+import {
+  compareSemver,
+  fetchLatestGitHubRelease,
+  isPrimeModJarAsset,
+  parseLauncherVersionFromAsset,
+  parseModVersionFromAsset,
+  pickPrimeModAsset,
+  pickWindowsLauncherAsset,
+  type GitHubRelease
+} from '../../shared/githubRelease'
+import type { UpdateInstallResultDto, UpdateProgressDto, UpdateStatusDto } from '../../shared/ipc'
+import { getInstanceModsDir } from '../minecraft/paths'
+import { minecraftEngine } from '../minecraft/MinecraftEngine'
+import { instanceService } from './InstanceService'
 import { settingsStore } from '../storage/SettingsStore'
+import { emitUpdateProgress } from './updateProgress'
 
-export interface UpdateCheckResult {
-  current: string
-  latest: string
-  updateAvailable: boolean
-  notes: string
-  checkedAt: string
-  releaseUrl?: string
-  downloadUrl?: string
+const PRIME_JAR_PREFIX = 'prime-client-1.21.11'
+const CHECK_CACHE_MS = 60 * 60 * 1000
+
+interface ModCacheManifest {
+  tag: string
+  fileName: string
+  downloadedAt: string
 }
 
-interface GitHubRelease {
-  tag_name: string
-  html_url: string
-  body?: string
-  assets?: Array<{ name: string; browser_download_url: string }>
+function modCacheDir(): string {
+  return join(app.getPath('userData'), 'cache', 'prime-mod')
 }
 
-function compareSemver(a: string, b: string): number {
-  const clean = (v: string) => v.replace(/^v/i, '')
-  const pa = clean(a).split('.').map(Number)
-  const pb = clean(b).split('.').map(Number)
-  for (let i = 0; i < 3; i++) {
-    const diff = (pa[i] ?? 0) - (pb[i] ?? 0)
-    if (diff !== 0) {
-      return diff
+function modCacheManifestPath(): string {
+  return join(modCacheDir(), 'manifest.json')
+}
+
+function offlineStatus(currentLauncher: string, currentMod: string, checkedAt: string): UpdateStatusDto {
+  return {
+    checkedAt,
+    notes: 'Offline — could not check GitHub Releases.',
+    releaseUrl: GITHUB_RELEASES_URL,
+    launcher: { current: currentLauncher, latest: currentLauncher, updateAvailable: false },
+    mod: { current: currentMod, latest: currentMod, updateAvailable: false },
+    anyUpdateAvailable: false
+  }
+}
+
+function buildDismissKey(status: UpdateStatusDto): string {
+  return `launcher:${status.launcher.latest}|mod:${status.mod.latest}`
+}
+
+async function downloadWithProgress(
+  url: string,
+  dest: string,
+  target: UpdateProgressDto['target'],
+  label: string
+): Promise<void> {
+  const response = await fetch(url)
+  if (!response.ok || !response.body) {
+    throw new Error(`Download failed (${response.status})`)
+  }
+
+  const total = Number(response.headers.get('content-length') ?? 0)
+  let received = 0
+
+  const reader = response.body.getReader()
+  await mkdir(join(dest, '..'), { recursive: true })
+
+  const fileStream = createWriteStream(dest)
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+    received += value.byteLength
+    await new Promise<void>((resolve, reject) => {
+      fileStream.write(Buffer.from(value), (err) => (err ? reject(err) : resolve()))
+    })
+    const percent = total > 0 ? Math.min(99, Math.round((received / total) * 100)) : 0
+    emitUpdateProgress({
+      target,
+      phase: 'downloading',
+      percent,
+      detail: label
+    })
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    fileStream.end(() => resolve())
+    fileStream.on('error', reject)
+  })
+}
+
+async function getInstalledModVersion(instanceId: string): Promise<string> {
+  const modsDir = getInstanceModsDir(instanceId)
+  try {
+    const files = await readdir(modsDir)
+    let best: string | null = null
+    for (const file of files) {
+      if (!isPrimeModJarAsset(file, PRIME_JAR_PREFIX)) {
+        continue
+      }
+      const version = parseModVersionFromAsset(file)
+      if (version && (!best || compareSemver(version, best) > 0)) {
+        best = version
+      }
+    }
+    return best ?? '0.0.0'
+  } catch {
+    return '0.0.0'
+  }
+}
+
+async function removeStalePrimeJars(modsDir: string, keepFileName: string): Promise<void> {
+  let files: string[]
+  try {
+    files = await readdir(modsDir)
+  } catch {
+    return
+  }
+
+  await Promise.all(
+    files
+      .filter((f) => isPrimeModJarAsset(f, PRIME_JAR_PREFIX) && f !== keepFileName)
+      .map((f) => unlink(join(modsDir, f)).catch(() => undefined))
+  )
+}
+
+async function writeModCacheManifest(manifest: ModCacheManifest): Promise<void> {
+  await mkdir(modCacheDir(), { recursive: true })
+  await writeFile(modCacheManifestPath(), JSON.stringify(manifest, null, 2), 'utf8')
+}
+
+function statusFromRelease(
+  release: GitHubRelease | null,
+  currentLauncher: string,
+  currentMod: string,
+  checkedAt: string,
+  notes?: string
+): UpdateStatusDto {
+  if (!release) {
+    return {
+      checkedAt,
+      notes: notes ?? 'No GitHub release yet. Check back after the first tag is published.',
+      releaseUrl: GITHUB_RELEASES_URL,
+      launcher: { current: currentLauncher, latest: currentLauncher, updateAvailable: false },
+      mod: { current: currentMod, latest: currentMod, updateAvailable: false },
+      anyUpdateAvailable: false
     }
   }
-  return 0
+
+  const launcherAsset = pickWindowsLauncherAsset(release)
+  const modAsset = pickPrimeModAsset(release, PRIME_JAR_PREFIX)
+
+  const launcherLatest =
+    (launcherAsset ? parseLauncherVersionFromAsset(launcherAsset.name) : null) ??
+    release.tag_name.replace(/^v/i, '')
+  const modLatest =
+    (modAsset ? parseModVersionFromAsset(modAsset.name) : null) ?? release.tag_name.replace(/^v/i, '')
+
+  const launcherUpdate = compareSemver(currentLauncher, launcherLatest) < 0
+  const modUpdate = compareSemver(currentMod, modLatest) < 0
+
+  const releaseNotes =
+    notes ??
+    (launcherUpdate || modUpdate
+      ? release.body?.split('\n')[0]?.trim() || `Version ${release.tag_name} is available on GitHub.`
+      : 'You are on the latest GitHub release.')
+
+  return {
+    checkedAt,
+    notes: releaseNotes,
+    releaseUrl: release.html_url,
+    launcher: {
+      current: currentLauncher,
+      latest: launcherLatest,
+      updateAvailable: launcherUpdate,
+      downloadUrl: launcherAsset?.browser_download_url,
+      fileName: launcherAsset?.name
+    },
+    mod: {
+      current: currentMod,
+      latest: modLatest,
+      updateAvailable: modUpdate,
+      downloadUrl: modAsset?.browser_download_url,
+      fileName: modAsset?.name
+    },
+    anyUpdateAvailable: launcherUpdate || modUpdate
+  }
 }
 
-function pickWindowsAsset(release: GitHubRelease): string | undefined {
-  const assets = release.assets ?? []
-  const exe =
-    assets.find((a) => /setup.*\.exe$/i.test(a.name)) ??
-    assets.find((a) => /\.exe$/i.test(a.name))
-  return exe?.browser_download_url
-}
-
-/** Checks GitHub Releases API for a newer launcher build. */
+/** Checks GitHub Releases for launcher + mod updates; installs in-app on Windows. */
 export class UpdateService {
-  async check(): Promise<UpdateCheckResult> {
-    const current = app.getVersion()
+  private cachedStatus: UpdateStatusDto | null = null
+  private cachedAt = 0
+  private checkInFlight: Promise<UpdateStatusDto> | null = null
+
+  getStatus(): UpdateStatusDto | null {
+    return this.cachedStatus
+  }
+
+  async check(force = false): Promise<UpdateStatusDto> {
+    const now = Date.now()
+    if (!force && this.cachedStatus && now - this.cachedAt < CHECK_CACHE_MS) {
+      return this.cachedStatus
+    }
+
+    if (this.checkInFlight && !force) {
+      return this.checkInFlight
+    }
+
+    this.checkInFlight = this.fetchStatus(force)
+    try {
+      return await this.checkInFlight
+    } finally {
+      this.checkInFlight = null
+    }
+  }
+
+  private async fetchStatus(force: boolean): Promise<UpdateStatusDto> {
+    const currentLauncher = app.getVersion()
+    const defaultInstance = await instanceService.getDefault()
+    const currentMod = defaultInstance ? await getInstalledModVersion(defaultInstance.id) : '0.0.0'
     const checkedAt = new Date().toISOString()
 
     try {
-      const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO_SLUG}/releases/latest`, {
-        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Prime-Launcher' }
-      })
-
-      if (!response.ok) {
-        await settingsStore.mutate((s) => {
-          s.lastUpdateCheck = checkedAt
-        })
-        return {
-          current,
-          latest: current,
-          updateAvailable: false,
-          notes: response.status === 404
-            ? 'No GitHub release yet. Check back after the first tag is published.'
-            : `Could not reach GitHub (${response.status}).`,
-          checkedAt,
-          releaseUrl: GITHUB_RELEASES_URL
-        }
-      }
-
-      const release = (await response.json()) as GitHubRelease
-      const latest = release.tag_name.replace(/^v/i, '')
-      const updateAvailable = compareSemver(current, latest) < 0
-      const downloadUrl = pickWindowsAsset(release)
+      const release = await fetchLatestGitHubRelease()
+      const status = statusFromRelease(release, currentLauncher, currentMod, checkedAt)
 
       await settingsStore.mutate((s) => {
         s.lastUpdateCheck = checkedAt
       })
 
-      return {
-        current,
-        latest,
-        updateAvailable,
-        notes: updateAvailable
-          ? (release.body?.split('\n')[0]?.trim() || `Version ${latest} is available on GitHub.`)
-          : 'You are on the latest GitHub release.',
-        checkedAt,
-        releaseUrl: release.html_url,
-        downloadUrl
-      }
+      this.cachedStatus = status
+      this.cachedAt = Date.now()
+      return status
     } catch {
+      const status = offlineStatus(currentLauncher, currentMod, checkedAt)
       await settingsStore.mutate((s) => {
         s.lastUpdateCheck = checkedAt
       })
-      return {
-        current,
-        latest: current,
-        updateAvailable: false,
-        notes: 'Offline — could not check GitHub Releases.',
-        checkedAt,
-        releaseUrl: GITHUB_RELEASES_URL
+      if (force || !this.cachedStatus) {
+        this.cachedStatus = status
+        this.cachedAt = Date.now()
       }
+      return this.cachedStatus ?? status
     }
+  }
+
+  async dismissBanner(): Promise<void> {
+    const status = this.cachedStatus ?? (await this.check())
+    await settingsStore.mutate((s) => {
+      s.dismissedUpdateBanner = buildDismissKey(status)
+    })
+  }
+
+  async shouldShowBanner(): Promise<boolean> {
+    const settings = await settingsStore.load()
+    const status = this.cachedStatus ?? (await this.check())
+    if (!status.anyUpdateAvailable) {
+      return false
+    }
+    return settings.dismissedUpdateBanner !== buildDismissKey(status)
   }
 
   async openReleasePage(url?: string): Promise<void> {
     await shell.openExternal(url ?? GITHUB_RELEASES_URL)
+  }
+
+  async installLauncher(): Promise<UpdateInstallResultDto> {
+    if (!app.isPackaged) {
+      return { ok: false, errorKey: 'dev_mode' }
+    }
+
+    if (process.platform !== 'win32') {
+      return { ok: false, errorKey: 'unsupported_platform' }
+    }
+
+    const status = await this.check(true)
+    if (!status.launcher.updateAvailable || !status.launcher.downloadUrl) {
+      return { ok: false, errorKey: 'no_update' }
+    }
+
+    const fileName = status.launcher.fileName ?? `Prime-Launcher-Setup-${status.launcher.latest}.exe`
+    const dest = join(app.getPath('temp'), fileName)
+
+    try {
+      emitUpdateProgress({
+        target: 'launcher',
+        phase: 'downloading',
+        percent: 0,
+        detail: fileName
+      })
+
+      await downloadWithProgress(status.launcher.downloadUrl, dest, 'launcher', fileName)
+
+      emitUpdateProgress({ target: 'launcher', phase: 'installing', percent: 100 })
+
+      const installDir = join(app.getPath('exe'), '..')
+      const args = ['/S', `/D=${installDir}`]
+
+      spawn(dest, args, { detached: true, stdio: 'ignore' }).unref()
+
+      setTimeout(() => {
+        app.quit()
+      }, 500)
+
+      return { ok: true, version: status.launcher.latest }
+    } catch (err) {
+      emitUpdateProgress({
+        target: 'launcher',
+        phase: 'error',
+        percent: 0,
+        detail: err instanceof Error ? err.message : 'Install failed'
+      })
+      return { ok: false, error: err instanceof Error ? err.message : 'Install failed' }
+    }
+  }
+
+  async installMod(instanceId?: string): Promise<UpdateInstallResultDto> {
+    if (minecraftEngine.isRunning()) {
+      return { ok: false, errorKey: 'game_running' }
+    }
+
+    const instance = instanceId
+      ? await instanceService.getById(instanceId)
+      : await instanceService.getDefault()
+
+    if (!instance) {
+      return { ok: false, errorKey: 'no_instance' }
+    }
+
+    if (!instance.includePrimeMod) {
+      return { ok: false, errorKey: 'prime_mod_disabled' }
+    }
+
+    const status = await this.check(true)
+    if (!status.mod.updateAvailable || !status.mod.downloadUrl || !status.mod.fileName) {
+      return { ok: false, errorKey: 'no_update' }
+    }
+
+    const modsDir = getInstanceModsDir(instance.id)
+    await mkdir(modsDir, { recursive: true })
+
+    const cachePath = join(modCacheDir(), status.mod.fileName)
+    const destPath = join(modsDir, status.mod.fileName)
+
+    try {
+      emitUpdateProgress({
+        target: 'mod',
+        phase: 'downloading',
+        percent: 0,
+        detail: status.mod.fileName
+      })
+
+      await downloadWithProgress(status.mod.downloadUrl, cachePath, 'mod', status.mod.fileName)
+
+      emitUpdateProgress({ target: 'mod', phase: 'installing', percent: 100 })
+
+      await removeStalePrimeJars(modsDir, status.mod.fileName)
+      await copyFile(cachePath, destPath)
+
+      await writeModCacheManifest({
+        tag: status.mod.latest,
+        fileName: status.mod.fileName,
+        downloadedAt: new Date().toISOString()
+      })
+
+      emitUpdateProgress({ target: 'mod', phase: 'done', percent: 100 })
+
+      const refreshed = await this.check(true)
+      this.cachedStatus = refreshed
+
+      return { ok: true, version: status.mod.latest }
+    } catch (err) {
+      emitUpdateProgress({
+        target: 'mod',
+        phase: 'error',
+        percent: 0,
+        detail: err instanceof Error ? err.message : 'Install failed'
+      })
+      return { ok: false, error: err instanceof Error ? err.message : 'Install failed' }
+    }
   }
 }
 

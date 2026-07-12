@@ -44,3 +44,37 @@ export async function fetchLatestGitHubRelease(): Promise<GitHubRelease | null> 
   }
   return (await response.json()) as GitHubRelease
 }
+
+export function compareSemver(a: string, b: string): number {
+  const clean = (v: string) => v.replace(/^v/i, '')
+  const pa = clean(a).split('.').map(Number)
+  const pb = clean(b).split('.').map(Number)
+  for (let i = 0; i < 3; i++) {
+    const diff = (pa[i] ?? 0) - (pb[i] ?? 0)
+    if (diff !== 0) {
+      return diff
+    }
+  }
+  return 0
+}
+
+/** Expected asset name: Prime-Launcher-Setup-0.9.7.exe */
+export function parseLauncherVersionFromAsset(name: string): string | null {
+  const match = name.match(/Prime-Launcher-Setup-(\d+\.\d+\.\d+)/i)
+  return match?.[1] ?? null
+}
+
+/** Expected asset name: prime-client-1.21.11-1.2.31.jar */
+export function parseModVersionFromAsset(name: string): string | null {
+  const match = name.match(/prime-client-1\.21\.11-(\d+\.\d+\.\d+)\.jar$/)
+  return match?.[1] ?? null
+}
+
+export function pickWindowsLauncherAsset(release: GitHubRelease): GitHubReleaseAsset | undefined {
+  const assets = release.assets ?? []
+  return (
+    assets.find((a) => /Prime-Launcher-Setup-.*\.exe$/i.test(a.name)) ??
+    assets.find((a) => /setup.*\.exe$/i.test(a.name)) ??
+    assets.find((a) => /\.exe$/i.test(a.name))
+  )
+}

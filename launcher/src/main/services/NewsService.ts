@@ -10,14 +10,22 @@ interface GitHubRelease {
   prerelease: boolean
 }
 
+const NEWS_CACHE_MS = 60 * 60 * 1000
+let cachedNews: NewsItem[] | null = null
+let cachedNewsAt = 0
+
 function summarize(body: string): string {
   const line = body.split('\n').find((l) => l.trim().length > 0)
   return (line ?? 'See release notes on GitHub.').slice(0, 180)
 }
 
-/** Bundled news + latest GitHub Release when available. */
+/** Bundled news + latest GitHub Release when available (cached 1h). */
 export class NewsService {
   async getNews(): Promise<NewsItem[]> {
+    if (cachedNews && Date.now() - cachedNewsAt < NEWS_CACHE_MS) {
+      return cachedNews
+    }
+
     const items = [...BUNDLED_NEWS]
 
     try {
@@ -44,7 +52,9 @@ export class NewsService {
       // offline — bundled news only
     }
 
-    return items.sort((a, b) => b.date.localeCompare(a.date))
+    cachedNews = items.sort((a, b) => b.date.localeCompare(a.date))
+    cachedNewsAt = Date.now()
+    return cachedNews
   }
 }
 

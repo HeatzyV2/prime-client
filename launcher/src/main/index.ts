@@ -71,7 +71,6 @@ import { instanceStore } from './storage/InstanceStore'
 import { ecosystemStore } from './storage/EcosystemStore'
 import { settingsStore } from './storage/SettingsStore'
 import { downloadStore } from './storage/DownloadStore'
-import { updateService } from './services/UpdateService'
 import { launcherDiscordService } from './services/LauncherDiscordService'
 import { minecraftEngine } from './minecraft/MinecraftEngine'
 
@@ -87,11 +86,6 @@ app.whenReady().then(async () => {
   createWindow()
 
   await launcherDiscordService.start()
-
-  const settings = await settingsStore.load()
-  if (settings.autoUpdate) {
-    void updateService.check()
-  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

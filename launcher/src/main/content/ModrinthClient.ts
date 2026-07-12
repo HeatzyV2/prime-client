@@ -29,6 +29,9 @@ export interface ModrinthVersionFile {
 export interface ModrinthVersion {
   id: string
   version_number: string
+  game_versions: string[]
+  loaders: string[]
+  date_published: string
   files: ModrinthVersionFile[]
 }
 
@@ -59,11 +62,11 @@ export async function searchModrinth(
   return data.hits
 }
 
-export async function getModrinthVersion(
+export async function listModrinthVersions(
   projectId: string,
   minecraftVersion: string,
   loader?: 'fabric' | 'forge' | 'quilt'
-): Promise<ModrinthVersion> {
+): Promise<ModrinthVersion[]> {
   const params = new URLSearchParams({
     game_versions: JSON.stringify([minecraftVersion])
   })
@@ -76,7 +79,23 @@ export async function getModrinthVersion(
     throw new Error(`Modrinth version lookup failed (${response.status}).`)
   }
 
-  const versions = (await response.json()) as ModrinthVersion[]
+  return (await response.json()) as ModrinthVersion[]
+}
+
+export async function getModrinthVersionById(versionId: string): Promise<ModrinthVersion> {
+  const response = await fetch(`${MODRINTH_API}/version/${versionId}`)
+  if (!response.ok) {
+    throw new Error(`Modrinth version lookup failed (${response.status}).`)
+  }
+  return (await response.json()) as ModrinthVersion
+}
+
+export async function getModrinthVersion(
+  projectId: string,
+  minecraftVersion: string,
+  loader?: 'fabric' | 'forge' | 'quilt'
+): Promise<ModrinthVersion> {
+  const versions = await listModrinthVersions(projectId, minecraftVersion, loader)
   const version = versions[0]
   if (!version) {
     throw new Error(`No compatible version for Minecraft ${minecraftVersion}.`)

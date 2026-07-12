@@ -45,7 +45,8 @@ export const fr: LocaleCatalog = {
     signIn: 'Se connecter',
     checkNow: 'Vérifier',
     downloadUpdate: 'Télécharger la mise à jour',
-    automatic: 'Automatique'
+    automatic: 'Automatique',
+    updateNow: 'Mettre à jour'
   },
   newsTag: {
     update: 'Mise à jour',
@@ -80,6 +81,7 @@ export const fr: LocaleCatalog = {
       accounts: 'Comptes',
       privacy: 'Confidentialité',
       downloads: 'Téléchargements',
+      updates: 'Mises à jour',
       advanced: 'Avancé'
     },
     language: {
@@ -99,6 +101,7 @@ export const fr: LocaleCatalog = {
     },
     autoUpdate: {
       label: 'Mise à jour automatique',
+      hint: 'Vérifier GitHub au démarrage du launcher',
       toggle: 'Mise à jour auto'
     },
     theme: {
@@ -119,7 +122,9 @@ export const fr: LocaleCatalog = {
     restartNow: 'Redémarrer',
     javaPath: {
       label: 'Chemin Java par défaut',
-      hint: 'JDK 21+ détecté automatiquement au lancement'
+      hint: 'JDK 21+ détecté automatiquement au lancement',
+      addPath: 'Ajouter une path',
+      browseFailed: 'Impossible d\'ajouter le chemin Java.'
     },
     defaultRam: {
       label: 'Allocation RAM par défaut'
@@ -171,6 +176,40 @@ export const fr: LocaleCatalog = {
       toggle: 'Mode développeur'
     },
     updateNotes: 'v{current} → dernière v{latest} — {notes}'
+  },
+  updates: {
+    modal: {
+      title: 'Mise à jour disponible',
+      subtitle: 'Une nouvelle version de Prime Client est prête. Installez-la sans quitter le launcher.'
+    },
+    launcher: {
+      label: 'Prime Launcher'
+    },
+    mod: {
+      label: 'Mod Prime Client'
+    },
+    versionLine: 'v{current} → v{latest}',
+    installLauncher: 'Installer le launcher',
+    installMod: 'Installer le mod',
+    installing: 'Installation…',
+    checking: 'Vérification…',
+    later: 'Plus tard',
+    upToDate: 'À jour',
+    phase: {
+      downloading: 'Téléchargement…',
+      installing: 'Installation…',
+      done: 'Terminé',
+      error: 'Échec'
+    },
+    errors: {
+      dev_mode: "La mise à jour intégrée ne fonctionne qu'avec l'application installée, pas en mode dev.",
+      unsupported_platform: 'La mise à jour intégrée du launcher est disponible uniquement sur Windows.',
+      no_update: 'Aucune mise à jour à installer.',
+      game_running: 'Fermez Minecraft avant de mettre à jour le mod.',
+      no_instance: 'Aucune instance — créez-en une d\'abord.',
+      prime_mod_disabled: 'Le mod Prime est désactivé sur l\'instance par défaut.',
+      unknown: 'Échec de la mise à jour. Réessayez ou téléchargez depuis GitHub.'
+    }
   },
   pages: {
     accounts: {
@@ -253,6 +292,8 @@ export const fr: LocaleCatalog = {
       includePrimeMod: 'Inclure le mod Prime Client (+ Fabric API)',
       ram: 'RAM (Mo)',
       jvmArgs: 'Arguments JVM (un par ligne)',
+      javaPath: 'Chemin Java (optionnel)',
+      javaPathHint: 'Remplace le chemin global pour cette instance',
       createFailed: 'Impossible de créer l\'instance.',
       saveFailed: 'Impossible d\'enregistrer l\'instance.',
       saving: 'Enregistrement…',
@@ -266,7 +307,16 @@ export const fr: LocaleCatalog = {
       searching: 'Recherche…',
       searchFailed: 'Échec de la recherche.',
       installFailed: 'Échec de l\'installation.',
-      close: 'Fermer'
+      close: 'Fermer',
+      chooseVersion: 'Choisir la version',
+      chooseVersionHint: 'Sélectionnez la version à installer pour cette instance.',
+      versionLabel: 'Version',
+      gameVersions: 'Versions MC',
+      loaders: 'Loaders',
+      recommended: 'Recommandée',
+      back: 'Retour',
+      noVersions: 'Aucune version compatible trouvée.',
+      versionsFailed: 'Impossible de charger les versions.'
     },
     modrinth: {
       modsTitle: 'Modrinth — Mods',

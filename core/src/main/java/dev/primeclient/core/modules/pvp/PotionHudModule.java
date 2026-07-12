@@ -76,6 +76,14 @@ public final class PotionHudModule extends Module {
         }
 
         private void refresh(RenderContext ctx) {
+            if (!adapter.hasPlayer()) {
+                if (lineCount != 0) {
+                    lineCount = 0;
+                    cachedWidth = 0;
+                    cachedHeight = 0;
+                }
+                return;
+            }
             int count = Math.min(adapter.potionEffectCount(), MAX_LINES);
             boolean changed = count != lineCount;
             int maxWidth = 0;

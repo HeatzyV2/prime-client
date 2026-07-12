@@ -86,3 +86,13 @@
   color: var(--prime-muted);
   font-size: var(--text-sm);
 }
+
+.settings__java-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings__java-browse {
+  white-space: nowrap;
+}

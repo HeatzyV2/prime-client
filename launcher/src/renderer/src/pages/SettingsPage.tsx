@@ -8,7 +8,7 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import { LOCALES } from '@shared/i18n'
 import type { PerformancePreset } from '@shared/content-types'
 import type { StoreItem } from '@shared/content-types'
-import type { UpdateCheckDto, JavaInstallationDto, SettingsUpdateDto } from '@shared/ipc'
+import type { UpdateProgressDto, UpdateStatusDto, JavaInstallationDto, SettingsUpdateDto } from '@shared/ipc'
 import './SettingsPage.css'
 
 const SECTION_IDS = [
@@ -19,6 +19,7 @@ const SECTION_IDS = [
   'accounts',
   'privacy',
   'downloads',
+  'updates',
   'advanced'
 ] as const
 
@@ -48,7 +49,10 @@ export function SettingsPage() {
   const { accounts, activeAccount, loginMicrosoft } = useAccounts()
   const [section, setSection] = useState<(typeof SECTION_IDS)[number]>('general')
   const [settings, setSettings] = useState<SettingsState | null>(null)
-  const [updateInfo, setUpdateInfo] = useState<UpdateCheckDto | null>(null)
+  const [updateInfo, setUpdateInfo] = useState<UpdateStatusDto | null>(null)
+  const [updateBusy, setUpdateBusy] = useState<'launcher' | 'mod' | 'check' | null>(null)
+  const [updateProgress, setUpdateProgress] = useState<UpdateProgressDto | null>(null)
+  const [updateError, setUpdateError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [ownsCrimson, setOwnsCrimson] = useState(false)
   const [ownsNebula, setOwnsNebula] = useState(false)
@@ -128,9 +132,48 @@ export function SettingsPage() {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  async function handleCheckUpdate() {
-    const info = await window.primeLauncher.update.check()
+  async function handleCheckUpdate(force = true) {
+    setUpdateBusy('check')
+    setUpdateError(null)
+    const info = await window.primeLauncher.update.check(force)
     setUpdateInfo(info)
+    setUpdateBusy(null)
+  }
+
+  useEffect(() => {
+    if (section === 'updates' && !updateInfo) {
+      void handleCheckUpdate(false)
+    }
+  }, [section])
+
+  async function handleInstallUpdate(target: 'launcher' | 'mod') {
+    setUpdateBusy(target)
+    setUpdateError(null)
+    setUpdateProgress(null)
+
+    const unsub = window.primeLauncher.update.onProgress((payload) => {
+      if (payload.target === target) {
+        setUpdateProgress(payload)
+      }
+    })
+
+    const result =
+      target === 'launcher'
+        ? await window.primeLauncher.update.installLauncher()
+        : await window.primeLauncher.update.installMod()
+
+    unsub()
+    setUpdateBusy(null)
+
+    if (!result.ok) {
+      const key = result.errorKey ? `updates.errors.${result.errorKey}` : null
+      setUpdateError(key ? t(key) : (result.error ?? t('updates.errors.unknown')))
+      return
+    }
+
+    if (target === 'mod') {
+      await handleCheckUpdate(true)
+    }
   }
 
   if (!settings) {
@@ -197,40 +240,8 @@ export function SettingsPage() {
               </div>
               <div className="settings__row">
                 <div>
-                  <div className="settings__label">{t('settings.checkUpdates.label')}</div>
-                  <div className="settings__hint">{t('settings.checkUpdates.hint')}</div>
-                </div>
-                <button className="settings__select" style={{ cursor: 'pointer' }} onClick={() => void handleCheckUpdate()}>
-                  {t('common.checkNow')}
-                </button>
-              </div>
-              {updateInfo && (
-                <div style={{ padding: '0 16px 16px' }}>
-                  <p className="text-caption" style={{ color: 'var(--prime-muted)', marginBottom: 8 }}>
-                    {t('settings.updateNotes', {
-                      current: updateInfo.current,
-                      latest: updateInfo.latest,
-                      notes: updateInfo.notes
-                    })}
-                  </p>
-                  {updateInfo.updateAvailable && (
-                    <button
-                      className="settings__select"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() =>
-                        void window.primeLauncher.update.openRelease(
-                          updateInfo.downloadUrl ?? updateInfo.releaseUrl
-                        )
-                      }
-                    >
-                      {t('common.downloadUpdate')}
-                    </button>
-                  )}
-                </div>
-              )}
-              <div className="settings__row">
-                <div>
                   <div className="settings__label">{t('settings.autoUpdate.label')}</div>
+                  <div className="settings__hint">{t('settings.autoUpdate.hint')}</div>
                 </div>
                 <Toggle
                   checked={settings.autoUpdate}
@@ -289,22 +300,48 @@ export function SettingsPage() {
                   <div className="settings__label">{t('settings.javaPath.label')}</div>
                   <div className="settings__hint">{t('settings.javaPath.hint')}</div>
                 </div>
-                <select
-                  className="settings__select"
-                  value={settings.defaultJavaPath ?? 'auto'}
-                  onChange={(e) =>
-                    void patch({
-                      defaultJavaPath: e.target.value === 'auto' ? null : e.target.value
-                    })
-                  }
-                >
-                  <option value="auto">{t('common.automatic')}</option>
-                  {javaInstalls.map((java) => (
-                    <option key={java.path} value={java.path}>
-                      {java.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="settings__java-picker">
+                  <select
+                    className="settings__select"
+                    value={settings.defaultJavaPath ?? 'auto'}
+                    onChange={(e) =>
+                      void patch({
+                        defaultJavaPath: e.target.value === 'auto' ? null : e.target.value
+                      })
+                    }
+                  >
+                    <option value="auto">{t('common.automatic')}</option>
+                    {javaInstalls.map((java) => (
+                      <option key={java.path} value={java.path}>
+                        {java.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="settings__select settings__java-browse"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() =>
+                      void (async () => {
+                        const result = await window.primeLauncher.settings.browseJava()
+                        if (!result.ok || !result.install) {
+                          if (result.error && result.error !== 'Cancelled.') {
+                            window.alert(result.error)
+                          }
+                          return
+                        }
+                        const added = await window.primeLauncher.settings.addJavaPath(result.install.path)
+                        if (!added.ok || !added.install) {
+                          window.alert(added.error ?? t('settings.javaPath.browseFailed'))
+                          return
+                        }
+                        setJavaInstalls(await window.primeLauncher.settings.listJava())
+                        await patch({ defaultJavaPath: added.install.path })
+                      })()
+                    }
+                  >
+                    {t('settings.javaPath.addPath')}
+                  </button>
+                </div>
               </div>
               <div className="settings__row">
                 <div>
@@ -456,6 +493,98 @@ export function SettingsPage() {
                 <option value="5">5</option>
               </select>
             </div>
+          )}
+
+          {section === 'updates' && (
+            <>
+              <div className="settings__row">
+                <div>
+                  <div className="settings__label">{t('settings.checkUpdates.label')}</div>
+                  <div className="settings__hint">{t('settings.checkUpdates.hint')}</div>
+                </div>
+                <button
+                  className="settings__select"
+                  style={{ cursor: 'pointer' }}
+                  disabled={updateBusy !== null}
+                  onClick={() => void handleCheckUpdate(true)}
+                >
+                  {updateBusy === 'check' ? t('updates.checking') : t('common.checkNow')}
+                </button>
+              </div>
+
+              {updateInfo && (
+                <>
+                  <div className="settings__row">
+                    <div>
+                      <div className="settings__label">{t('updates.launcher.label')}</div>
+                      <div className="settings__hint">
+                        {t('updates.versionLine', {
+                          current: updateInfo.launcher.current,
+                          latest: updateInfo.launcher.latest
+                        })}
+                      </div>
+                    </div>
+                    {updateInfo.launcher.updateAvailable ? (
+                      <button
+                        className="settings__select"
+                        style={{ cursor: 'pointer' }}
+                        disabled={updateBusy !== null}
+                        onClick={() => void handleInstallUpdate('launcher')}
+                      >
+                        {updateBusy === 'launcher' ? t('updates.installing') : t('updates.installLauncher')}
+                      </button>
+                    ) : (
+                      <span className="text-caption" style={{ color: 'var(--prime-success)', padding: '0 16px' }}>
+                        {t('updates.upToDate')}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="settings__row">
+                    <div>
+                      <div className="settings__label">{t('updates.mod.label')}</div>
+                      <div className="settings__hint">
+                        {t('updates.versionLine', {
+                          current: updateInfo.mod.current,
+                          latest: updateInfo.mod.latest
+                        })}
+                      </div>
+                    </div>
+                    {updateInfo.mod.updateAvailable ? (
+                      <button
+                        className="settings__select"
+                        style={{ cursor: 'pointer' }}
+                        disabled={updateBusy !== null}
+                        onClick={() => void handleInstallUpdate('mod')}
+                      >
+                        {updateBusy === 'mod' ? t('updates.installing') : t('updates.installMod')}
+                      </button>
+                    ) : (
+                      <span className="text-caption" style={{ color: 'var(--prime-success)', padding: '0 16px' }}>
+                        {t('updates.upToDate')}
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ padding: '0 16px 16px' }}>
+                    <p className="text-caption" style={{ color: 'var(--prime-muted)' }}>
+                      {updateInfo.notes}
+                    </p>
+                    {updateProgress && (
+                      <p className="text-caption" style={{ color: 'var(--prime-muted)', marginTop: 8 }}>
+                        {updateProgress.detail ?? t(`updates.phase.${updateProgress.phase}`)}
+                        {updateProgress.percent > 0 ? ` · ${updateProgress.percent}%` : ''}
+                      </p>
+                    )}
+                    {updateError && (
+                      <p className="text-caption" style={{ color: 'var(--prime-error)', marginTop: 8 }}>
+                        {updateError}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </>
           )}
 
           {section === 'advanced' && (

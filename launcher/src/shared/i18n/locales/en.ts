@@ -43,7 +43,8 @@ export const en = {
     signIn: 'Sign in',
     checkNow: 'Check now',
     downloadUpdate: 'Download update',
-    automatic: 'Automatic'
+    automatic: 'Automatic',
+    updateNow: 'Update now'
   },
   newsTag: {
     update: 'Update',
@@ -78,6 +79,7 @@ export const en = {
       accounts: 'Accounts',
       privacy: 'Privacy',
       downloads: 'Downloads',
+      updates: 'Updates',
       advanced: 'Advanced'
     },
     language: {
@@ -97,6 +99,7 @@ export const en = {
     },
     autoUpdate: {
       label: 'Auto-update launcher',
+      hint: 'Check GitHub for updates when the launcher starts',
       toggle: 'Auto update'
     },
     theme: {
@@ -117,7 +120,9 @@ export const en = {
     restartNow: 'Restart now',
     javaPath: {
       label: 'Default Java path',
-      hint: 'Auto-detected JDK 21+ at launch'
+      hint: 'Auto-detected JDK 21+ at launch',
+      addPath: 'Add path',
+      browseFailed: 'Could not add Java path.'
     },
     defaultRam: {
       label: 'Default RAM allocation'
@@ -169,6 +174,40 @@ export const en = {
       toggle: 'Developer mode'
     },
     updateNotes: 'v{current} → latest v{latest} — {notes}'
+  },
+  updates: {
+    modal: {
+      title: 'Update available',
+      subtitle: 'A new version of Prime Client is ready. Install without leaving the launcher.'
+    },
+    launcher: {
+      label: 'Prime Launcher'
+    },
+    mod: {
+      label: 'Prime Client mod'
+    },
+    versionLine: 'v{current} → v{latest}',
+    installLauncher: 'Install launcher',
+    installMod: 'Install mod',
+    installing: 'Installing…',
+    checking: 'Checking…',
+    later: 'Later',
+    upToDate: 'Up to date',
+    phase: {
+      downloading: 'Downloading…',
+      installing: 'Installing…',
+      done: 'Done',
+      error: 'Failed'
+    },
+    errors: {
+      dev_mode: 'Launcher self-update only works in the installed app, not dev mode.',
+      unsupported_platform: 'In-app launcher update is only supported on Windows.',
+      no_update: 'No update available to install.',
+      game_running: 'Close Minecraft before updating the mod.',
+      no_instance: 'No instance found — create one first.',
+      prime_mod_disabled: 'Prime mod is disabled on the default instance.',
+      unknown: 'Update failed. Try again or download from GitHub.'
+    }
   },
   pages: {
     accounts: {
@@ -251,6 +290,8 @@ export const en = {
       includePrimeMod: 'Include Prime Client mod (+ Fabric API)',
       ram: 'RAM (MB)',
       jvmArgs: 'JVM args (one per line)',
+      javaPath: 'Java path (optional)',
+      javaPathHint: 'Overrides global default for this instance',
       createFailed: 'Could not create instance.',
       saveFailed: 'Could not save instance.',
       saving: 'Saving…',
@@ -264,7 +305,16 @@ export const en = {
       searching: 'Searching…',
       searchFailed: 'Search failed.',
       installFailed: 'Install failed.',
-      close: 'Close'
+      close: 'Close',
+      chooseVersion: 'Choose version',
+      chooseVersionHint: 'Select which release to install for this instance.',
+      versionLabel: 'Version',
+      gameVersions: 'MC versions',
+      loaders: 'Loaders',
+      recommended: 'Recommended',
+      back: 'Back',
+      noVersions: 'No compatible versions found.',
+      versionsFailed: 'Could not load versions.'
     },
     modrinth: {
       modsTitle: 'Browse Modrinth — Mods',

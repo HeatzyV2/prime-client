@@ -50,7 +50,7 @@ public final class HudEditorScreen extends Screen {
         renderContext.prepare(extractor);
         client.hud().layout(renderContext);
 
-        if (minecraft.level != null) {
+        if (minecraft.level != null && minecraft.player != null) {
             HudEditorState.runVanillaHudRender(
                     () -> minecraft.gui.hud.extractRenderState(extractor, minecraft.getDeltaTracker()));
             client.hud().layout(renderContext);

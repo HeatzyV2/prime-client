@@ -4,8 +4,8 @@ import type { ShaderEntry } from '../../shared/content-types'
 import { getShaderPacksDir } from './paths'
 import { getActiveShaderPack, setActiveShaderPack } from './options'
 import { patchContentMeta, readContentMeta } from './contentMeta'
-import { downloadModrinthFile, getModrinthVersion } from './ModrinthClient'
-import { downloadCurseForgeFile, getCurseForgeFile } from './CurseForgeClient'
+import { downloadModrinthFile, getModrinthVersion, getModrinthVersionById } from './ModrinthClient'
+import { downloadCurseForgeFile, getCurseForgeFile, getCurseForgeFileById } from './CurseForgeClient'
 import { downloadService } from '../services/DownloadService'
 
 function shaderId(fileName: string): string {
@@ -91,10 +91,13 @@ export async function installShaderFromModrinth(
   instanceId: string,
   projectId: string,
   title: string,
-  minecraftVersion: string
+  minecraftVersion: string,
+  versionId?: string
 ): Promise<{ ok: boolean; error?: string; fileName?: string }> {
   try {
-    const version = await getModrinthVersion(projectId, minecraftVersion)
+    const version = versionId
+      ? await getModrinthVersionById(versionId)
+      : await getModrinthVersion(projectId, minecraftVersion)
     const file = version.files.find((f) => f.primary) ?? version.files[0]
     if (!file) {
       return { ok: false, error: 'No downloadable file for this project.' }
@@ -127,10 +130,13 @@ export async function installShaderFromCurseForge(
   instanceId: string,
   modId: string,
   title: string,
-  minecraftVersion: string
+  minecraftVersion: string,
+  fileId?: string
 ): Promise<{ ok: boolean; error?: string; fileName?: string }> {
   try {
-    const file = await getCurseForgeFile(modId, minecraftVersion)
+    const file = fileId
+      ? await getCurseForgeFileById(modId, Number.parseInt(fileId, 10))
+      : await getCurseForgeFile(modId, minecraftVersion)
     const dir = getShaderPacksDir(instanceId)
     await mkdir(dir, { recursive: true })
     const dest = join(dir, file.fileName)

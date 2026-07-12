@@ -22,11 +22,14 @@ export interface LauncherSettings {
   developerMode: boolean
   jvmArgs: string[]
   defaultJavaPath: string | null
+  customJavaPaths: string[]
   gameWidth: number
   gameHeight: number
   gameDisplayMode: GameDisplayMode
   lastUpdateCheck?: string
   lastPrimeSync?: string
+  /** Suppresses home-screen update banner until newer versions appear. */
+  dismissedUpdateBanner?: string
 }
 
 const DEFAULT_SETTINGS = (): LauncherSettings => ({
@@ -45,6 +48,7 @@ const DEFAULT_SETTINGS = (): LauncherSettings => ({
   developerMode: false,
   jvmArgs: ['-XX:+UseG1GC'],
   defaultJavaPath: null,
+  customJavaPaths: [],
   gameWidth: 1920,
   gameHeight: 1080,
   gameDisplayMode: 'windowed'
