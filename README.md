@@ -48,7 +48,7 @@ Prérequis : JDK 25 (compile aussi la cible 21 via `--release`).
 
 ## Prime Launcher
 
-Le launcher officiel Electron vit dans [`launcher/`](launcher/) (v0.8). Releases : [GitHub](https://github.com/HeatzyV2/prime-client) · [docs/GITHUB.md](docs/GITHUB.md)
+Le launcher officiel Electron vit dans [`launcher/`](launcher/) (v0.9). Releases : [GitHub](https://github.com/HeatzyV2/prime-client) · [Site web](https://heatzyv2.github.io/prime-client/) · [docs/GITHUB.md](docs/GITHUB.md)
 
 ```bash
 cd launcher

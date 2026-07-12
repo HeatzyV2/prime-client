@@ -24,6 +24,18 @@ La workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml) 
 
 Assets attachés à la GitHub Release du tag.
 
+## Site web (GitHub Pages)
+
+Le site marketing vit dans [`website/`](../website/). Déployé automatiquement via [`.github/workflows/pages.yml`](../.github/workflows/pages.yml).
+
+| | |
+|--|--|
+| URL | `https://heatzyv2.github.io/prime-client/` |
+| Dev local | `cd website && npm install && npm run dev` |
+| Téléchargement | Bouton relié à `releases/latest` → `.exe` du launcher |
+
+Active **Settings → Pages → GitHub Actions** sur le repo une première fois.
+
 ## Vérifier les màj in-game
 
 Settings → **Check for updates** interroge l’API publique :

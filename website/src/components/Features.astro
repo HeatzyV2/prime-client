@@ -1,0 +1,84 @@
+---
+const features = [
+  {
+    icon: '⚔️',
+    title: 'PvP & HUD',
+    desc: 'Crosshair editor, keystrokes, CPS/FPS, target HUD, hit color, combo counter et bien plus — tout ce qu\'il faut pour le competitive.'
+  },
+  {
+    icon: '⚡',
+    title: 'Performance',
+    desc: 'Entity culling, dynamic FPS, optimisations particules et chunks, profils RAM — plus de FPS sans sacrifier le visuel.'
+  },
+  {
+    icon: '✨',
+    title: 'Qualité de vie',
+    desc: 'Zoom, waypoints, meilleur chat, preview shulker, auto-respawn, recherche inventaire — le confort au quotidien.'
+  },
+  {
+    icon: '🎬',
+    title: 'Création',
+    desc: 'Caméra cinématique, mode screenshot, replays, clips et streamer mode pour les créateurs de contenu.'
+  },
+  {
+    icon: '👑',
+    title: 'Prime exclusif',
+    desc: 'Discord RPC, cosmétiques, sync cloud, profils PvP/Survie et compte Prime — l\'écosystème complet.'
+  },
+  {
+    icon: '🛡️',
+    title: '100 % légitime',
+    desc: 'Aucun cheat gameplay. Prime Client améliore l\'expérience visuelle et le confort — compatible avec les serveurs fair-play.'
+  }
+]
+---
+
+<section class="section" id="features">
+  <div class="container">
+    <div class="section-label">Pourquoi Prime</div>
+    <h2 class="section-title">Tout ce qu'un client premium<br /><span class="text-gradient">devrait offrir</span></h2>
+    <p class="section-lead" style="margin-bottom: 56px;">
+      Une alternative moderne à Lunar, Badlion et Feather — conçue pour les joueurs exigeants qui veulent
+      performance, style et contrôle sans compromis sur l'éthique.
+    </p>
+
+    <div class="features__grid">
+      {features.map((f) => (
+        <article class="features__card glass-card">
+          <div class="features__icon">{f.icon}</div>
+          <h3>{f.title}</h3>
+          <p>{f.desc}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .features__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .features__card {
+    padding: 28px;
+  }
+
+  .features__icon {
+    font-size: 1.75rem;
+    margin-bottom: 16px;
+  }
+
+  .features__card h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .features__card p {
+    font-size: 0.9rem;
+    color: var(--prime-muted);
+    line-height: 1.65;
+  }
+</style>
