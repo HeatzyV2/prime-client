@@ -124,9 +124,20 @@ public final class GuiRenderContext implements RenderContext {
     @Override
     public void drawTexture(String texturePath, int x, int y, int width, int height,
                               int textureWidth, int textureHeight, int tintArgb) {
-        Identifier id = Identifier.fromNamespaceAndPath(PrimeClient.MOD_ID, texturePath);
+        Identifier id = textureId(texturePath);
         graphics.blit(RenderPipelines.GUI_TEXTURED, id, x, y, 0, 0, width, height,
                 textureWidth, textureHeight, applyOpacity(tintArgb));
+    }
+
+    private static Identifier textureId(String texturePath) {
+        String path = texturePath.replace('\\', '/');
+        if (path.startsWith("textures/")) {
+            path = path.substring("textures/".length());
+        }
+        if (path.endsWith(".png")) {
+            path = path.substring(0, path.length() - 4);
+        }
+        return Identifier.fromNamespaceAndPath(PrimeClient.MOD_ID, path);
     }
 
     private int applyOpacity(int argb) {

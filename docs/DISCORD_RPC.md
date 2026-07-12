@@ -1,29 +1,52 @@
-# Discord Rich Presence — Asset Setup
+# Discord Rich Presence — Configuration
 
-Application ID: **1525574680994648174**
+## Application ID (obligatoire)
 
-## Logo asset (one file for everything)
+| Champ | Valeur |
+|-------|--------|
+| **Application ID** | `1525574680994648174` |
+| Portail | [Discord Developer Portal](https://discord.com/developers/applications/1525574680994648174) |
 
-Use the project logo at [docs/assets/logo.png](assets/logo.png) (1024×559).
+C’est le **seul ID** nécessaire. Pas de bot token, pas de client secret pour la Rich Presence IPC.
 
-Upload it **once** in the [Discord Developer Portal](https://discord.com/developers/applications/1525574680994648174/rich-presence/assets) with this key:
+Le launcher et le mod in-game utilisent **le même Application ID** (défini dans `launcher/src/main/discord/types.ts` et `DiscordRpcService.java`).
 
-| Asset key    | File to upload      |
-|--------------|---------------------|
-| `prime_logo` | `docs/assets/logo.png` |
+> Si tu n’es pas propriétaire de cette application Discord, crée la tienne sur [discord.com/developers](https://discord.com/developers/applications) et remplace l’ID dans ces deux fichiers.
 
-The mod uses `prime_logo` for all Rich Presence images (menu, solo, multi, large icon).
+## Asset image (portail Discord)
 
-## In-game assets (already bundled)
+Dans **Rich Presence → Art Assets**, upload le logo avec cette clé exacte :
 
-| Path | Usage |
-|------|--------|
-| `assets/primeclient/icon.png` | Fabric mod icon (Mod Menu / loader) |
-| `assets/primeclient/textures/gui/logo.png` | ClickGUI menu, loading screen, HUD watermark, onboarding |
+| Asset key | Fichier |
+|-----------|---------|
+| `prime_logo` | `mc-1.21.11/src/main/resources/assets/primeclient/textures/gui/logo.png` |
 
-## Enable RPC
+Sans cet asset, la présence peut s’afficher sans image ou être rejetée.
 
-- **Launcher:** Settings → **Discord RPC** (enabled by default). Shows *Prime Launcher* while browsing; clears when Minecraft starts so the mod can take over.
-- **In-game:** **Right Shift** → **Prime** → enable **Discord RPC** (Discord Desktop must be running).
+## Prérequis côté utilisateur
 
-Application ID: **1525574680994648174**
+1. **Discord Desktop** ouvert (pas le navigateur seul)
+2. **Paramètres utilisateur Discord** → Activité de jeu → *Afficher l’activité actuelle* activé
+3. **Launcher** → Paramètres → **Discord RPC** activé (par défaut : oui)
+4. Relancer le launcher **après** avoir ouvert Discord si la RPC n’apparaît pas (retry auto toutes les 10 s)
+
+## Comportement
+
+| Contexte | Affichage |
+|----------|-----------|
+| Launcher ouvert (sans jeu) | `Prime Launcher` · `Joueur • Ready to play` |
+| Téléchargement / lancement | `Launching Minecraft` |
+| Jeu lancé | Launcher efface sa présence → le **mod** prend le relais |
+| Jeu fermé | Retour `Prime Launcher` |
+
+## Activer in-game
+
+**Right Shift** → **Prime** → module **Discord RPC**
+
+## Dépannage
+
+- Console launcher (**Console** dans la sidebar) : cherche `Discord Rich Presence active` ou `Discord RPC unavailable`
+- Vérifie l’App ID dans le message de log
+- Les **boutons** RPC peuvent être refusés par Discord sur une app non vérifiée — le launcher réessaie sans boutons automatiquement
+
+Application ID : **1525574680994648174**

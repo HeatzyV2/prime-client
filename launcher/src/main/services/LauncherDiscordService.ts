@@ -30,7 +30,7 @@ export class LauncherDiscordService {
       return
     }
     this.startRetryLoop()
-    await this.publish(await this.idlePresence())
+    await this.publishIdleWithDiagnostics('Launcher started')
   }
 
   async setEnabled(enabled: boolean): Promise<void> {
@@ -152,20 +152,39 @@ export class LauncherDiscordService {
     const ok = await this.ipc.setActivity(resolved)
     if (ok) {
       this.lastFingerprint = fingerprint
-      launchLogService.append('info', 'Discord Rich Presence updated', 'start')
+      launchLogService.append('info', 'Discord Rich Presence active', 'start')
     } else {
-      launchLogService.append('warn', 'Discord RPC unavailable — is Discord Desktop running?', 'start')
+      const reason = this.ipc.lastError ?? 'Discord Desktop not running'
+      launchLogService.append(
+        'warn',
+        `Discord RPC unavailable — ${reason} (App ID ${DISCORD_APPLICATION_ID})`,
+        'start'
+      )
+    }
+  }
+
+  private async publishIdleWithDiagnostics(context: string): Promise<void> {
+    await this.publish(this.idlePresence())
+    if (!this.ipc.isConnected() && this.enabled) {
+      launchLogService.append(
+        'warn',
+        `${context}: waiting for Discord Desktop… (Application ID ${DISCORD_APPLICATION_ID})`,
+        'start'
+      )
     }
   }
 
   private startRetryLoop(): void {
     this.stopRetryLoop()
     this.retryTimer = setInterval(() => {
-      if (!this.enabled || this.gameHandoff || this.ipc.isConnected()) {
+      if (!this.enabled || this.gameHandoff) {
         return
       }
-      void this.publish(this.idlePresence())
-    }, 30_000)
+      if (this.ipc.isConnected()) {
+        return
+      }
+      void this.publishIdleWithDiagnostics('Retry')
+    }, 10_000)
   }
 
   private stopRetryLoop(): void {

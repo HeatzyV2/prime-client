@@ -5,6 +5,24 @@ const OP_HANDSHAKE = 0
 const OP_FRAME = 1
 const OP_CLOSE = 2
 
+export type DiscordIpcErrorCode =
+  | 'discord_not_running'
+  | 'handshake_failed'
+  | 'activity_rejected'
+  | 'ipc_timeout'
+  | 'ipc_closed'
+  | 'unknown'
+
+export class DiscordIpcError extends Error {
+  constructor(
+    message: string,
+    readonly code: DiscordIpcErrorCode
+  ) {
+    super(message)
+    this.name = 'DiscordIpcError'
+  }
+}
+
 function trim(text: string, max: number): string {
   if (text.length <= max) {
     return text
@@ -20,6 +38,7 @@ export class DiscordIpcClient {
   private recvBuffer = Buffer.alloc(0)
   private readonly queue: Array<() => Promise<void>> = []
   private draining = false
+  lastError: string | null = null
 
   constructor(private readonly applicationId: string) {}
 
@@ -32,7 +51,7 @@ export class DiscordIpcClient {
       return true
     }
     const now = Date.now()
-    if (now - this.lastConnectAttempt < 3000) {
+    if (now - this.lastConnectAttempt < 2000) {
       return false
     }
     this.lastConnectAttempt = now
@@ -43,11 +62,14 @@ export class DiscordIpcClient {
         await this.openTransport(i)
         await this.handshake()
         this.connected = true
+        this.lastError = null
         return true
-      } catch {
+      } catch (err) {
+        this.lastError = err instanceof Error ? err.message : String(err)
         this.close()
       }
     }
+    this.lastError = 'Discord Desktop not detected — open Discord and restart the launcher.'
     return false
   }
 
@@ -55,10 +77,24 @@ export class DiscordIpcClient {
     if (!(await this.ensureConnected())) {
       return false
     }
+
     try {
-      await this.sendFrame(this.buildSetActivity(payload))
+      await this.sendActivity(payload, true)
+      this.lastError = null
       return true
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (payload.buttons?.length) {
+        try {
+          await this.sendActivity({ ...payload, buttons: undefined }, false)
+          this.lastError = null
+          return true
+        } catch (retryErr) {
+          this.lastError = retryErr instanceof Error ? retryErr.message : String(retryErr)
+        }
+      } else {
+        this.lastError = message
+      }
       this.connected = false
       this.close()
       return false
@@ -90,6 +126,11 @@ export class DiscordIpcClient {
     })
   }
 
+  private async sendActivity(payload: DiscordPresencePayload, withButtons: boolean): Promise<void> {
+    const json = withButtons ? this.buildSetActivity(payload) : this.buildSetActivity(payload, false)
+    await this.sendFrame(json)
+  }
+
   private async ensureConnected(): Promise<boolean> {
     if (this.connected) {
       return true
@@ -108,9 +149,13 @@ export class DiscordIpcClient {
       this.socket = socket
       this.recvBuffer = Buffer.alloc(0)
 
-      socket.once('error', reject)
+      const onError = (err: Error): void => {
+        reject(err)
+      }
+
+      socket.once('error', onError)
       socket.once('connect', () => {
-        socket.off('error', reject)
+        socket.off('error', onError)
         socket.on('data', (chunk: Buffer) => {
           this.recvBuffer = Buffer.concat([this.recvBuffer, chunk])
         })
@@ -128,10 +173,13 @@ export class DiscordIpcClient {
   private async handshake(): Promise<void> {
     const payload = JSON.stringify({ v: 1, client_id: this.applicationId })
     await this.writePacket(OP_HANDSHAKE, payload)
-    await this.readPacket()
+    const body = await this.readPacket()
+    if (body) {
+      this.assertNoError(body, 'handshake_failed')
+    }
   }
 
-  private buildSetActivity(snapshot: DiscordPresencePayload): string {
+  private buildSetActivity(snapshot: DiscordPresencePayload, includeButtons = true): string {
     const activity: Record<string, unknown> = { type: 0 }
     if (snapshot.details) {
       activity.details = trim(snapshot.details, 128)
@@ -150,7 +198,7 @@ export class DiscordIpcClient {
       ...(snapshot.smallImageText ? { small_text: trim(snapshot.smallImageText, 128) } : {})
     }
 
-    if (snapshot.buttons?.length) {
+    if (includeButtons && snapshot.buttons?.length) {
       const buttons: string[] = []
       const labels: string[] = []
       for (const button of snapshot.buttons.slice(0, 2)) {
@@ -184,7 +232,25 @@ export class DiscordIpcClient {
 
   private async sendFrame(json: string): Promise<void> {
     await this.writePacket(OP_FRAME, json)
-    await this.readPacket()
+    const body = await this.readPacket()
+    if (body) {
+      this.assertNoError(body, 'activity_rejected')
+    }
+  }
+
+  private assertNoError(body: string, code: DiscordIpcErrorCode): void {
+    try {
+      const parsed = JSON.parse(body) as { evt?: string; data?: { message?: string; code?: number } }
+      if (parsed.evt === 'ERROR') {
+        const detail = parsed.data?.message ?? `Discord error ${parsed.data?.code ?? ''}`.trim()
+        throw new DiscordIpcError(detail || 'Discord rejected Rich Presence', code)
+      }
+    } catch (err) {
+      if (err instanceof DiscordIpcError) {
+        throw err
+      }
+      // Non-JSON frame (DISPATCH) — success
+    }
   }
 
   private writePacket(opcode: number, json: string): Promise<void> {
@@ -198,7 +264,7 @@ export class DiscordIpcClient {
   private write(data: Buffer): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {
-        reject(new Error('Discord IPC not connected'))
+        reject(new DiscordIpcError('Discord IPC not connected', 'discord_not_running'))
         return
       }
       this.socket.write(data, (err) => {
@@ -212,7 +278,7 @@ export class DiscordIpcClient {
     })
   }
 
-  private readPacket(): Promise<void> {
+  private readPacket(): Promise<string | null> {
     return new Promise((resolve, reject) => {
       const tryRead = (): void => {
         if (this.recvBuffer.length < 8) {
@@ -223,14 +289,16 @@ export class DiscordIpcClient {
         if (this.recvBuffer.length < 8 + length) {
           return
         }
+        const body =
+          length > 0 ? this.recvBuffer.subarray(8, 8 + length).toString('utf8') : ''
         this.recvBuffer = this.recvBuffer.subarray(8 + length)
         if (opcode === OP_CLOSE) {
           this.connected = false
-          reject(new Error('Discord IPC closed'))
+          reject(new DiscordIpcError('Discord IPC closed connection', 'ipc_closed'))
           return
         }
         cleanup()
-        resolve()
+        resolve(body || null)
       }
 
       const onData = (): void => {
@@ -244,7 +312,7 @@ export class DiscordIpcClient {
 
       const timer = setTimeout(() => {
         cleanup()
-        reject(new Error('Discord IPC read timeout'))
+        reject(new DiscordIpcError('Discord IPC read timeout', 'ipc_timeout'))
       }, 5000)
 
       this.socket?.on('data', onData)
