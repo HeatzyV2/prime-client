@@ -5,6 +5,7 @@ import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.hud.HudAnchor;
 import dev.primeclient.core.hud.HudElement;
 import dev.primeclient.core.hud.HudManager;
+import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 import dev.primeclient.core.theme.Theme;
@@ -69,7 +70,7 @@ public final class FpsCounterModule extends Module {
             int fps = adapter.fps();
             if (fps != lastFps) {
                 lastFps = fps;
-                text = fps + " FPS";
+                text = PrimeLang.get("prime.hud.fps.format", "%d FPS", fps);
             }
         }
     }

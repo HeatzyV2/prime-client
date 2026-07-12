@@ -3,6 +3,7 @@ package dev.primeclient.core.module;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.primeclient.core.event.EventBus;
+import dev.primeclient.core.i18n.PrimeLang;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -66,6 +67,7 @@ public abstract class Module {
                 throw new IllegalArgumentException(id + ": duplicate setting id '" + setting.id() + "'");
             }
         }
+        setting.bindModule(id);
         settings.add(setting);
         return setting;
     }
@@ -115,11 +117,11 @@ public abstract class Module {
     }
 
     public final String name() {
-        return name;
+        return PrimeLang.module(id, "name", name);
     }
 
     public final String description() {
-        return description;
+        return PrimeLang.module(id, "description", description);
     }
 
     public final ModuleCategory category() {

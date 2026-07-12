@@ -11,7 +11,7 @@ import net.minecraft.network.chat.Component;
 /** Prime Client title screen — replaces vanilla {@code TitleScreen}. */
 public final class PrimeTitleScreen extends Screen {
 
-    private static final int OVERLAY = 0x55000000;
+    private static final int OVERLAY = 0x28000000;
 
     private final GuiRenderContext renderContext = new GuiRenderContext();
     private final TitleMenu titleMenu = new TitleMenu(PrimeClient.get().adapter());

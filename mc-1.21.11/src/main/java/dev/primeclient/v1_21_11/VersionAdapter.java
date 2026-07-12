@@ -1,12 +1,15 @@
 package dev.primeclient.v1_21_11;
 
 import dev.primeclient.core.adapter.MinecraftAdapter;
+import dev.primeclient.core.PrimeClient;
+import dev.primeclient.core.gui.menu.TitleScreenGate;
 import dev.primeclient.core.util.DirectionUtil;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.GraphicsPreset;
 import net.minecraft.client.gui.screens.DeathScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
@@ -15,6 +18,7 @@ import net.minecraft.client.multiplayer.ServerList;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -26,6 +30,7 @@ import org.lwjgl.glfw.GLFW;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 
 /** {@link MinecraftAdapter} for Minecraft 1.21.11. */
 public final class VersionAdapter implements MinecraftAdapter {
@@ -113,6 +118,29 @@ public final class VersionAdapter implements MinecraftAdapter {
     }
 
     @Override
+    public void openPrimeSettings() {
+        PrimeClient.get().clickGui().showSettings();
+        Minecraft.getInstance().setScreen(new dev.primeclient.v1_21_11.screen.ClickGuiScreen());
+    }
+
+    @Override
+    public void openVanillaTitleScreen() {
+        TitleScreenGate.requestVanilla();
+        Minecraft.getInstance().setScreen(new TitleScreen());
+    }
+
+    @Override
+    public void openExternalLink(String url) {
+        if (url == null || url.isBlank()) {
+            return;
+        }
+        try {
+            java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
+        } catch (Exception ignored) {
+        }
+    }
+
+    @Override
     public void openSingleplayer() {
         Minecraft mc = Minecraft.getInstance();
         Screen parent = mc.screen != null ? mc.screen : null;
@@ -172,7 +200,11 @@ public final class VersionAdapter implements MinecraftAdapter {
     @Override
     public String playerName() {
         LocalPlayer player = Minecraft.getInstance().player;
-        return player != null ? player.getName().getString() : "";
+        if (player != null) {
+            return player.getName().getString();
+        }
+        var user = Minecraft.getInstance().getUser();
+        return user != null ? user.getName() : "";
     }
 
     @Override
@@ -640,6 +672,33 @@ public final class VersionAdapter implements MinecraftAdapter {
             double oy = (random.nextDouble() - 0.5) * 0.5;
             double oz = (random.nextDouble() - 0.5) * 0.5;
             mc.particleEngine.createParticle(options, x + ox, y + oy, z + oz, 0, 0.03, 0);
+        }
+    }
+
+    @Override
+    public String translate(String key, String fallback, Object... args) {
+        try {
+            Component component = args.length == 0
+                    ? Component.translatable(key)
+                    : Component.translatable(key, args);
+            String resolved = component.getString();
+            if (resolved.equals(key)) {
+                return formatFallback(fallback, args);
+            }
+            return resolved;
+        } catch (Exception ignored) {
+            return formatFallback(fallback, args);
+        }
+    }
+
+    private static String formatFallback(String fallback, Object... args) {
+        if (args == null || args.length == 0) {
+            return fallback;
+        }
+        try {
+            return String.format(Locale.ROOT, fallback, args);
+        } catch (Exception ignored) {
+            return fallback;
         }
     }
 }

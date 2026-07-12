@@ -26,7 +26,7 @@ export interface LauncherSettings {
 const DEFAULT_SETTINGS = (): LauncherSettings => ({
   version: 1,
   language: 'en',
-  closeOnLaunch: true,
+  closeOnLaunch: false,
   autoUpdate: true,
   theme: 'prime-dark',
   backgroundNebula: false,

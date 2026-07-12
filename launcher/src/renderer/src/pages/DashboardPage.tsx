@@ -6,6 +6,7 @@ import { Avatar, Badge, Button, Card } from '@renderer/design-system/components'
 import { useAccounts } from '@renderer/context/AccountProvider'
 import { useI18n } from '@renderer/context/I18nProvider'
 import { LoginModal } from '@renderer/components/LoginModal'
+import { CrashReportPanel } from '@renderer/components/CrashReportPanel'
 import { formatLoader, formatTier } from '@shared/format'
 import type { FavoriteServer, GameInstance, NewsItem } from '@shared/types'
 import './DashboardPage.css'
@@ -27,6 +28,13 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
   const [showLogin, setShowLogin] = useState(false)
   const [launching, setLaunching] = useState(false)
   const [instance, setInstance] = useState<GameInstance | null>(null)
+  const [crashDismissed, setCrashDismissed] = useState(false)
+
+  useEffect(() => {
+    if (launchProgress?.phase === 'crashed') {
+      setCrashDismissed(false)
+    }
+  }, [launchProgress?.phase, launchProgress?.crash?.title])
 
   useEffect(() => {
     void (async () => {
@@ -97,17 +105,27 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
 
       {(launchMessage || launchProgress) && (
         <Card>
-          {launchProgress && launchProgress.phase !== 'log' && (
+          {launchProgress?.phase === 'crashed' && launchProgress.crash && !crashDismissed && (
+            <CrashReportPanel crash={launchProgress.crash} onDismiss={() => setCrashDismissed(true)} />
+          )}
+          {launchProgress && launchProgress.phase !== 'log' && launchProgress.phase !== 'crashed' && (
             <p className="text-caption" style={{ marginBottom: 8 }}>
               {launchProgress.detail}
               {launchProgress.percent !== undefined ? ` · ${launchProgress.percent}%` : ''}
+            </p>
+          )}
+          {launchProgress?.phase === 'stopped' && (
+            <p className="text-caption" style={{ color: 'var(--prime-muted)' }}>
+              {launchProgress.detail}
             </p>
           )}
           {launchMessage && (
             <p
               className="text-body"
               style={{
-                color: launchMessage.includes('started') ? 'var(--prime-success)' : 'var(--prime-muted)'
+                color: launchMessage.toLowerCase().includes('started') || launchMessage.toLowerCase().includes('running')
+                  ? 'var(--prime-success)'
+                  : 'var(--prime-red-bright)'
               }}
             >
               {launchMessage}

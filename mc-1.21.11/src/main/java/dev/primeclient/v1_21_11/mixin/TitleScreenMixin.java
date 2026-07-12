@@ -1,5 +1,6 @@
 package dev.primeclient.v1_21_11.mixin;
 
+import dev.primeclient.core.gui.menu.TitleScreenGate;
 import dev.primeclient.v1_21_11.screen.PrimeTitleScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -13,6 +14,9 @@ public class TitleScreenMixin {
 
     @Inject(method = "init", at = @At("HEAD"), cancellable = true)
     private void primeclient$replaceTitleMenu(CallbackInfo ci) {
+        if (TitleScreenGate.consumeAllowVanilla()) {
+            return;
+        }
         Minecraft.getInstance().setScreen(new PrimeTitleScreen());
         ci.cancel();
     }

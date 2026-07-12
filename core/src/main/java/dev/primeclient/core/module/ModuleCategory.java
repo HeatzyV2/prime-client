@@ -1,5 +1,7 @@
 package dev.primeclient.core.module;
 
+import dev.primeclient.core.i18n.PrimeLang;
+
 /** The five Prime Client module families, in ClickGUI display order. */
 public enum ModuleCategory {
     PVP("PvP", "P", 0xFFEF4444),
@@ -19,7 +21,7 @@ public enum ModuleCategory {
     }
 
     public String displayName() {
-        return displayName;
+        return PrimeLang.category(this, displayName);
     }
 
     public String icon() {

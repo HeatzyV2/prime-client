@@ -20,11 +20,13 @@ export function getInstanceModsDir(instanceId: string): string {
 export function getRepoRoot(): string {
   const appPath = app.getAppPath()
   const candidates = [
+    process.env.PRIME_REPO_ROOT,
     join(appPath, '..', '..'),
     join(appPath, '..'),
     join(process.cwd(), '..'),
-    process.cwd()
-  ]
+    process.cwd(),
+    join(process.cwd(), '..', '..')
+  ].filter((value): value is string => Boolean(value))
 
   for (const root of candidates) {
     if (existsSync(join(root, 'mc-1.21.11', 'build.gradle'))) {

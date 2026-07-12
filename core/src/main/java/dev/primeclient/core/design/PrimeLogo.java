@@ -6,8 +6,8 @@ import dev.primeclient.core.adapter.RenderContext;
 public final class PrimeLogo {
 
     public static final String TEXTURE = "textures/gui/logo.png";
-    public static final int SRC_WIDTH = 1024;
-    public static final int SRC_HEIGHT = 559;
+    public static final int SRC_WIDTH = 512;
+    public static final int SRC_HEIGHT = 279;
 
     private PrimeLogo() {
     }

@@ -85,7 +85,7 @@ export class DownloadService {
 
     const progress = payload.percent ?? (payload.phase === 'running' ? 100 : 0)
     const status: DownloadTask['status'] =
-      payload.phase === 'running'
+      payload.phase === 'running' || payload.phase === 'stopped' || payload.phase === 'crashed'
         ? 'completed'
         : payload.phase === 'start'
           ? 'queued'

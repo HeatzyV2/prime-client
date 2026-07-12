@@ -10,6 +10,7 @@ import dev.primeclient.core.cosmetics.CosmeticManager;
 import dev.primeclient.core.crosshair.CrosshairConfig;
 import dev.primeclient.core.crosshair.CrosshairPresetStore;
 import dev.primeclient.core.crosshair.CrosshairProfileManager;
+import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.bootstrap.FirstRunConfigurator;
 import dev.primeclient.core.bootstrap.OnboardingFlow;
 import dev.primeclient.core.discord.DiscordRpcService;
@@ -82,6 +83,7 @@ public final class PrimeClient {
     private boolean debutSession;
     private int debutTicks;
     private boolean debutMenuOpened;
+    private boolean debutOverlayDone;
 
     private PrimeClient(MinecraftAdapter adapter) {
         this.adapter = adapter;
@@ -150,18 +152,19 @@ public final class PrimeClient {
         if (instance != null) {
             throw new IllegalStateException(NAME + " is already bootstrapped");
         }
+        PrimeLang.bind(adapter::translate);
         PrimeClient client = new PrimeClient(adapter);
         instance = client;
-        client.loadingOverlay.setStage("Loading Core...", 0.2f);
+        client.loadingOverlay.setStage(PrimeLang.get("prime.gui.loading.core", "Loading Core..."), 0.2f);
         Modules.registerBuiltins(client);
         client.wireGlobalListeners();
-        client.loadingOverlay.setStage("Loading Modules...", 0.55f);
+        client.loadingOverlay.setStage(PrimeLang.get("prime.gui.loading.modules", "Loading Modules..."), 0.55f);
         boolean freshInstall = client.profiles.loadInitial();
         client.debutSession = freshInstall;
         if (freshInstall) {
             FirstRunConfigurator.applyStarter(client);
         }
-        client.loadingOverlay.setStage("Prime Client prêt", 1f);
+        client.loadingOverlay.setStage(PrimeLang.get("prime.gui.loading.ready", "Prime Client ready"), 1f);
         LOGGER.info("{} v{} bootstrapped (Minecraft {}, {} modules, profile '{}'{})",
                 NAME, dev.primeclient.core.design.PrimeDesign.VERSION,
                 adapter.minecraftVersion(), client.modules.all().size(), client.profiles.activeProfile(),
@@ -173,7 +176,9 @@ public final class PrimeClient {
             if (!notificationPrefs.moduleToggleNotifs()) {
                 return;
             }
-            String verb = event.enabled() ? "Enabled" : "Disabled";
+            String verb = event.enabled()
+                    ? PrimeLang.get("prime.notification.module.enabled", "Enabled")
+                    : PrimeLang.get("prime.notification.module.disabled", "Disabled");
             if (event.enabled()) {
                 notifications.success(event.module().name(), verb);
             } else {
@@ -184,12 +189,13 @@ public final class PrimeClient {
 
     public void tick() {
         loadingOverlay.tick(1f / 20f);
-        if (debutSession) {
+        if (debutSession && loadingOverlay.finished() && !debutOverlayDone) {
+            debutOverlayDone = true;
+            debutTicks = 0;
+        }
+        if (debutSession && debutOverlayDone) {
             debutTicks++;
-            if (debutTicks == 60) {
-                loadingOverlay.hide();
-            }
-            if (debutTicks == 40 && !onboarding.completed() && !adapter.isScreenOpen()) {
+            if (debutTicks == 15 && !onboarding.completed() && !adapter.isScreenOpen()) {
                 adapter.openClickGui();
                 debutMenuOpened = true;
             }
@@ -207,6 +213,7 @@ public final class PrimeClient {
     }
 
     public void onWorldJoin() {
+        loadingOverlay.requestDismiss();
         if (!account.loggedIn() && adapter.hasPlayer()) {
             account.login(adapter.playerName());
         }

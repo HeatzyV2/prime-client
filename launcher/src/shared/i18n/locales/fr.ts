@@ -19,6 +19,7 @@ export const fr: LocaleCatalog = {
     media: 'Médias',
     performance: 'Performances',
     downloads: 'Téléchargements',
+    console: 'Console',
     settings: 'Paramètres'
   },
   boot: {
@@ -88,9 +89,9 @@ export const fr: LocaleCatalog = {
       fr: 'Français'
     },
     closeOnLaunch: {
-      label: 'Fermer au lancement du jeu',
-      hint: 'Réduire le launcher quand Minecraft démarre',
-      toggle: 'Fermer au lancement'
+      label: 'Réduire au lancement du jeu',
+      hint: 'Le launcher reste ouvert — réduit seulement la fenêtre quand Minecraft démarre',
+      toggle: 'Réduire au lancement'
     },
     checkUpdates: {
       label: 'Rechercher des mises à jour',
@@ -144,7 +145,7 @@ export const fr: LocaleCatalog = {
     },
     discordRpc: {
       label: 'Discord Rich Presence',
-      hint: 'Géré par le mod Prime Client en jeu',
+      hint: 'Statut Prime Launcher sur Discord (le mod prend le relais en jeu)',
       toggle: 'Discord RPC'
     },
     concurrentDownloads: {
@@ -212,6 +213,10 @@ export const fr: LocaleCatalog = {
     downloads: {
       title: 'Téléchargements',
       subtitle: 'Installations Modrinth et tâches du launcher.'
+    },
+    console: {
+      title: 'Console',
+      subtitle: 'Sortie de lancement, téléchargements, avertissements et erreurs en temps réel.'
     }
   },
   modals: {
@@ -404,5 +409,46 @@ export const fr: LocaleCatalog = {
     openFolder: 'Ouvrir le dossier clips',
     refresh: 'Actualiser',
     replaysNote: 'Replays et clips apparaissent ici via Prime Client (config/primeclient/clips).'
+  },
+  logs: {
+    title: 'Logs de lancement',
+    tab: 'Console',
+    empty: 'Aucun log. Appuyez sur Jouer pour voir le téléchargement et le lancement ici.',
+    openFolder: 'Ouvrir le dossier logs',
+    clear: 'Effacer',
+    copy: 'Tout copier',
+    copied: 'Copié !',
+    filterAll: 'Tous',
+    filterInfo: 'Info',
+    filterWarn: 'Warn',
+    filterError: 'Erreurs',
+    filterDebug: 'Debug'
+  },
+  crash: {
+    title: 'Minecraft a crashé',
+    sessionDuration: 'Session de {duration}',
+    context: 'Contexte :',
+    screen: 'Écran :',
+    primeInvolved: 'Prime Client impliqué',
+    suggestion: 'Piste de correction',
+    openReport: 'Ouvrir le crash report',
+    openLogs: 'Ouvrir les logs',
+    dismiss: 'Fermer',
+    fix: {
+      blurOnce:
+        'Conflit de rendu GUI (limite de blur). Mettez Prime Client à jour — ce bug est corrigé dans les builds récents.',
+      outOfMemory:
+        'Java manque de mémoire. Augmentez la RAM dans les paramètres de l\'instance ou fermez d\'autres applications.',
+      primeMod:
+        'Le crash vient de Prime Client ({location}). Mettez le mod à jour ou désactivez les modules récemment modifiés.',
+      modConflict:
+        'Conflit de mods probable. Désactivez les mods ajoutés récemment et retestez.',
+      modConflictNamed:
+        'Mods impliqués dans la stack trace : {mods}. Désactivez-les un par un.',
+      loaderError:
+        'Fabric ou un mod n\'a pas pu se charger. Vérifiez que les versions correspondent à Minecraft.',
+      unknown:
+        'Ouvrez le crash report pour les détails complets. Si le problème persiste, partagez-le au support.'
+    }
   }
 }

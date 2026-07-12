@@ -2,6 +2,7 @@ package dev.primeclient.v26_2.screen;
 
 import dev.primeclient.core.PrimeClient;
 import dev.primeclient.core.hud.editor.HudEditor;
+import dev.primeclient.core.hud.editor.HudEditorHints;
 import dev.primeclient.v26_2.render.GuiRenderContext;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
@@ -15,13 +16,9 @@ import net.minecraft.network.chat.Component;
  * HUD editor screen for 26.2. Thin shell: all interaction logic lives in the
  * core {@link HudEditor}; this class only forwards events and draws a dim
  * backdrop plus the overlay (via the extract-based screen rendering of 26.x).
- * The HUD itself keeps rendering underneath through the regular Fabric HUD
- * layer.
  */
 public final class HudEditorScreen extends Screen {
 
-    private static final String HINT =
-            "Drag to move  •  Scroll=scale  •  Shift+scroll=rotate  •  Ctrl+scroll=opacity  •  R=tint  •  Esc=close";
     private static final int DIM_COLOR = 0x40000000;
 
     private final GuiRenderContext renderContext = new GuiRenderContext();
@@ -37,16 +34,17 @@ public final class HudEditorScreen extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float delta) {
-        // Intentionally no super call: no vanilla blur, the game and HUD
-        // must stay readable while editing.
         renderContext.prepare(extractor);
         renderContext.fillRect(0, 0, width, height, DIM_COLOR);
         PrimeClient.get().hudEditor().renderOverlay(renderContext, mouseX, mouseY);
-        renderContext.drawText(HINT,
-                (width - renderContext.textWidth(HINT)) / 2,
-                height - 24,
-                PrimeClient.get().themes().active().foreground(),
-                true);
+        int color = PrimeClient.get().themes().active().foreground();
+        int muted = PrimeClient.get().themes().active().foregroundMuted();
+        drawCenteredHint(HudEditorHints.LINE_1, height - 26, color);
+        drawCenteredHint(HudEditorHints.LINE_2, height - 14, muted);
+    }
+
+    private void drawCenteredHint(String text, int y, int color) {
+        renderContext.drawText(text, (width - renderContext.textWidth(text)) / 2, y, color, true);
     }
 
     @Override

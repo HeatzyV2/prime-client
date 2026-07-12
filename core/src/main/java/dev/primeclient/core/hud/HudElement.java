@@ -1,6 +1,7 @@
 package dev.primeclient.core.hud;
 
 import dev.primeclient.core.adapter.RenderContext;
+import dev.primeclient.core.i18n.PrimeLang;
 
 /**
  * One movable HUD component (FPS counter, keystrokes, notifications, ...).
@@ -48,7 +49,7 @@ public abstract class HudElement {
     }
 
     public final String name() {
-        return name;
+        return PrimeLang.hud(id, name);
     }
 
     public final HudAnchor anchor() {

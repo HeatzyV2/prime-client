@@ -1,6 +1,6 @@
 {
   "name": "prime-launcher",
-  "version": "0.9.0",
+  "version": "0.9.3",
   "description": "Official launcher for Prime Client — premium Minecraft platform",
   "main": "./out/main/index.js",
   "author": "Prime Client",
@@ -15,10 +15,10 @@
     "dist:dir": "npm run build && electron-builder --win --dir"
   },
   "dependencies": {
-    "@xmcl/installer": "^6.1.2",
+    "adm-zip": "^0.5.16",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.525.0",
-    "minecraft-launcher-core": "^3.18.2",
+    "minecraft-java-core": "^4.2.7",
     "msmc": "^5.0.5",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -32,7 +32,6 @@
     "electron": "^37.2.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^4.0.0",
-    "png-to-ico": "^3.0.2",
     "typescript": "^5.8.3",
     "vite": "^7.0.4"
   },

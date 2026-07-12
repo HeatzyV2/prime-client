@@ -140,8 +140,6 @@ public final class HudEditor {
             String props = String.format("Scale %.1fx  Rot %.0f°  Opacity %.0f%%",
                     selected.scale(), selected.rotation(), selected.opacity() * 100f);
             ctx.drawText(props, 8, ctx.screenHeight() - 36, theme.foreground(), true);
-            ctx.drawText("Scroll=scale  Shift+scroll=rotate  Ctrl+scroll=opacity  R=tint  G=grid",
-                    8, ctx.screenHeight() - 22, theme.foregroundMuted(), true);
         }
     }
 
@@ -153,8 +151,8 @@ public final class HudEditor {
     }
 
     private static void drawGrid(RenderContext ctx, Theme theme) {
-        int grid = PrimeDesign.GRID_SIZE;
-        int color = theme.border();
+        int grid = PrimeDesign.GRID_SIZE * 2;
+        int color = theme.border() & 0x40FFFFFF;
         for (int x = 0; x < ctx.screenWidth(); x += grid) {
             ctx.fillRect(x, 0, 1, ctx.screenHeight(), color);
         }

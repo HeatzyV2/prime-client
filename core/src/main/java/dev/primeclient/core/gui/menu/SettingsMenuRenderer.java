@@ -5,6 +5,9 @@ import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.cloud.CloudSyncManager;
 import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.design.PrimeLogo;
+import dev.primeclient.core.gui.GuiLayout;
+import dev.primeclient.core.gui.UiChrome;
+import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.theme.ThemeManager;
@@ -22,9 +25,15 @@ public final class SettingsMenuRenderer {
         ABOUT("About");
 
         final String label;
+        final String key;
 
         Category(String label) {
             this.label = label;
+            this.key = "prime.gui.settings.tab." + name().toLowerCase();
+        }
+
+        String translated() {
+            return PrimeLang.get(key, label);
         }
     }
 
@@ -38,81 +47,127 @@ public final class SettingsMenuRenderer {
     public void render(RenderContext ctx, Theme theme, ThemeManager themes, ProfileManager profiles,
                        CloudSyncManager cloud, MinecraftAdapter adapter,
                        int screenW, int screenH, double mouseX, double mouseY) {
-        int panelW = 320;
-        int panelH = 220;
+        int panelW = 340;
+        int panelH = 240;
         int x = (screenW - panelW) / 2;
         int y = (screenH - panelH) / 2;
-        ctx.fillRect(x, y, panelW, panelH, theme.background());
-        ctx.fillRect(x, y, panelW, 2, theme.accent());
-        ctx.drawText("Settings", x + 12, y + 10, theme.accent(), true);
+        UiChrome.glassPanel(ctx, theme, x, y, panelW, panelH);
+        GuiLayout.label(ctx, PrimeLang.get("prime.gui.settings.title", "Settings"), x + 12, y + 10, theme.accent());
 
         int tabY = y + 28;
         int tabX = x + 8;
+        int tabsInRow = 0;
+        ctx.pushClip(x + 4, tabY, panelW - 8, 34);
         for (Category cat : Category.values()) {
-            if (!matchesSearch(cat.label)) {
+            if (!matchesSearch(cat.translated())) {
                 continue;
             }
             boolean sel = cat == active;
-            int tw = ctx.textWidth(cat.label) + 10;
-            ctx.fillRect(tabX, tabY, tw, 14, sel ? theme.surfaceElevated() : theme.backgroundLight());
-            ctx.drawText(cat.label, tabX + 5, tabY + 3, sel ? theme.accent() : theme.foregroundMuted(), true);
+            int tw = GuiLayout.tabWidth(ctx, cat.translated(), 10);
+            if (tabsInRow >= 4) {
+                tabX = x + 8;
+                tabY += 16;
+                tabsInRow = 0;
+            }
+            ctx.fillRoundedRect(tabX, tabY, tw, 14, PrimeDesign.RADIUS_SM,
+                    sel ? theme.surfaceElevated() : theme.backgroundLight());
+            GuiLayout.label(ctx, cat.translated(), tabX + 5, tabY + 3, sel ? theme.accent() : theme.foregroundMuted());
             tabX += tw + 4;
+            tabsInRow++;
         }
+        ctx.popClip();
 
-        int rowY = y + 52;
+        int rowY = tabY + 22;
+        ctx.pushClip(x + 4, rowY, panelW - 8, panelH - 76);
         switch (active) {
             case GENERAL -> {
-                row(ctx, theme, x + 12, rowY, "Profile", profiles.activeProfile()); rowY += 16;
-                row(ctx, theme, x + 12, rowY, "Minecraft", adapter.minecraftVersion()); rowY += 16;
-                row(ctx, theme, x + 12, rowY, "Cloud sync", cloud.autoSync() ? "Enabled" : "Disabled");
+                row(ctx, theme, x + 12, rowY,
+                        PrimeLang.get("prime.gui.settings.row.profile", "Profile"), profiles.activeProfile());
+                rowY += 16;
+                row(ctx, theme, x + 12, rowY,
+                        PrimeLang.get("prime.gui.settings.row.minecraft", "Minecraft"), adapter.minecraftVersion());
+                rowY += 16;
+                String sync = cloud.autoSync()
+                        ? PrimeLang.get("prime.gui.settings.cloud_sync.enabled", "Enabled")
+                        : PrimeLang.get("prime.gui.settings.cloud_sync.disabled", "Disabled");
+                row(ctx, theme, x + 12, rowY,
+                        PrimeLang.get("prime.gui.settings.row.cloud_sync", "Cloud sync"), sync);
             }
             case APPEARANCE -> {
-                row(ctx, theme, x + 12, rowY, "Thème actif", themes.active().name());
+                row(ctx, theme, x + 12, rowY,
+                        PrimeLang.get("prime.gui.settings.row.active_theme", "Active theme"), themes.active().name());
                 rowY += 18;
-                ctx.fillRect(x + 12, rowY, 100, 16, theme.backgroundLight());
-                ctx.drawText("Prime Dark", x + 18, rowY + 4, theme.foreground(), true);
-                ctx.fillRect(x + 120, rowY, 100, 16, theme.backgroundLight());
-                ctx.drawText("Prime Light", x + 126, rowY + 4, theme.foreground(), true);
+                ctx.fillRoundedRect(x + 12, rowY, 100, 16, PrimeDesign.RADIUS_SM, theme.backgroundLight());
+                GuiLayout.label(ctx, PrimeLang.get("prime.gui.settings.theme.dark", "Prime Dark"),
+                        x + 18, rowY + 4, theme.foreground());
+                ctx.fillRoundedRect(x + 120, rowY, 100, 16, PrimeDesign.RADIUS_SM, theme.backgroundLight());
+                GuiLayout.label(ctx, PrimeLang.get("prime.gui.settings.theme.light", "Prime Light"),
+                        x + 126, rowY + 4, theme.foreground());
             }
-            case PERFORMANCE -> row(ctx, theme, x + 12, rowY, "Tip", "Use Performance Profiles module");
-            case CONTROLS -> row(ctx, theme, x + 12, rowY, "ClickGUI", "Right Shift  •  HUD Editor: H");
+            case PERFORMANCE -> row(ctx, theme, x + 12, rowY,
+                    PrimeLang.get("prime.gui.settings.row.tip", "Tip"),
+                    PrimeLang.get("prime.gui.settings.tip.performance", "Use Performance Profiles module"));
+            case CONTROLS -> row(ctx, theme, x + 12, rowY,
+                    PrimeLang.get("prime.gui.settings.row.clickgui", "ClickGUI"),
+                    PrimeLang.get("prime.gui.settings.controls.hint", "Right Shift · HUD Editor: H"));
             case ACCOUNT -> {
-                row(ctx, theme, x + 12, rowY, "Player", adapter.playerName()); rowY += 16;
-                row(ctx, theme, x + 12, rowY, "Prime Account", "Connect via Prime Account module");
+                row(ctx, theme, x + 12, rowY,
+                        PrimeLang.get("prime.gui.settings.row.player", "Player"), adapter.playerName());
+                rowY += 16;
+                row(ctx, theme, x + 12, rowY,
+                        PrimeLang.get("prime.gui.settings.row.prime_account", "Prime Account"),
+                        PrimeLang.get("prime.gui.settings.account.hint", "Connect via Prime Account module"));
             }
-            case PRIVACY -> row(ctx, theme, x + 12, rowY, "Data", "Configs stored locally only");
+            case PRIVACY -> row(ctx, theme, x + 12, rowY,
+                    PrimeLang.get("prime.gui.settings.row.data", "Data"),
+                    PrimeLang.get("prime.gui.settings.privacy.hint", "Configs stored locally only"));
             case ABOUT -> {
                 PrimeLogo.draw(ctx, x + 12, rowY, 14, 0xFFFFFFFF);
                 row(ctx, theme, x + 12 + PrimeLogo.widthForHeight(14) + 6, rowY + 2,
-                        "Prime Client", "v" + PrimeDesign.VERSION);
+                        PrimeLang.get("prime.gui.settings.about.client", "Prime Client"),
+                        PrimeLang.get("prime.gui.settings.about.version", "v%s", PrimeDesign.VERSION));
                 rowY += 20;
-                row(ctx, theme, x + 12, rowY, "Legitimate client", "Visual & QoL only");
+                row(ctx, theme, x + 12, rowY,
+                        PrimeLang.get("prime.gui.settings.about.legitimate", "Legitimate client"),
+                        PrimeLang.get("prime.gui.settings.about.tagline", "Visual & QoL only"));
             }
         }
-        String q = search.isEmpty() ? "Search settings..." : search.toString();
-        ctx.drawText(q, x + 12, y + panelH - 18, theme.foregroundMuted(), true);
+        ctx.popClip();
+
+        String q = search.isEmpty()
+                ? PrimeLang.get("prime.gui.settings.search.placeholder", "Search settings...")
+                : search.toString();
+        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, q, panelW - 24),
+                x + 12, y + panelH - 18, theme.foregroundMuted());
     }
 
-    public boolean mousePressed(double mx, double my, int screenW, int screenH, ThemeManager themes) {
-        int panelW = 320;
-        int panelH = 220;
+    public boolean mousePressed(RenderContext ctx, double mx, double my, int screenW, int screenH, ThemeManager themes) {
+        int panelW = 340;
+        int panelH = 240;
         int x = (screenW - panelW) / 2;
         int y = (screenH - panelH) / 2;
         int tabY = y + 28;
         int tabX = x + 8;
+        int tabsInRow = 0;
         for (Category cat : Category.values()) {
-            if (!matchesSearch(cat.label)) {
+            if (!matchesSearch(cat.translated())) {
                 continue;
             }
-            int tw = cat.label.length() * 6 + 10;
+            int tw = GuiLayout.tabWidth(ctx, cat.translated(), 10);
+            if (tabsInRow >= 4) {
+                tabX = x + 8;
+                tabY += 16;
+                tabsInRow = 0;
+            }
             if (mx >= tabX && mx < tabX + tw && my >= tabY && my < tabY + 14) {
                 active = cat;
                 return true;
             }
             tabX += tw + 4;
+            tabsInRow++;
         }
         if (active == Category.APPEARANCE) {
-            int rowY = y + 70;
+            int rowY = y + 92;
             if (mx >= x + 12 && mx < x + 112 && my >= rowY && my < rowY + 16) {
                 themes.setActive("prime-dark");
                 return true;
@@ -149,7 +204,7 @@ public final class SettingsMenuRenderer {
     }
 
     private static void row(RenderContext ctx, Theme theme, int x, int y, String k, String v) {
-        ctx.drawText(k, x, y, theme.foreground(), true);
-        ctx.drawText(v, x + 120, y, theme.foregroundMuted(), true);
+        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, k, 110), x, y, theme.foreground());
+        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, v, 180), x + 120, y, theme.foregroundMuted());
     }
 }

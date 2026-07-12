@@ -1,6 +1,7 @@
 package dev.primeclient.core.module;
 
 import com.google.gson.JsonElement;
+import dev.primeclient.core.i18n.PrimeLang;
 
 /**
  * A user-configurable module setting.
@@ -18,11 +19,16 @@ public abstract sealed class Setting
     private final String id;
     private final String name;
     private final String description;
+    private String moduleId;
 
     protected Setting(String id, String name, String description) {
         this.id = id;
         this.name = name;
         this.description = description;
+    }
+
+    final void bindModule(String moduleId) {
+        this.moduleId = moduleId;
     }
 
     /** Stable identifier used in config files. */
@@ -31,10 +37,16 @@ public abstract sealed class Setting
     }
 
     public final String name() {
+        if (moduleId != null) {
+            return PrimeLang.setting(moduleId, id, "name", name);
+        }
         return name;
     }
 
     public final String description() {
+        if (moduleId != null) {
+            return PrimeLang.setting(moduleId, id, "description", description);
+        }
         return description;
     }
 

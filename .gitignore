@@ -29,6 +29,12 @@ remappedSrc/
 .DS_Store
 Thumbs.db
 
+# Local dev extracts
+_panorama_extract/
+
+# TypeScript incremental
+*.tsbuildinfo
+
 # Secrets & local user data
 .env
 .env.*

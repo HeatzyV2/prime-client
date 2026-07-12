@@ -4,6 +4,7 @@ import { settingsStore } from '../storage/SettingsStore'
 import { instanceService } from './InstanceService'
 import { launcherBridgeService } from './LauncherBridgeService'
 import { performanceService } from './PerformanceService'
+import { launcherDiscordService } from './LauncherDiscordService'
 
 export class SettingsService {
   async get(): Promise<LauncherSettings> {
@@ -19,6 +20,7 @@ export class SettingsService {
     let restartRequired = false
 
     if (partial.discordRpc !== undefined) {
+      await launcherDiscordService.setEnabled(partial.discordRpc)
       const instances = await instanceService.list()
       await Promise.all(
         instances.filter((inst) => inst.includePrimeMod).map((inst) => launcherBridgeService.syncToInstance(inst.id))

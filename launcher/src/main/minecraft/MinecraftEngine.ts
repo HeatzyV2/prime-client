@@ -1,73 +1,287 @@
+import type { ChildProcess } from 'child_process'
 import { mkdir } from 'fs/promises'
-import { Client } from 'minecraft-launcher-core'
-import type { ChildProcessWithoutNullStreams } from 'child_process'
-import { fabricVersionId, type InstanceLaunchConfig } from './constants'
+import { Launch } from 'minecraft-java-core'
+import type { LaunchOptions } from 'minecraft-java-core'
+import type { InstanceLaunchConfig } from './constants'
 import { resolveJavaPath } from './JavaService'
+import { ensureBundledJava } from './JavaManager'
 import { installInstanceMods, primeClientBuildHint } from './ModPackService'
-import { resolveLaunchAuthorization } from './LaunchAuth'
-import { emitLaunchProgress } from './launchProgress'
+import { resolveLaunchAuthenticator } from './LaunchAuth'
+import { formatLaunchError } from './formatLaunchError'
+import { emitLaunchError, emitLaunchProgress } from './launchProgress'
 import { getInstanceGameDir, getRuntimeRoot } from './paths'
+import { syncMinecraftLanguage } from '../content/options'
 import { accountService } from '../services/AccountService'
 import { instanceService } from '../services/InstanceService'
 import { settingsStore } from '../storage/SettingsStore'
+import { launchLogService } from '../services/LaunchLogService'
+import { analyzeGameExit, snapshotCrashReports } from '../services/CrashAnalyzerService'
 
-let activeProcess: ChildProcessWithoutNullStreams | null = null
+let gameRunning = false
+let activeGameProcess: ChildProcess | null = null
+let spawnPatched = false
+let activeInstanceId: string | null = null
+let sessionStartedAt = 0
+let knownCrashReports = new Set<string>()
+let intentionalKill = false
+let exitHandled = false
 
-async function ensureFabricProfile(config: InstanceLaunchConfig): Promise<string> {
-  const runtimeRoot = getRuntimeRoot()
-  await mkdir(runtimeRoot, { recursive: true })
-
-  const versionId = fabricVersionId(config)
-  emitLaunchProgress({
-    phase: 'fabric',
-    detail: `Installing Fabric ${config.fabricLoaderVersion} for ${config.minecraftVersion}…`,
-    percent: 10
-  })
-
-  const { installFabric } = await import('@xmcl/installer')
-  await installFabric({
-    minecraftVersion: config.minecraftVersion,
-    version: config.fabricLoaderVersion,
-    minecraft: runtimeRoot,
-    side: 'client'
-  })
-
-  return versionId
+function isLikelyMinecraftProcess(command: unknown, args: unknown): boolean {
+  const cmd = String(command).toLowerCase()
+  const joined = Array.isArray(args) ? args.join(' ').toLowerCase() : ''
+  return cmd.includes('java') || joined.includes('net.minecraft') || joined.includes('net.fabricmc')
 }
 
-function attachClientEvents(client: Client): void {
-  client.on('progress', (progress) => {
+function trackGameProcess(proc: ChildProcess): void {
+  activeGameProcess = proc
+  proc.once('exit', (code, signal) => {
+    if (activeGameProcess === proc) {
+      activeGameProcess = null
+    }
+    void handleGameExit(code, signal)
+  })
+}
+
+async function beginGameSession(instanceId: string): Promise<void> {
+  activeInstanceId = instanceId
+  sessionStartedAt = Date.now()
+  intentionalKill = false
+  exitHandled = false
+  knownCrashReports = await snapshotCrashReports(getInstanceGameDir(instanceId))
+}
+
+async function handleGameExit(code: number | null, signal: NodeJS.Signals | null): Promise<void> {
+  if (exitHandled) {
+    return
+  }
+  exitHandled = true
+  gameRunning = false
+  activeGameProcess = null
+
+  const instanceId = activeInstanceId
+  if (!instanceId) {
+    emitLaunchProgress({ phase: 'stopped', detail: 'Minecraft closed.', percent: 0 })
+    return
+  }
+
+  const gameDir = getInstanceGameDir(instanceId)
+  const recentLogLines = launchLogService.list().slice(-120).map((entry) => entry.message)
+  const result = await analyzeGameExit({
+    gameDir,
+    knownCrashReports,
+    sessionStartedAt,
+    exitCode: code,
+    signal,
+    intentionalKill,
+    recentLogLines
+  })
+
+  if (result.kind === 'crash') {
+    const { crash } = result
+    emitLaunchProgress({
+      phase: 'crashed',
+      detail: crash.title,
+      percent: 0,
+      crash
+    })
+    launchLogService.append('error', `[CRASH] ${crash.title}`, 'crashed')
+    if (crash.description) {
+      launchLogService.append('error', crash.description, 'crashed')
+    }
+    if (crash.screen) {
+      launchLogService.append('error', `Screen: ${crash.screen}`, 'crashed')
+    }
+    if (crash.primeInvolved && crash.primeLocation) {
+      launchLogService.append('warn', `Prime Client: ${crash.primeLocation}`, 'crashed')
+    }
+  } else {
+    const detail =
+      result.exit.reason === 'launcher_kill'
+        ? 'Game stopped by launcher.'
+        : 'Minecraft closed normally.'
+    emitLaunchProgress({
+      phase: 'stopped',
+      detail,
+      percent: 0,
+      exit: result.exit
+    })
+  }
+
+  activeInstanceId = null
+  sessionStartedAt = 0
+}
+
+function patchSpawnForJvmFlags(): void {
+  if (spawnPatched) {
+    return
+  }
+  spawnPatched = true
+
+  const badFlags = ['UseCompactObjectHeaders']
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const childProcess = require('child_process') as typeof import('child_process') & {
+    spawn: (...args: unknown[]) => ChildProcess
+  }
+  const nativeSpawn = childProcess.spawn.bind(childProcess)
+
+  childProcess.spawn = ((command: unknown, args?: unknown, options?: unknown) => {
+    let spawnArgs = args
+    if (Array.isArray(spawnArgs)) {
+      spawnArgs = spawnArgs.filter(
+        (arg) => typeof arg !== 'string' || !badFlags.some((flag) => arg.includes(flag))
+      )
+    }
+    const proc = nativeSpawn(command, spawnArgs, options)
+    if (isLikelyMinecraftProcess(command, spawnArgs)) {
+      trackGameProcess(proc)
+    }
+    return proc
+  }) as typeof childProcess.spawn
+}
+
+function filterJvmArgs(args: string[]): string[] {
+  return args.filter((arg) => !arg.includes('UseCompactObjectHeaders'))
+}
+
+function buildGameArgs(gameDirectory: string, joinServer?: { host: string; port: number }): string[] {
+  const args = ['--gameDir', gameDirectory]
+  if (joinServer) {
+    args.push('--server', joinServer.host, '--port', String(joinServer.port))
+  }
+  return args
+}
+
+async function resolveLaunchJava(config: InstanceLaunchConfig, settingsJavaPath?: string | null): Promise<string> {
+  const override = config.javaPath?.trim() || settingsJavaPath?.trim()
+  if (override) {
+    return resolveJavaPath(override)
+  }
+
+  try {
+    return await resolveJavaPath()
+  } catch {
+    emitLaunchProgress({
+      phase: 'launch',
+      detail: 'System Java not found. Downloading bundled Java 21…',
+      percent: 70
+    })
+    return ensureBundledJava(21)
+  }
+}
+
+function attachLauncherEvents(
+  launcher: Launch,
+  onSpawn: () => void,
+  onFailure: (err: unknown) => void
+): void {
+  launcher.on('data', (line) => {
+    const detail = String(line).trim()
+    if (detail) {
+      emitLaunchProgress({ phase: 'log', detail })
+    }
+    if (detail.includes('Launching with arguments')) {
+      onSpawn()
+    }
+  })
+
+  launcher.on('progress', (progress, size, element) => {
+    const percent =
+      typeof size === 'number' && size > 0 ? 20 + Math.round((progress / size) * 50) : undefined
     emitLaunchProgress({
       phase: 'download',
-      detail: typeof progress === 'string' ? progress : 'Downloading Minecraft files…'
+      detail: typeof element === 'string' && element ? element : 'Downloading Minecraft files…',
+      percent
     })
   })
 
-  client.on('data', (line) => {
-    emitLaunchProgress({ phase: 'log', detail: String(line) })
+  launcher.on('error', (error) => {
+    onFailure(error)
+  })
+
+  launcher.on('close', () => {
+    if (!exitHandled) {
+      void handleGameExit(null, null)
+    }
   })
 }
 
-async function resolveVersionId(config: InstanceLaunchConfig): Promise<string> {
-  if (config.loader === 'vanilla') {
-    emitLaunchProgress({
-      phase: 'fabric',
-      detail: `Preparing Minecraft ${config.minecraftVersion}…`,
-      percent: 10
+async function runMinecraftJavaCoreLaunch(options: LaunchOptions): Promise<void> {
+  patchSpawnForJvmFlags()
+
+  const launcher = new Launch()
+  let settled = false
+
+  await new Promise<void>((resolve, reject) => {
+    const succeed = () => {
+      if (settled) {
+        return
+      }
+      settled = true
+      resolve()
+    }
+
+    const fail = (err: unknown) => {
+      if (settled) {
+        return
+      }
+      settled = true
+      reject(new Error(formatLaunchError(err)))
+    }
+
+    attachLauncherEvents(launcher, succeed, fail)
+    void launcher.Launch(options)
+  })
+}
+
+async function killProcessTree(proc: ChildProcess): Promise<void> {
+  if (!proc.pid) {
+    proc.kill()
+    return
+  }
+  if (process.platform === 'win32') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { spawn } = require('child_process') as typeof import('child_process')
+    await new Promise<void>((resolve) => {
+      spawn('taskkill', ['/PID', String(proc.pid), '/T', '/F'], { stdio: 'ignore' })
+        .once('exit', () => resolve())
+        .once('error', () => resolve())
     })
-    return config.minecraftVersion
+    return
   }
-
-  if (config.loader === 'fabric') {
-    return ensureFabricProfile(config)
-  }
-
-  throw new Error('Unsupported loader. Use Vanilla or Fabric.')
+  proc.kill('SIGTERM')
 }
 
 export class MinecraftEngine {
   isRunning(): boolean {
-    return activeProcess !== null && !activeProcess.killed
+    return gameRunning
+  }
+
+  getActiveProcess(): ChildProcess | null {
+    return activeGameProcess
+  }
+
+  async killGame(): Promise<void> {
+    intentionalKill = true
+    const proc = activeGameProcess
+    if (!proc || proc.killed) {
+      gameRunning = false
+      activeGameProcess = null
+      if (!exitHandled) {
+        void handleGameExit(0, null)
+      }
+      return
+    }
+    try {
+      await killProcessTree(proc)
+    } catch {
+      try {
+        proc.kill('SIGKILL')
+      } catch {
+        // ignore
+      }
+    }
+    gameRunning = false
+    activeGameProcess = null
   }
 
   async launchInstance(
@@ -86,9 +300,13 @@ export class MinecraftEngine {
     }
 
     emitLaunchProgress({ phase: 'start', detail: 'Preparing launch…', percent: 0 })
+    emitLaunchProgress({ phase: 'start', detail: 'Resolving Microsoft / offline session…', percent: 5 })
 
-    const authorization = await resolveLaunchAuthorization(account)
-    const versionId = await resolveVersionId(config)
+    const authenticator = await resolveLaunchAuthenticator(account)
+    const runtimeRoot = getRuntimeRoot()
+    const gameDirectory = getInstanceGameDir(instanceId)
+    await mkdir(runtimeRoot, { recursive: true })
+    await mkdir(gameDirectory, { recursive: true })
 
     let primeModInstalled = false
     if (config.loader === 'fabric' && config.includePrimeMod) {
@@ -97,61 +315,67 @@ export class MinecraftEngine {
         throw new Error(`Prime Client mod not found. ${primeClientBuildHint()}`)
       }
       primeModInstalled = true
+      emitLaunchProgress({ phase: 'mods', detail: `Prime Client mod installed: ${primeJar}`, percent: 15 })
     }
 
-    const runtimeRoot = getRuntimeRoot()
-    const gameDirectory = getInstanceGameDir(instanceId)
-    await mkdir(gameDirectory, { recursive: true })
-
     const settings = await settingsStore.load()
-    const javaPath = await resolveJavaPath(config.javaPath?.trim() || settings.defaultJavaPath)
+    await syncMinecraftLanguage(instanceId, settings.language)
+    emitLaunchProgress({ phase: 'launch', detail: 'Locating Java 21+…', percent: 68 })
+    const javaPath = await resolveLaunchJava(config, settings.defaultJavaPath)
+    emitLaunchProgress({ phase: 'launch', detail: `Using Java: ${javaPath}`, percent: 80 })
 
-    const mergedJvm = [...new Set([...(settings.jvmArgs ?? []), ...(config.jvmArgs ?? [])])]
+    const mergedJvm = filterJvmArgs([
+      ...new Set([...(settings.jvmArgs ?? []), ...(config.jvmArgs ?? [])])
+    ])
 
     emitLaunchProgress({
       phase: 'launch',
-      detail: 'Starting Minecraft…',
+      detail: `Starting Minecraft ${config.minecraftVersion} (${config.loader})…`,
       percent: 85
     })
 
-    const client = new Client()
-    attachClientEvents(client)
-
-    const process = await client.launch({
-      authorization,
-      root: runtimeRoot,
-      javaPath,
-      version: {
-        number: versionId,
-        type: 'release'
+    const launchOptions: LaunchOptions = {
+      path: runtimeRoot,
+      authenticator,
+      version: config.minecraftVersion,
+      instance: null,
+      detached: false,
+      ignore_log4j: false,
+      loader: {
+        type: config.loader === 'fabric' ? 'fabric' : null,
+        build: config.loader === 'fabric' ? config.fabricLoaderVersion || 'latest' : 'latest',
+        enable: config.loader === 'fabric'
+      },
+      verify: false,
+      ignored: [],
+      JVM_ARGS: mergedJvm,
+      GAME_ARGS: buildGameArgs(gameDirectory, joinServer),
+      java: {
+        path: javaPath,
+        version: '21',
+        type: 'jre'
+      },
+      screen: {
+        width: 0,
+        height: 0,
+        fullscreen: false
       },
       memory: {
-        max: `${config.ramMb}M`,
-        min: '512M'
-      },
-      customArgs: mergedJvm,
-      ...(joinServer
-        ? {
-            customLaunchArgs: ['--server', joinServer.host, '--port', String(joinServer.port)]
-          }
-        : {}),
-      overrides: {
-        gameDirectory,
-        detached: true
+        min: '512M',
+        max: `${config.ramMb}M`
       }
-    })
-
-    if (!process) {
-      throw new Error('Minecraft process did not start.')
     }
 
-    activeProcess = process
-    process.on('exit', () => {
-      if (activeProcess === process) {
-        activeProcess = null
-      }
-    })
+    try {
+      await runMinecraftJavaCoreLaunch(launchOptions)
+    } catch (err) {
+      const message = formatLaunchError(err)
+      emitLaunchError(message, err)
+      throw new Error(message)
+    }
 
+    gameRunning = true
+    await beginGameSession(instanceId)
     await instanceService.touchLastPlayed(instanceId)
 
     emitLaunchProgress({

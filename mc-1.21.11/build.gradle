@@ -23,6 +23,8 @@ dependencies {
 	mappings loom.officialMojangMappings()
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.mc12111_fabric_api_version}"
+	annotationProcessor "io.github.llamalad7:mixinextras-common:0.5.0"
+	implementation "io.github.llamalad7:mixinextras-common:0.5.0"
 
 	// Common core, bundled into the released jar (Jar-in-Jar).
 	api project(':core')

@@ -44,6 +44,19 @@ public interface MinecraftAdapter {
 
     void openClickGui();
 
+    /** Opens ClickGUI directly on the settings view. */
+    default void openPrimeSettings() {
+        openClickGui();
+    }
+
+    /** Opens the vanilla Minecraft title screen (without Prime redirect). */
+    default void openVanillaTitleScreen() {
+    }
+
+    /** Opens a URL in the system browser. */
+    default void openExternalLink(String url) {
+    }
+
     /** Opens the vanilla world selection screen from the title menu. */
     default void openSingleplayer() {
     }
@@ -343,5 +356,17 @@ public interface MinecraftAdapter {
 
     /** Spawns client-side hit particles at world coordinates. */
     default void spawnHitParticles(double x, double y, double z, int color, float size, int count) {
+    }
+
+    /** Resolves a Prime Client translation key using the active Minecraft language. */
+    default String translate(String key, String fallback, Object... args) {
+        if (args == null || args.length == 0) {
+            return fallback;
+        }
+        try {
+            return String.format(java.util.Locale.ROOT, fallback, args);
+        } catch (Exception ignored) {
+            return fallback;
+        }
     }
 }

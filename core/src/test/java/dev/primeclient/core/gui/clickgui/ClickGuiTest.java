@@ -127,11 +127,11 @@ class ClickGuiTest {
     private ClickGui gui;
     private TestModule module;
 
-    // Legacy category panel for QoL at x = 8 + 2 * (118 + 8) = 260
-    private static final double LEGACY_PANEL_X = 260;
+    // Legacy category panel for QoL at x = 8 + 2 * (160 + 8) = 344
+    private static final double LEGACY_PANEL_X = 344;
     private static final double PANEL_X = SCREEN_W - Panel.WIDTH - 12;
     private static final double HEADER_Y = 8;
-    private static final double FIRST_ROW_Y = HEADER_Y + 16 + 1;
+    private static final double FIRST_ROW_Y = HEADER_Y + 18;
 
     @BeforeEach
     void setUp() {
@@ -171,12 +171,12 @@ class ClickGuiTest {
         assertTrue(gui.mousePressed(PANEL_X + 10, FIRST_ROW_Y + 5, 1));
         gui.mouseReleased();
 
-        double flagRowY = FIRST_ROW_Y + 14;
+        double flagRowY = FIRST_ROW_Y + 16;
         assertTrue(gui.mousePressed(PANEL_X + 10, flagRowY + 5, 0));
         assertTrue(module.flag.get());
         gui.mouseReleased();
 
-        double sliderRowY = flagRowY + 14;
+        double sliderRowY = flagRowY + 16;
         assertTrue(gui.mousePressed(PANEL_X + Panel.WIDTH - 6, sliderRowY + 5, 0));
         assertEquals(10, module.range.get());
         gui.mouseReleased();
@@ -185,6 +185,7 @@ class ClickGuiTest {
     @Test
     void middleClickTogglesFavorite() {
         int cardY = 8 + ModuleCardBrowser.TAB_H + 4 + 10;
+        gui.render(new FakeRenderContext(SCREEN_W, 600), 8 + 10, cardY);
         assertFalse(favorites.isFavorite("zoom"));
         assertTrue(gui.mousePressed(8 + 10, cardY, 2));
         assertTrue(favorites.isFavorite("zoom"));

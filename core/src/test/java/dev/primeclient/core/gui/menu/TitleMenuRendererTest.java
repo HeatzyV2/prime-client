@@ -14,11 +14,9 @@ class TitleMenuRendererTest {
 
     @Test
     void hitActionDetectsSingleplayerButton() {
-        int stackH = 5 * 30 + 4 * 8;
-        int startY = (H - stackH) / 2;
-        int x = W - 48 - 220;
-        double mx = x + 110;
-        double my = startY + 15;
+        TitleMenuLayout layout = TitleMenuLayout.compute(W, H, 4);
+        double mx = layout.buttonX() + layout.buttonW() / 2.0;
+        double my = layout.buttonTop(0) + layout.buttonH() / 2.0;
 
         assertEquals(TitleMenuAction.SINGLEPLAYER, renderer.hitAction(mx, my, W, H));
     }

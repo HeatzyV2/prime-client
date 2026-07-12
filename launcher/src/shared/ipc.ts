@@ -21,6 +21,14 @@ export const IPC = {
   BRIDGE_SYNC: 'bridge:sync',
   /** Main → renderer progress while downloading / launching. */
   LAUNCH_PROGRESS: 'launch:progress',
+  LAUNCH_LOGS_LIST: 'launch:logs-list',
+  LAUNCH_LOGS_CLEAR: 'launch:logs-clear',
+  LAUNCH_LOGS_OPEN_FOLDER: 'launch:logs-open-folder',
+  LAUNCH_CRASH_OPEN_REPORT: 'launch:crash-open-report',
+  /** Main → renderer single log line. */
+  LAUNCH_LOG_APPEND: 'launch:log-append',
+  /** Main → renderer full log reset. */
+  LAUNCH_LOG_RESET: 'launch:log-reset',
 
   INSTANCE_LIST: 'instance:list',
   INSTANCE_GET: 'instance:get',
@@ -110,10 +118,60 @@ export interface SyncResultDto {
   message: string
 }
 
+export interface GameCrashAnalysisDto {
+  source: 'crash_report' | 'exit_code' | 'latest_log' | 'launch_log'
+  exitCode: number | null
+  signal: string | null
+  crashReportPath?: string
+  title: string
+  description?: string
+  exceptionType?: string
+  exceptionMessage?: string
+  screen?: string
+  primeInvolved: boolean
+  primeLocation?: string
+  modIds: string[]
+  fixKey:
+    | 'blurOnce'
+    | 'outOfMemory'
+    | 'primeMod'
+    | 'modConflict'
+    | 'loaderError'
+    | 'unknown'
+  sessionDurationSec: number
+}
+
+export interface GameExitInfoDto {
+  reason: 'clean_quit' | 'launcher_kill'
+  exitCode: number | null
+  signal: string | null
+  sessionDurationSec: number
+}
+
 export interface LaunchProgressDto {
-  phase: 'start' | 'fabric' | 'mods' | 'download' | 'launch' | 'running' | 'log'
+  phase:
+    | 'start'
+    | 'fabric'
+    | 'download'
+    | 'mods'
+    | 'launch'
+    | 'running'
+    | 'stopped'
+    | 'crashed'
+    | 'log'
+    | 'error'
   detail: string
   percent?: number
+  crash?: GameCrashAnalysisDto
+  exit?: GameExitInfoDto
+}
+
+export interface LaunchLogEntryDto {
+  id: string
+  timestamp: string
+  level: 'info' | 'warn' | 'error' | 'debug'
+  phase?: LaunchProgressDto['phase']
+  message: string
 }
 
 export interface CreateInstanceDto {

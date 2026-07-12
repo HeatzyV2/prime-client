@@ -23,4 +23,7 @@ The mod uses `prime_logo` for all Rich Presence images (menu, solo, multi, large
 
 ## Enable RPC
 
-**Right Shift** → **Prime** → enable **Discord RPC** (Discord Desktop must be running).
+- **Launcher:** Settings → **Discord RPC** (enabled by default). Shows *Prime Launcher* while browsing; clears when Minecraft starts so the mod can take over.
+- **In-game:** **Right Shift** → **Prime** → enable **Discord RPC** (Discord Desktop must be running).
+
+Application ID: **1525574680994648174**

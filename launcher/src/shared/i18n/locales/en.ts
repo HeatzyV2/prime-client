@@ -17,6 +17,7 @@ export const en = {
     media: 'Media',
     performance: 'Performance',
     downloads: 'Downloads',
+    console: 'Console',
     settings: 'Settings'
   },
   boot: {
@@ -86,9 +87,9 @@ export const en = {
       fr: 'Français'
     },
     closeOnLaunch: {
-      label: 'Close on game launch',
-      hint: 'Minimize launcher when Minecraft starts',
-      toggle: 'Close on launch'
+      label: 'Minimize on game launch',
+      hint: 'Keeps the launcher running — only minimizes the window when Minecraft starts',
+      toggle: 'Minimize on launch'
     },
     checkUpdates: {
       label: 'Check for updates',
@@ -142,7 +143,7 @@ export const en = {
     },
     discordRpc: {
       label: 'Discord Rich Presence',
-      hint: 'Handled by Prime Client mod in-game',
+      hint: 'Shows Prime Launcher on Discord (hands off to the mod in-game)',
       toggle: 'Discord RPC'
     },
     concurrentDownloads: {
@@ -210,6 +211,10 @@ export const en = {
     downloads: {
       title: 'Downloads',
       subtitle: 'Modrinth installs and launcher tasks.'
+    },
+    console: {
+      title: 'Console',
+      subtitle: 'Launch output, downloads, warnings and errors in real time.'
     }
   },
   modals: {
@@ -402,6 +407,47 @@ export const en = {
     openFolder: 'Open clips folder',
     refresh: 'Refresh',
     replaysNote: 'Replays and clips appear here when exported by Prime Client (config/primeclient/clips).'
+  },
+  logs: {
+    title: 'Launch logs',
+    tab: 'Console',
+    empty: 'No logs yet. Press Play to see download and launch output here.',
+    openFolder: 'Open log folder',
+    clear: 'Clear',
+    copy: 'Copy all',
+    copied: 'Copied!',
+    filterAll: 'All',
+    filterInfo: 'Info',
+    filterWarn: 'Warn',
+    filterError: 'Errors',
+    filterDebug: 'Debug'
+  },
+  crash: {
+    title: 'Minecraft crashed',
+    sessionDuration: 'Session lasted {duration}',
+    context: 'Context:',
+    screen: 'Screen:',
+    primeInvolved: 'Prime Client involved',
+    suggestion: 'Suggested fix',
+    openReport: 'Open crash report',
+    openLogs: 'Open logs',
+    dismiss: 'Dismiss',
+    fix: {
+      blurOnce:
+        'A GUI rendering conflict occurred (blur limit). Update Prime Client to the latest version — this issue is fixed in recent builds.',
+      outOfMemory:
+        'Java ran out of memory. Increase RAM in Instance settings or close other heavy applications.',
+      primeMod:
+        'The crash originates from Prime Client ({location}). Try updating the mod or disabling recently changed modules.',
+      modConflict:
+        'A mod conflict is likely. Disable recently added mods and test again.',
+      modConflictNamed:
+        'Mods involved in the stack trace: {mods}. Try disabling them one by one.',
+      loaderError:
+        'Fabric loader or a mod failed to load. Check mod versions match your Minecraft version.',
+      unknown:
+        'Open the crash report for full details. If this keeps happening, share the report with support.'
+    }
   }
 } 
 

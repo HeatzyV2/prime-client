@@ -2,13 +2,15 @@
 	"required": true,
 	"package": "dev.primeclient.v26_2.mixin",
 	"compatibilityLevel": "JAVA_25",
+	"refmap": "primeclient-refmap.json",
 	"client": [
 		"GameRendererMixin",
 		"LivingEntityRendererMixin",
 		"CameraMixin",
 		"GuiMixin",
 		"AvatarRendererMixin",
-		"TitleScreenMixin"
+		"TitleScreenMixin",
+		"ClientBrandRetrieverMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -1,150 +1,149 @@
 package dev.primeclient.core.gui.menu;
 
+import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.design.PrimeLogo;
+import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.theme.Theme;
+import dev.primeclient.core.util.ColorUtil;
 import dev.primeclient.core.util.Easing;
 
-/**
- * Full-screen title menu — Feather-inspired layout with gradient backdrop,
- * branding block, and pill navigation buttons.
- */
+/** Feather-inspired title menu — compact stack over visible panorama. */
 public final class TitleMenuRenderer {
 
-    private static final int BUTTON_W = 220;
-    private static final int BUTTON_H = 30;
-    private static final int BUTTON_GAP = 8;
-    private static final int SIDE_PAD = 48;
+    private static final int MENU_BUTTON_COUNT = 4;
     private static final TitleMenuAction[] ACTIONS = TitleMenuAction.values();
-    private static final String[] LABELS = {
-            "Singleplayer",
-            "Multiplayer",
-            "Prime Client",
-            "Options",
-            "Quit Game"
+    private static final String[] LABEL_KEYS = {
+            "prime.gui.title.singleplayer",
+            "prime.gui.title.multiplayer",
+            "prime.gui.title.prime_client",
+            "prime.gui.title.options"
+    };
+    private static final String[] LABEL_FALLBACKS = {
+            "Singleplayer", "Multiplayer", "Prime Client", "Options"
     };
 
-    private float particlePhase;
-
     public void tick(float deltaSeconds) {
-        particlePhase += deltaSeconds * 0.55f;
     }
 
     public void render(RenderContext ctx, Theme theme, double mouseX, double mouseY,
-                       String minecraftVersion, String clientVersion, float fade) {
+                       MinecraftAdapter adapter, float fade) {
         float eased = Easing.easeOutCubic(fade);
-        renderBackground(ctx, theme, eased);
-        renderBranding(ctx, theme, clientVersion, eased);
-        renderButtons(ctx, theme, mouseX, mouseY, eased);
-        renderFooter(ctx, theme, minecraftVersion, clientVersion, eased);
+        TitleMenuLayout layout = TitleMenuLayout.compute(ctx.screenWidth(), ctx.screenHeight(), MENU_BUTTON_COUNT);
+
+        renderVignette(ctx, eased);
+        TitleMenuTopBar.render(ctx, theme, adapter.playerName(), mouseX, mouseY, eased);
+        renderBranding(ctx, theme, layout, eased);
+        renderButtons(ctx, theme, layout, mouseX, mouseY, eased);
+        renderQuitLink(ctx, theme, layout, mouseX, mouseY, eased);
+        renderFooter(ctx, theme, adapter.minecraftVersion(), PrimeDesign.VERSION, layout, eased);
     }
 
-    private void renderBackground(RenderContext ctx, Theme theme, float fade) {
-        // Panorama is drawn by PrimeTitleScreen — keep a soft dark overlay for UI contrast.
-        int overlayAlpha = Math.round(150 * fade);
-        ctx.fillRect(0, 0, ctx.screenWidth(), ctx.screenHeight(), (overlayAlpha << 24));
-
-        for (int i = 0; i < 18; i++) {
-            float px = (float) ((Math.sin(particlePhase + i * 1.4) + 1) * 0.5 * ctx.screenWidth());
-            float py = (float) ((Math.cos(particlePhase * 0.75 + i * 2.3) + 1) * 0.5 * ctx.screenHeight());
-            int size = 1 + (i % 3);
-            int alpha = 0x18 + (i % 4) * 0x10;
-            ctx.fillRect(Math.round(px), Math.round(py), size, size, (alpha << 24) | (theme.accent() & 0x00FFFFFF));
+    /** Edge vignette only — keeps the panorama visible in the center. */
+    private void renderVignette(RenderContext ctx, float fade) {
+        int w = ctx.screenWidth();
+        int h = ctx.screenHeight();
+        int edge = Math.max(48, h / 5);
+        int alpha = Math.round(0x38 * fade);
+        if (alpha <= 0) {
+            return;
         }
-
-        int accentLineW = Math.round(ctx.screenWidth() * 0.42f * fade);
-        ctx.fillRect(SIDE_PAD, ctx.screenHeight() / 2 + 60, accentLineW, 1,
-                withAlpha(theme.accent(), 0.35f * fade));
+        int top = alpha << 24;
+        ctx.fillGradientVertical(0, 0, w, edge, top, 0);
+        ctx.fillGradientVertical(0, h - edge, w, edge, 0, top);
     }
 
-    private void renderBranding(RenderContext ctx, Theme theme, String clientVersion, float fade) {
-        int leftX = SIDE_PAD;
-        int centerY = ctx.screenHeight() / 2;
-
+    private void renderBranding(RenderContext ctx, Theme theme, TitleMenuLayout layout, float fade) {
         ctx.setDrawOpacity(fade);
-        int logoH = Math.min(72, Math.max(48, ctx.screenHeight() / 10));
-        PrimeLogo.draw(ctx, leftX, centerY - logoH - 56, logoH, 0xFFFFFFFF);
-
-        ctx.drawSmoothText("Prime Client", leftX, centerY - 36, theme.foreground(), 1.35f);
-        ctx.drawSmoothText(PrimeDesign.TAGLINE, leftX, centerY - 14, theme.foregroundMuted(), 0.95f);
-        ctx.drawSmoothText("v" + clientVersion, leftX, centerY + 6, theme.accent(), 0.9f);
+        PrimeLogo.draw(ctx, layout.logoX(), layout.logoY(), layout.logoH(), 0xFFFFFFFF);
         ctx.setDrawOpacity(1f);
     }
 
-    private void renderButtons(RenderContext ctx, Theme theme, double mouseX, double mouseY, float fade) {
-        int stackH = ACTIONS.length * BUTTON_H + (ACTIONS.length - 1) * BUTTON_GAP;
-        int startY = (ctx.screenHeight() - stackH) / 2;
-        int x = ctx.screenWidth() - SIDE_PAD - BUTTON_W;
-
+    private void renderButtons(RenderContext ctx, Theme theme, TitleMenuLayout layout,
+                               double mouseX, double mouseY, float fade) {
         ctx.setDrawOpacity(fade);
-        for (int i = 0; i < ACTIONS.length; i++) {
-            int y = startY + i * (BUTTON_H + BUTTON_GAP);
-            drawPillButton(ctx, theme, LABELS[i], x, y, BUTTON_W, mouseX, mouseY, i == 2);
+        for (int i = 0; i < MENU_BUTTON_COUNT; i++) {
+            String label = PrimeLang.get(LABEL_KEYS[i], LABEL_FALLBACKS[i]);
+            drawMenuButton(ctx, theme, label, layout.buttonX(), layout.buttonTop(i),
+                    layout.buttonW(), layout.buttonH(), mouseX, mouseY, i == 2);
         }
         ctx.setDrawOpacity(1f);
     }
 
-    private void drawPillButton(RenderContext ctx, Theme theme, String label,
-                                int x, int y, int w, double mouseX, double mouseY, boolean accentStyle) {
-        boolean hover = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + BUTTON_H;
-        int fill = hover
-                ? (accentStyle ? blend(theme.accent(), theme.backgroundLight(), 0.35f) : theme.backgroundLight())
-                : (accentStyle ? blend(theme.accent(), theme.surfaceElevated(), 0.18f) : theme.surfaceElevated());
-        ctx.fillRect(x, y, w, BUTTON_H, fill);
+    private void drawMenuButton(RenderContext ctx, Theme theme, String label,
+                                int x, int y, int w, int h, double mouseX, double mouseY, boolean featured) {
+        boolean hover = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h;
+        int radius = PrimeDesign.RADIUS_SM;
 
-        if (hover) {
-            ctx.fillRect(x, y, 2, BUTTON_H, theme.accent());
-            ctx.fillRect(x, y + BUTTON_H - 1, w, 1, withAlpha(theme.accent(), 0.55f));
-        } else if (accentStyle) {
-            ctx.fillRect(x, y, 2, BUTTON_H, withAlpha(theme.accent(), 0.75f));
+        if (featured) {
+            ctx.fillRoundedRect(x, y, w, h, radius, theme.accent());
+            if (hover) {
+                ctx.fillGradientVertical(x + 1, y + 1, w - 2, h - 2,
+                        ColorUtil.withAlpha(theme.accent(), 0.98f),
+                        ColorUtil.withAlpha(theme.accentSecondary(), 0.9f));
+            }
+        } else {
+            int fill = hover
+                    ? ColorUtil.withAlpha(theme.backgroundLight(), 0.52f)
+                    : ColorUtil.withAlpha(theme.surfaceElevated(), 0.38f);
+            ctx.fillRoundedRect(x, y, w, h, radius, fill);
+            if (hover) {
+                ctx.fillRoundedBorder(x, y, w, h, radius, 1,
+                        ColorUtil.withAlpha(theme.accent(), 0.5f), fill);
+            }
         }
 
-        int textColor = hover ? theme.accent() : (accentStyle ? theme.foreground() : theme.foregroundMuted());
-        int textW = ctx.smoothTextWidth(label, 1f);
-        ctx.drawSmoothText(label, x + (w - textW) / 2, y + (BUTTON_H - ctx.fontHeight()) / 2 + 1, textColor, 1f);
+        int textColor = featured || hover ? theme.foreground() : theme.foregroundMuted();
+        float scale = 0.92f;
+        int textW = ctx.smoothTextWidth(label, scale);
+        ctx.drawSmoothText(label, x + (w - textW) / 2, y + (h - ctx.fontHeight()) / 2 + 1, textColor, scale);
+    }
+
+    private void renderQuitLink(RenderContext ctx, Theme theme, TitleMenuLayout layout,
+                                double mouseX, double mouseY, float fade) {
+        String label = PrimeLang.get("prime.gui.title.quit", "Quit Game");
+        float scale = 0.88f;
+        int textW = ctx.smoothTextWidth(label, scale);
+        int x = (ctx.screenWidth() - textW) / 2;
+        int y = layout.quitY();
+        boolean hover = mouseX >= x - 4 && mouseX < x + textW + 4
+                && mouseY >= y - 2 && mouseY < y + ctx.fontHeight() + 2;
+
+        ctx.setDrawOpacity(fade);
+        ctx.drawSmoothText(label, x, y, hover ? theme.accent() : theme.foregroundMuted(), scale);
+        ctx.setDrawOpacity(1f);
     }
 
     private void renderFooter(RenderContext ctx, Theme theme, String minecraftVersion,
-                              String clientVersion, float fade) {
-        ctx.setDrawOpacity(fade * 0.85f);
-        String left = "Minecraft " + minecraftVersion;
-        String right = PrimeDesign.VERSION.equals(clientVersion)
-                ? "Prime Client"
-                : "Prime Client v" + clientVersion;
-        ctx.drawSmoothText(left, SIDE_PAD, ctx.screenHeight() - 22, theme.foregroundMuted(), 0.85f);
-        int rightW = ctx.smoothTextWidth(right, 0.85f);
-        ctx.drawSmoothText(right, ctx.screenWidth() - SIDE_PAD - rightW, ctx.screenHeight() - 22,
-                theme.foregroundMuted(), 0.85f);
+                              String clientVersion, TitleMenuLayout layout, float fade) {
+        ctx.setDrawOpacity(fade * 0.75f);
+        String footer = PrimeLang.get("prime.gui.title.footer", "Prime Client %1$s  ·  Minecraft %2$s",
+                clientVersion, minecraftVersion);
+        float scale = 0.78f;
+        int footerW = ctx.smoothTextWidth(footer, scale);
+        ctx.drawSmoothText(footer, (ctx.screenWidth() - footerW) / 2, layout.footerY(),
+                theme.foregroundMuted(), scale);
         ctx.setDrawOpacity(1f);
     }
 
     public TitleMenuAction hitAction(double mouseX, double mouseY, int screenWidth, int screenHeight) {
-        int stackH = ACTIONS.length * BUTTON_H + (ACTIONS.length - 1) * BUTTON_GAP;
-        int startY = (screenHeight - stackH) / 2;
-        int x = screenWidth - SIDE_PAD - BUTTON_W;
+        TitleMenuLayout layout = TitleMenuLayout.compute(screenWidth, screenHeight, MENU_BUTTON_COUNT);
 
-        for (int i = 0; i < ACTIONS.length; i++) {
-            int y = startY + i * (BUTTON_H + BUTTON_GAP);
-            if (mouseX >= x && mouseX < x + BUTTON_W && mouseY >= y && mouseY < y + BUTTON_H) {
+        int quitW = 72;
+        int quitX = (screenWidth - quitW) / 2;
+        if (mouseX >= quitX && mouseX < quitX + quitW
+                && mouseY >= layout.quitY() - 2 && mouseY < layout.quitY() + 14) {
+            return TitleMenuAction.QUIT;
+        }
+
+        for (int i = 0; i < MENU_BUTTON_COUNT; i++) {
+            int y = layout.buttonTop(i);
+            if (mouseX >= layout.buttonX() && mouseX < layout.buttonX() + layout.buttonW()
+                    && mouseY >= y && mouseY < y + layout.buttonH()) {
                 return ACTIONS[i];
             }
         }
         return null;
-    }
-
-    private static int withAlpha(int argb, float alpha) {
-        int a = Math.round(((argb >>> 24) & 0xFF) * alpha);
-        return (a << 24) | (argb & 0x00FFFFFF);
-    }
-
-    private static int blend(int a, int b, float t) {
-        int ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF, aa = (a >>> 24) & 0xFF;
-        int br = (b >> 16) & 0xFF, bg = (b >> 8) & 0xFF, bb = b & 0xFF, ba = (b >>> 24) & 0xFF;
-        int r = Math.round(ar + (br - ar) * t);
-        int g = Math.round(ag + (bg - ag) * t);
-        int bl = Math.round(ab + (bb - ab) * t);
-        int al = Math.round(aa + (ba - aa) * t);
-        return (al << 24) | (r << 16) | (g << 8) | bl;
     }
 }

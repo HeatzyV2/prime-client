@@ -7,6 +7,8 @@ import { promisify } from 'util'
 const execFileAsync = promisify(execFile)
 
 const MIN_JAVA_MAJOR = 21
+const PREFERRED_JAVA_MAJOR = 21
+const MAX_JAVA_MAJOR = 21
 
 export interface JavaInstallation {
   path: string
@@ -31,7 +33,7 @@ async function probeJava(javaPath: string): Promise<JavaInstallation | null> {
     const { stdout, stderr } = await execFileAsync(javaPath, ['-version'], { timeout: 8000 })
     const output = `${stdout}${stderr}`
     const major = parseJavaMajor(output)
-    if (major !== null && major >= MIN_JAVA_MAJOR) {
+    if (major !== null && major >= MIN_JAVA_MAJOR && major <= MAX_JAVA_MAJOR) {
       return {
         path: javaPath,
         major,
@@ -42,7 +44,7 @@ async function probeJava(javaPath: string): Promise<JavaInstallation | null> {
     const execErr = err as { stderr?: string; stdout?: string }
     const output = `${execErr.stderr ?? ''}${execErr.stdout ?? ''}`
     const major = parseJavaMajor(output)
-    if (major !== null && major >= MIN_JAVA_MAJOR) {
+    if (major !== null && major >= MIN_JAVA_MAJOR && major <= MAX_JAVA_MAJOR) {
       return {
         path: javaPath,
         major,
@@ -53,6 +55,21 @@ async function probeJava(javaPath: string): Promise<JavaInstallation | null> {
   return null
 }
 
+async function discoverJavaViaWhere(): Promise<string[]> {
+  if (process.platform !== 'win32') {
+    return []
+  }
+  try {
+    const { stdout } = await execFileAsync('where', ['java'], { timeout: 5000 })
+    return stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
 async function discoverJavaOnWindows(): Promise<string[]> {
   const roots = [
     process.env['JAVA_HOME'],
@@ -60,10 +77,12 @@ async function discoverJavaOnWindows(): Promise<string[]> {
     'C:\\Program Files\\Java',
     'C:\\Program Files\\Eclipse Adoptium',
     'C:\\Program Files\\Microsoft',
-    'C:\\Program Files\\Zulu'
+    'C:\\Program Files\\Zulu',
+    'C:\\Program Files\\Amazon Corretto',
+    'C:\\Program Files\\BellSoft'
   ].filter(Boolean) as string[]
 
-  const candidates: string[] = ['java']
+  const candidates: string[] = ['java', ...(await discoverJavaViaWhere())]
 
   for (const root of roots) {
     const bin = join(root, 'bin', 'java.exe')
@@ -118,7 +137,14 @@ export async function listJavaInstallations(): Promise<JavaInstallation[]> {
     }
   }
 
-  return found.sort((a, b) => b.major - a.major)
+  return found.sort((a, b) => {
+    const aPreferred = a.major === PREFERRED_JAVA_MAJOR ? 1 : 0
+    const bPreferred = b.major === PREFERRED_JAVA_MAJOR ? 1 : 0
+    if (aPreferred !== bPreferred) {
+      return bPreferred - aPreferred
+    }
+    return b.major - a.major
+  })
 }
 
 /** Finds a Java 21+ binary — optional override from settings or instance. */
@@ -139,6 +165,6 @@ export async function resolveJavaPath(overridePath?: string | null): Promise<str
   }
 
   throw new Error(
-    `Java ${MIN_JAVA_MAJOR}+ is required. Install a JDK and ensure java is on PATH, or set JAVA_HOME.`
+    `Java ${PREFERRED_JAVA_MAJOR} is required for Minecraft. Install Temurin 21 or let the launcher download it automatically.`
   )
 }

@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 import { IPC } from '../../shared/ipc'
 import { accountService } from '../services/AccountService'
 import { profileService } from '../services/ProfileService'
@@ -8,6 +8,7 @@ import { contentService } from '../services/ContentService'
 import { cloudService } from '../services/CloudService'
 import { cosmeticService } from '../services/CosmeticService'
 import { launchService } from '../services/LaunchService'
+import { launchLogService } from '../services/LaunchLogService'
 import { launcherBridgeService } from '../services/LauncherBridgeService'
 import { storeService } from '../services/StoreService'
 import { friendsService } from '../services/FriendsService'
@@ -45,6 +46,15 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.LAUNCH_GAME, (_e, instanceId: string, serverAddress?: string) =>
     launchService.launch(instanceId, serverAddress)
   )
+  ipcMain.handle(IPC.LAUNCH_LOGS_LIST, () => launchLogService.list())
+  ipcMain.handle(IPC.LAUNCH_LOGS_CLEAR, () => launchLogService.clear())
+  ipcMain.handle(IPC.LAUNCH_LOGS_OPEN_FOLDER, () => launchLogService.openFolder())
+  ipcMain.handle(IPC.LAUNCH_CRASH_OPEN_REPORT, (_e, filePath: string) => {
+    if (!filePath || typeof filePath !== 'string') {
+      return
+    }
+    return shell.openPath(filePath)
+  })
 
   ipcMain.handle(IPC.BRIDGE_SYNC, (_e, instanceId?: string) => launcherBridgeService.syncToInstance(instanceId!))
 

@@ -3,6 +3,7 @@ package dev.primeclient.core.gui.menu;
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.design.PrimeLogo;
+import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.theme.Theme;
 
 /**
@@ -34,7 +35,8 @@ public final class OnboardingScreen {
             default -> renderFinishStep(ctx, theme, x, y);
         }
 
-        ctx.drawText("Étape " + Math.min(step + 1, 4) + "/4  •  Échap = passer",
+        int displayStep = Math.min(step + 1, 4);
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.step_footer", "Step %1$d/4  ·  Esc = skip", displayStep),
                 x + 12, y + PANEL_H - 14, theme.foregroundMuted(), true);
     }
 
@@ -64,41 +66,64 @@ public final class OnboardingScreen {
 
     private static void renderThemeStep(RenderContext ctx, Theme theme, OnboardingManager onboarding,
                                         int x, int y, double mouseX, double mouseY) {
-        ctx.drawText("Choisis ton thème", x + 12, y + 36, theme.accent(), true);
-        drawChoice(ctx, theme, x + 12, y + 56, 128, "Prime Dark",
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.theme.title", "Choose your theme"),
+                x + 12, y + 36, theme.accent(), true);
+        drawChoice(ctx, theme, x + 12, y + 56, 128,
+                PrimeLang.get("prime.gui.settings.theme.dark", "Prime Dark"),
                 "prime-dark".equals(onboarding.chosenTheme()), mouseX, mouseY);
-        drawChoice(ctx, theme, x + 148, y + 56, 128, "Prime Light",
+        drawChoice(ctx, theme, x + 148, y + 56, 128,
+                PrimeLang.get("prime.gui.settings.theme.light", "Prime Light"),
                 "prime-light".equals(onboarding.chosenTheme()), mouseX, mouseY);
-        ctx.drawText("Clique une option puis continue", x + 12, y + 88, theme.foregroundMuted(), true);
-        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24, "Continuer", mouseX, mouseY);
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.theme.hint", "Click an option then continue"),
+                x + 12, y + 88, theme.foregroundMuted(), true);
+        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24,
+                PrimeLang.get("prime.gui.onboarding.theme.continue", "Continue"), mouseX, mouseY);
     }
 
     private static void renderProfileStep(RenderContext ctx, Theme theme, OnboardingManager onboarding,
                                           int x, int y, double mouseX, double mouseY) {
-        ctx.drawText("Profil de modules", x + 12, y + 36, theme.accent(), true);
-        drawChoice(ctx, theme, x + 12, y + 56, 88, "Équilibré",
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.profile.title", "Module profile"),
+                x + 12, y + 36, theme.accent(), true);
+        drawChoice(ctx, theme, x + 12, y + 56, 88,
+                PrimeLang.get("prime.gui.onboarding.profile.balanced", "Balanced"),
                 "default".equals(onboarding.chosenProfile()), mouseX, mouseY);
-        drawChoice(ctx, theme, x + 106, y + 56, 88, "PvP",
+        drawChoice(ctx, theme, x + 106, y + 56, 88,
+                PrimeLang.get("prime.gui.onboarding.profile.pvp", "PvP"),
                 "pvp".equals(onboarding.chosenProfile()), mouseX, mouseY);
-        drawChoice(ctx, theme, x + 200, y + 56, 88, "Survie",
+        drawChoice(ctx, theme, x + 200, y + 56, 88,
+                PrimeLang.get("prime.gui.onboarding.profile.survival", "Survival"),
                 "survival".equals(onboarding.chosenProfile()), mouseX, mouseY);
-        ctx.drawText("FPS, coords, crosshair, Discord RPC inclus", x + 12, y + 88, theme.foregroundMuted(), true);
-        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24, "Continuer", mouseX, mouseY);
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.profile.hint", "FPS, coords, crosshair, Discord RPC included"),
+                x + 12, y + 88, theme.foregroundMuted(), true);
+        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24,
+                PrimeLang.get("prime.gui.onboarding.theme.continue", "Continue"), mouseX, mouseY);
     }
 
     private static void renderKeybindStep(RenderContext ctx, Theme theme, int x, int y) {
-        ctx.drawText("Raccourcis essentiels", x + 12, y + 36, theme.accent(), true);
-        ctx.drawText("Right Shift  →  Menu Prime (modules, réglages)", x + 12, y + 56, theme.foreground(), true);
-        ctx.drawText("H  →  HUD Editor (déplacer les éléments)", x + 12, y + 72, theme.foreground(), true);
-        ctx.drawText("C  →  Zoom (module Zoom, maintenir)", x + 12, y + 88, theme.foregroundMuted(), true);
-        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24, "Compris !", 0, 0);
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.keybinds.title", "Essential shortcuts"),
+                x + 12, y + 36, theme.accent(), true);
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.keybinds.menu",
+                        "Right Shift  →  Prime Menu (modules, settings)"),
+                x + 12, y + 56, theme.foreground(), true);
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.keybinds.hud", "H  →  HUD Editor (move elements)"),
+                x + 12, y + 72, theme.foreground(), true);
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.keybinds.zoom", "C  →  Zoom (Zoom module, hold)"),
+                x + 12, y + 88, theme.foregroundMuted(), true);
+        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24,
+                PrimeLang.get("prime.gui.onboarding.keybinds.got_it", "Got it!"), 0, 0);
     }
 
     private static void renderFinishStep(RenderContext ctx, Theme theme, int x, int y) {
-        ctx.drawText("C'est parti !", x + 12, y + 36, theme.accent(), true);
-        ctx.drawText("Ton HUD, crosshair et Discord RPC sont prêts.", x + 12, y + 56, theme.foreground(), true);
-        ctx.drawText("Explore Modules dans le menu pour tout personnaliser.", x + 12, y + 72, theme.foregroundMuted(), true);
-        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24, "Entrer dans Prime Client", 0, 0);
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.finish.title", "You're all set!"),
+                x + 12, y + 36, theme.accent(), true);
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.finish.line1",
+                        "Your HUD, crosshair and Discord RPC are ready."),
+                x + 12, y + 56, theme.foreground(), true);
+        ctx.drawText(PrimeLang.get("prime.gui.onboarding.finish.line2",
+                        "Explore Modules in the menu to customize everything."),
+                x + 12, y + 72, theme.foregroundMuted(), true);
+        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24,
+                PrimeLang.get("prime.gui.onboarding.finish.enter", "Enter Prime Client"), 0, 0);
     }
 
     private static boolean handleThemeClick(OnboardingManager onboarding, double mx, double my, int x, int y) {

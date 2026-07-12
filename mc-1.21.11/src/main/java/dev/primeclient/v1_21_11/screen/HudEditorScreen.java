@@ -2,6 +2,7 @@ package dev.primeclient.v1_21_11.screen;
 
 import dev.primeclient.core.PrimeClient;
 import dev.primeclient.core.hud.editor.HudEditor;
+import dev.primeclient.core.hud.editor.HudEditorHints;
 import dev.primeclient.v1_21_11.render.GuiRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -18,8 +19,6 @@ import net.minecraft.network.chat.Component;
  */
 public final class HudEditorScreen extends Screen {
 
-    private static final String HINT =
-            "Drag to move  •  Scroll=scale  •  Shift+scroll=rotate  •  Ctrl+scroll=opacity  •  R=tint  •  Esc=close";
     private static final int DIM_COLOR = 0x40000000;
 
     private final GuiRenderContext renderContext = new GuiRenderContext();
@@ -35,16 +34,17 @@ public final class HudEditorScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-        // Intentionally no super.render(): no vanilla blur, the game and HUD
-        // must stay readable while editing.
         renderContext.prepare(graphics);
         renderContext.fillRect(0, 0, width, height, DIM_COLOR);
         PrimeClient.get().hudEditor().renderOverlay(renderContext, mouseX, mouseY);
-        renderContext.drawText(HINT,
-                (width - renderContext.textWidth(HINT)) / 2,
-                height - 24,
-                PrimeClient.get().themes().active().foreground(),
-                true);
+        int color = PrimeClient.get().themes().active().foreground();
+        int muted = PrimeClient.get().themes().active().foregroundMuted();
+        drawCenteredHint(HudEditorHints.LINE_1, height - 26, color);
+        drawCenteredHint(HudEditorHints.LINE_2, height - 14, muted);
+    }
+
+    private void drawCenteredHint(String text, int y, int color) {
+        renderContext.drawText(text, (width - renderContext.textWidth(text)) / 2, y, color, true);
     }
 
     @Override

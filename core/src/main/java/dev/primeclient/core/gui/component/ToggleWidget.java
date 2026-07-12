@@ -3,6 +3,7 @@ package dev.primeclient.core.gui.component;
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.theme.Theme;
+import dev.primeclient.core.util.ColorUtil;
 import dev.primeclient.core.util.Easing;
 
 /** Animated on/off toggle switch. */
@@ -17,12 +18,18 @@ public final class ToggleWidget {
     public void render(RenderContext ctx, Theme theme, int x, int y, boolean on) {
         int w = PrimeDesign.TOGGLE_WIDTH;
         int h = PrimeDesign.TOGGLE_HEIGHT;
-        int track = on ? theme.accent() : theme.backgroundLight();
-        ctx.fillRect(x, y, w, h, track);
-        int knob = 7;
+        int radius = h / 2;
+        int track = on ? theme.accent() : ColorUtil.withAlpha(theme.backgroundLight(), 0.95f);
+        ctx.fillRoundedRect(x, y, w, h, radius, track);
+        if (on) {
+            ctx.fillGradientHorizontal(x + 1, y + 1, w - 2, h - 2,
+                    ColorUtil.withAlpha(theme.accent(), 0.95f),
+                    ColorUtil.withAlpha(theme.accentSecondary(), 0.85f));
+        }
+        int knob = h - 4;
         int knobX = x + 2 + Math.round((w - knob - 4) * knobProgress);
-        int knobY = y + (h - knob) / 2;
-        ctx.fillRect(knobX, knobY, knob, knob, theme.foreground());
+        int knobY = y + 2;
+        ctx.fillRoundedRect(knobX, knobY, knob, knob, knob / 2, 0xFFFFFFFF);
     }
 
     public boolean hit(double mx, double my, int x, int y) {

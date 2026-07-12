@@ -43,13 +43,34 @@ public final class GuiRenderContext implements RenderContext {
     }
 
     @Override
+    public void drawUiText(String text, int x, int y, int argb) {
+        extractor.text(font, text, x, y, applyOpacity(argb), false);
+    }
+
+    @Override
     public int textWidth(String text) {
+        return font.width(text);
+    }
+
+    @Override
+    public int uiTextWidth(String text) {
         return font.width(text);
     }
 
     @Override
     public int fontHeight() {
         return font.lineHeight;
+    }
+
+    @Override
+    public int uiFontHeight() {
+        return font.lineHeight;
+    }
+
+    @Override
+    public void fillGradientVertical(int x, int y, int width, int height, int topArgb, int bottomArgb) {
+        extractor.fillGradient(x, y, x + width, y + height,
+                applyOpacity(topArgb), applyOpacity(bottomArgb));
     }
 
     @Override
@@ -75,6 +96,27 @@ public final class GuiRenderContext implements RenderContext {
     @Override
     public void setDrawOpacity(float opacity) {
         this.drawOpacity = Math.clamp(opacity, 0f, 1f);
+    }
+
+    @Override
+    public void pushClip(int x, int y, int width, int height) {
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        int sw = screenWidth();
+        int sh = screenHeight();
+        int x0 = Math.max(0, x);
+        int y0 = Math.max(0, y);
+        int x1 = Math.min(sw, x + width);
+        int y1 = Math.min(sh, y + height);
+        if (x1 > x0 && y1 > y0) {
+            extractor.enableScissor(x0, y0, x1, y1);
+        }
+    }
+
+    @Override
+    public void popClip() {
+        extractor.disableScissor();
     }
 
     @Override

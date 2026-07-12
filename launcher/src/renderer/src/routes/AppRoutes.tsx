@@ -13,6 +13,7 @@ import { NewsPage } from '@renderer/pages/NewsPage'
 import { MediaPage } from '@renderer/pages/MediaPage'
 import { PerformancePage } from '@renderer/pages/PerformancePage'
 import { DownloadsPage } from '@renderer/pages/DownloadsPage'
+import { ConsolePage } from '@renderer/pages/ConsolePage'
 import { SettingsPage } from '@renderer/pages/SettingsPage'
 import type { FavoriteServer, NewsItem } from '@shared/types'
 
@@ -38,6 +39,7 @@ export function AppRoutes({ news, servers }: AppRoutesProps) {
       <Route path="media" element={<MediaPage />} />
       <Route path="performance" element={<PerformancePage />} />
       <Route path="downloads" element={<DownloadsPage />} />
+      <Route path="console" element={<ConsolePage />} />
       <Route path="settings" element={<SettingsPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

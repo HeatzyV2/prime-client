@@ -36,6 +36,16 @@ public final class FakeRenderContext implements RenderContext {
     }
 
     @Override
+    public void drawUiText(String text, int x, int y, int argb) {
+        textCalls++;
+    }
+
+    @Override
+    public int uiTextWidth(String text) {
+        return text.length() * 6;
+    }
+
+    @Override
     public int textWidth(String text) {
         return text.length() * 6;
     }
@@ -56,5 +66,13 @@ public final class FakeRenderContext implements RenderContext {
 
     @Override
     public void popTransform() {
+    }
+
+    @Override
+    public void pushClip(int x, int y, int width, int height) {
+    }
+
+    @Override
+    public void popClip() {
     }
 }

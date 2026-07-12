@@ -88,6 +88,7 @@ export type NavSection =
   | 'media'
   | 'performance'
   | 'downloads'
+  | 'console'
   | 'settings'
 
 export interface NavItem {
@@ -111,5 +112,6 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'media', label: 'Media', phase: 3 },
   { id: 'performance', label: 'Performance', phase: 3 },
   { id: 'downloads', label: 'Downloads', phase: 3 },
+  { id: 'console', label: 'Console', phase: 3 },
   { id: 'settings', label: 'Settings', phase: 3 }
 ]

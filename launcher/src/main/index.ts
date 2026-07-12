@@ -17,8 +17,8 @@ let mainWindow: BrowserWindow | null = null
 
 function resolveWindowIcon(): string | undefined {
   const candidates = [
-    join(__dirname, '../../build/icon.ico'),
-    join(process.resourcesPath, 'icon.ico')
+    join(__dirname, '../../resources/icon.png'),
+    join(process.resourcesPath, 'icon.png')
   ]
   return candidates.find((path) => existsSync(path))
 }
@@ -72,6 +72,8 @@ import { ecosystemStore } from './storage/EcosystemStore'
 import { settingsStore } from './storage/SettingsStore'
 import { downloadStore } from './storage/DownloadStore'
 import { updateService } from './services/UpdateService'
+import { launcherDiscordService } from './services/LauncherDiscordService'
+import { minecraftEngine } from './minecraft/MinecraftEngine'
 
 app.whenReady().then(async () => {
   registerMediaProtocol()
@@ -84,6 +86,8 @@ app.whenReady().then(async () => {
   registerWindowHandlers()
   createWindow()
 
+  await launcherDiscordService.start()
+
   const settings = await settingsStore.load()
   if (settings.autoUpdate) {
     void updateService.check()
@@ -94,6 +98,13 @@ app.whenReady().then(async () => {
       createWindow()
     }
   })
+})
+
+app.on('before-quit', () => {
+  if (minecraftEngine.isRunning()) {
+    void minecraftEngine.killGame()
+  }
+  launcherDiscordService.shutdown()
 })
 
 app.on('window-all-closed', () => {
@@ -118,5 +129,10 @@ function registerWindowHandlers(): void {
       mainWindow?.maximize()
     }
   })
-  ipcMain.on(IPC.WINDOW_CLOSE, () => mainWindow?.close())
+  ipcMain.on(IPC.WINDOW_CLOSE, () => {
+    if (minecraftEngine.isRunning()) {
+      void minecraftEngine.killGame()
+    }
+    mainWindow?.close()
+  })
 }

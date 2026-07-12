@@ -37,6 +37,22 @@ const api = {
       }
       ipcRenderer.on(IPC.LAUNCH_PROGRESS, handler)
       return () => ipcRenderer.removeListener(IPC.LAUNCH_PROGRESS, handler)
+    },
+    listLogs: () => ipcRenderer.invoke(IPC.LAUNCH_LOGS_LIST),
+    clearLogs: () => ipcRenderer.invoke(IPC.LAUNCH_LOGS_CLEAR),
+    openLogFolder: () => ipcRenderer.invoke(IPC.LAUNCH_LOGS_OPEN_FOLDER),
+    openCrashReport: (filePath: string) => ipcRenderer.invoke(IPC.LAUNCH_CRASH_OPEN_REPORT, filePath),
+    onLogAppend: (listener: (entry: import('../shared/ipc').LaunchLogEntryDto) => void): (() => void) => {
+      const handler = (_event: IpcRendererEvent, entry: import('../shared/ipc').LaunchLogEntryDto): void => {
+        listener(entry)
+      }
+      ipcRenderer.on(IPC.LAUNCH_LOG_APPEND, handler)
+      return () => ipcRenderer.removeListener(IPC.LAUNCH_LOG_APPEND, handler)
+    },
+    onLogReset: (listener: () => void): (() => void) => {
+      const handler = (): void => listener()
+      ipcRenderer.on(IPC.LAUNCH_LOG_RESET, handler)
+      return () => ipcRenderer.removeListener(IPC.LAUNCH_LOG_RESET, handler)
     }
   },
   profile: {

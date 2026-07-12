@@ -14,6 +14,7 @@ import {
   Film,
   Gauge,
   Download,
+  Terminal,
   Settings
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -38,6 +39,7 @@ const ICONS: Record<NavSection, LucideIcon> = {
   media: Film,
   performance: Gauge,
   downloads: Download,
+  console: Terminal,
   settings: Settings
 }
 

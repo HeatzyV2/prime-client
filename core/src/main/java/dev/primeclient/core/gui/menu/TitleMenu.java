@@ -4,8 +4,6 @@ import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.theme.Theme;
-
-/** Title screen controller — input, fade-in, and navigation via the adapter. */
 public final class TitleMenu {
 
     private final TitleMenuRenderer renderer = new TitleMenuRenderer();
@@ -28,8 +26,7 @@ public final class TitleMenu {
     }
 
     public void render(RenderContext ctx, Theme theme, double mouseX, double mouseY) {
-        renderer.render(ctx, theme, mouseX, mouseY,
-                adapter.minecraftVersion(), PrimeDesign.VERSION, fade);
+        renderer.render(ctx, theme, mouseX, mouseY, adapter, fade);
     }
 
     public boolean mousePressed(double mouseX, double mouseY, int button,
@@ -37,6 +34,19 @@ public final class TitleMenu {
         if (button != 0 || fade < 0.35f) {
             return false;
         }
+
+        TitleMenuTopBar.Action top = TitleMenuTopBar.hitAction(
+                mouseX, mouseY, screenWidth, adapter.playerName());
+        if (top != null) {
+            switch (top) {
+                case DISCORD -> adapter.openExternalLink(TitleMenuTopBar.discordUrl());
+                case VANILLA -> adapter.openVanillaTitleScreen();
+                case SETTINGS -> adapter.openPrimeSettings();
+                case PROFILE -> adapter.openOptions();
+            }
+            return true;
+        }
+
         TitleMenuAction action = renderer.hitAction(mouseX, mouseY, screenWidth, screenHeight);
         if (action == null) {
             return false;

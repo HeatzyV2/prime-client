@@ -9,6 +9,7 @@ import dev.primeclient.core.gui.FavoritesManager;
 import dev.primeclient.core.cloud.CloudSyncManager;
 import dev.primeclient.core.cosmetics.CosmeticManager;
 import dev.primeclient.core.design.PrimeDesign;
+import dev.primeclient.core.gui.GuiLayout;
 import dev.primeclient.core.gui.menu.MainMenuRenderer;
 import dev.primeclient.core.gui.menu.OnboardingManager;
 import dev.primeclient.core.gui.menu.OnboardingScreen;
@@ -24,6 +25,7 @@ import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.theme.ThemeManager;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.gui.TooltipRenderer;
+import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.gui.clickgui.ModuleCardBrowser;
 import dev.primeclient.core.gui.menu.ConfigurationsMenuRenderer;
 import dev.primeclient.core.gui.menu.CosmeticsMenuRenderer;
@@ -80,6 +82,7 @@ public final class ClickGui implements ConfigBinding {
     private int screenWidth = 800;
     private int screenHeight = 600;
     private int fontHeight = 9;
+    private RenderContext textMetrics;
     private ClickGuiView view = ClickGuiView.MAIN_MENU;
     private float openFade;
     private float menuSlide;
@@ -106,7 +109,8 @@ public final class ClickGui implements ConfigBinding {
                     favorites, x, 8));
             x += Panel.WIDTH + 8;
         }
-        favoritesPanel = new Panel("Favorites", favorites.resolve(modules), favorites, 8, 8);
+        favoritesPanel = new Panel(PrimeLang.get("prime.gui.clickgui.favorites", "Favorites"),
+                favorites.resolve(modules), favorites, 8, 8);
     }
 
     public void setOnboardingCompleteHandler(Runnable handler) {
@@ -122,7 +126,7 @@ public final class ClickGui implements ConfigBinding {
         closeEditors();
         view = onboarding.completed() ? ClickGuiView.MAIN_MENU : ClickGuiView.ONBOARDING;
         openFade = 0f;
-        menuSlide = -40f;
+        menuSlide = -12f;
     }
 
     private void closeEditors() {
@@ -135,6 +139,13 @@ public final class ClickGui implements ConfigBinding {
     /** For tests: skip the main menu and show category panels. */
     public void showBrowse() {
         view = ClickGuiView.BROWSE;
+        openFade = 1f;
+        menuSlide = 0f;
+    }
+
+    /** Opens ClickGUI on the settings hub (title screen shortcut). */
+    public void showSettings() {
+        view = ClickGuiView.SETTINGS;
         openFade = 1f;
         menuSlide = 0f;
     }
@@ -203,12 +214,11 @@ public final class ClickGui implements ConfigBinding {
     }
 
     public void render(RenderContext ctx, double mouseX, double mouseY) {
+        this.textMetrics = ctx;
         this.screenWidth = ctx.screenWidth();
         this.screenHeight = ctx.screenHeight();
         this.fontHeight = ctx.fontHeight();
         Theme theme = themes.active();
-        int dimAlpha = Math.round(96 * Easing.easeOutCubic(openFade));
-        ctx.fillRect(0, 0, ctx.screenWidth(), ctx.screenHeight(), (dimAlpha << 24));
 
         if (isSearching()) {
             renderSearchBar(ctx, theme);
@@ -220,9 +230,9 @@ public final class ClickGui implements ConfigBinding {
             case MAIN_MENU -> {
                 mainMenu.renderBackground(ctx, theme, openFade);
                 int px = mainMenu.panelX(screenWidth);
-                int py = mainMenu.panelY(screenHeight, menuSlide);
+                int py = mainMenu.panelY(screenWidth, screenHeight, menuSlide);
                 mainMenu.renderPanel(ctx, theme, px, py, adapter.playerName(),
-                        PrimeDesign.VERSION, mouseX, mouseY);
+                        PrimeDesign.VERSION, mouseX, mouseY, menuSlide);
             }
             case ONBOARDING -> renderOnboarding(ctx, theme, mouseX, mouseY);
             case SETTINGS -> {
@@ -258,9 +268,17 @@ public final class ClickGui implements ConfigBinding {
 
     private void renderEditors(RenderContext ctx, Theme theme) {
         if (stringEditor != null) {
+            int[] pos = GuiLayout.clampPopup(editorX, editorY, 140, PrimeDesign.INPUT_HEIGHT,
+                    screenWidth, screenHeight);
+            editorX = pos[0];
+            editorY = pos[1];
             stringEditor.render(ctx, theme, editorX, editorY, 140);
         }
         if (colorPicker != null) {
+            int[] pos = GuiLayout.clampPopup(editorX, editorY,
+                    ColorPickerWidget.WIDTH, ColorPickerWidget.HEIGHT, screenWidth, screenHeight);
+            editorX = pos[0];
+            editorY = pos[1];
             colorPicker.render(ctx, theme, editorX, editorY);
         }
     }
@@ -294,14 +312,19 @@ public final class ClickGui implements ConfigBinding {
     }
 
     private void renderSearchBar(RenderContext ctx, Theme theme) {
-        String label = searchQuery.isEmpty() ? "Type to search..." : searchQuery.toString();
+        String label = searchQuery.isEmpty()
+                ? PrimeLang.get("prime.gui.clickgui.search.placeholder", "Type to search...")
+                : searchQuery.toString();
         int labelColor = searchQuery.isEmpty() ? theme.foregroundMuted() : theme.foreground();
-        int width = Math.max(SEARCH_MIN_WIDTH, ctx.textWidth(label) + 12);
+        int maxWidth = ctx.screenWidth() - 32;
+        int width = Math.min(maxWidth, Math.max(SEARCH_MIN_WIDTH, GuiLayout.labelWidth(ctx, label) + 16));
         int x = (ctx.screenWidth() - width) / 2;
         int y = ctx.screenHeight() - SEARCH_HEIGHT - 8;
-        ctx.fillRect(x, y, width, SEARCH_HEIGHT, theme.backgroundLight());
-        ctx.fillRect(x, y + SEARCH_HEIGHT - 1, width, 1, theme.accent());
-        ctx.drawText(label, x + 6, y + (SEARCH_HEIGHT - ctx.fontHeight()) / 2 + 1, labelColor, true);
+        ctx.fillRoundedRect(x, y, width, SEARCH_HEIGHT, PrimeDesign.RADIUS_MD, theme.backgroundLight());
+        ctx.fillGradientHorizontal(x + 2, y + SEARCH_HEIGHT - 2, width - 4, 2,
+                theme.accent(), dev.primeclient.core.util.ColorUtil.withAlpha(theme.accent(), 0.05f));
+        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, label, width - 12),
+                x + 6, y + (SEARCH_HEIGHT - ctx.uiFontHeight()) / 2 + 1, labelColor);
     }
 
     public boolean mousePressed(double mouseX, double mouseY, int button) {
@@ -326,10 +349,10 @@ public final class ClickGui implements ConfigBinding {
             return handleMainMenuPress(mouseX, mouseY);
         }
         if (view == ClickGuiView.SETTINGS) {
-            return settingsMenu.mousePressed(mouseX, mouseY, screenWidth, screenHeight, themes);
+            return settingsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, themes);
         }
         if (view == ClickGuiView.COSMETICS) {
-            return cosmeticsMenu.mousePressed(mouseX, mouseY, screenWidth, screenHeight, cosmetics);
+            return cosmeticsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, cosmetics);
         }
         if (view == ClickGuiView.CONFIGURATIONS) {
             return mouseX >= 0;
@@ -346,14 +369,15 @@ public final class ClickGui implements ConfigBinding {
                 return true;
             }
             int browserW = selectedModulePanel != null ? screenWidth - Panel.WIDTH - 24 : screenWidth - 16;
-            return cardBrowser.mousePressed(mouseX, mouseY, 8, 8, browserW, screenHeight - 40, button);
+            return cardBrowser.mousePressed(textMetrics, mouseX, mouseY, 8, 8, browserW, screenHeight - 40, button);
         }
         return false;
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double verticalAmount) {
         if (view == ClickGuiView.BROWSE) {
-            return cardBrowser.mouseScrolled(verticalAmount);
+            int browserW = selectedModulePanel != null ? screenWidth - Panel.WIDTH - 24 : screenWidth - 16;
+            return cardBrowser.mouseScrolled(verticalAmount, 8, 8, browserW, screenHeight - 40);
         }
         if (view == ClickGuiView.COSMETICS) {
             return cosmeticsMenu.scroll(verticalAmount);
@@ -362,9 +386,7 @@ public final class ClickGui implements ConfigBinding {
     }
 
     private boolean handleMainMenuPress(double mouseX, double mouseY) {
-        int px = mainMenu.panelX(screenWidth);
-        int py = mainMenu.panelY(screenHeight, menuSlide);
-        int btn = mainMenu.hitButton(mouseX, mouseY, px, py);
+        int btn = mainMenu.hitButton(mouseX, mouseY, screenWidth, screenHeight, menuSlide);
         if (btn < 0) {
             return false;
         }
@@ -387,8 +409,9 @@ public final class ClickGui implements ConfigBinding {
         editingString = setting;
         stringEditor = new TextInputField(setting.get(), setting.name(), 48);
         stringEditor.setFocused(true);
-        editorX = x;
-        editorY = y;
+        int[] pos = GuiLayout.clampPopup(x, y, 140, PrimeDesign.INPUT_HEIGHT, screenWidth, screenHeight);
+        editorX = pos[0];
+        editorY = pos[1];
         colorPicker = null;
         editingColor = null;
     }
@@ -397,8 +420,10 @@ public final class ClickGui implements ConfigBinding {
         editingColor = setting;
         colorPicker = new ColorPickerWidget();
         colorPicker.load(setting.get());
-        editorX = x;
-        editorY = y;
+        int[] pos = GuiLayout.clampPopup(x, y, ColorPickerWidget.WIDTH, ColorPickerWidget.HEIGHT,
+                screenWidth, screenHeight);
+        editorX = pos[0];
+        editorY = pos[1];
         stringEditor = null;
         editingString = null;
     }
@@ -533,12 +558,14 @@ public final class ClickGui implements ConfigBinding {
             return;
         }
         List<Module> results = modules.search(searchQuery.toString());
-        searchPanel = new Panel("Search (" + results.size() + ")", results, favorites,
+        searchPanel = new Panel(PrimeLang.get("prime.gui.clickgui.search.panel", "Search (%d)", results.size()),
+                results, favorites,
                 searchPanel != null ? searchPanel.x : 8, 8);
     }
 
     private void refreshFavoritesPanel() {
-        favoritesPanel = new Panel("Favorites", favorites.resolve(modules), favorites, favoritesPanel.x, favoritesPanel.y);
+        favoritesPanel = new Panel(PrimeLang.get("prime.gui.clickgui.favorites", "Favorites"),
+                favorites.resolve(modules), favorites, favoritesPanel.x, favoritesPanel.y);
         favoritesPanel.collapsed = false;
     }
 

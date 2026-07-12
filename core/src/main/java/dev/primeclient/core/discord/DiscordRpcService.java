@@ -3,6 +3,7 @@ package dev.primeclient.core.discord;
 import dev.primeclient.core.account.PrimeAccountService;
 import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.design.PrimeDesign;
+import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.discord.ipc.DiscordIpcClient;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleManager;
@@ -111,8 +112,9 @@ public final class DiscordRpcService {
                 || "Singleplayer".equalsIgnoreCase(server);
 
         String details = singleplayer
-                ? "Singleplayer"
-                : "Playing on " + (settings.showServerIp() ? server : maskServer(server));
+                ? PrimeLang.get("prime.discord.singleplayer", "Singleplayer")
+                : PrimeLang.get("prime.discord.playing_on", "Playing on %s",
+                        settings.showServerIp() ? server : maskServer(server));
 
         StringBuilder state = new StringBuilder();
         state.append(player);
@@ -153,14 +155,17 @@ public final class DiscordRpcService {
         }
         if (settings.showModuleCount()) {
             int enabled = countEnabled(modules);
-            state.append(" • ").append(enabled).append("/").append(modules.all().size()).append(" modules");
+            state.append(" • ").append(PrimeLang.get("prime.discord.modules_count", "%1$d/%2$d modules",
+                    enabled, modules.all().size()));
         }
         if (settings.showFps()) {
-            state.append(" • ").append(adapter.fps()).append(" FPS");
+            state.append(" • ").append(PrimeLang.get("prime.discord.fps", "%d FPS", adapter.fps()));
         }
 
         String smallKey = "prime_logo";
-        String smallText = singleplayer ? "Singleplayer" : server;
+        String smallText = singleplayer
+                ? PrimeLang.get("prime.discord.singleplayer", "Singleplayer")
+                : server;
 
         Long start = settings.showSessionTime()
                 ? worldSinceMillis / 1000L
@@ -172,7 +177,7 @@ public final class DiscordRpcService {
                 details,
                 state.toString(),
                 "prime_logo",
-                "Prime Client v" + primeVersion,
+                PrimeLang.get("prime.discord.client_version", "Prime Client v%s", primeVersion),
                 smallKey,
                 smallText,
                 start,
@@ -182,23 +187,28 @@ public final class DiscordRpcService {
 
     private DiscordPresenceSnapshot menuPresence(String player, String mcVersion, String primeVersion,
                                                    MinecraftAdapter adapter) {
-        String details = adapter.isScreenOpen() ? "Browsing menus" : "In Main Menu";
-        String state = player + " • Minecraft " + mcVersion + " • Prime v" + primeVersion;
+        String details = adapter.isScreenOpen()
+                ? PrimeLang.get("prime.discord.browsing_menus", "Browsing menus")
+                : PrimeLang.get("prime.discord.main_menu", "In Main Menu");
+        String state = PrimeLang.get("prime.discord.state_menu", "%1$s · Minecraft %2$s · Prime v%3$s",
+                player, mcVersion, primeVersion);
         if (settings.showFps()) {
-            state += " • " + adapter.fps() + " FPS";
+            state += " • " + PrimeLang.get("prime.discord.fps", "%d FPS", adapter.fps());
         }
         Long start = settings.showSessionTime() ? menuSinceMillis / 1000L : null;
         List<DiscordPresenceSnapshot.Button> buttons = List.of(
-                new DiscordPresenceSnapshot.Button("Prime Client", appUrl()),
-                new DiscordPresenceSnapshot.Button("Discord App", discordAppUrl())
+                new DiscordPresenceSnapshot.Button(
+                        PrimeLang.get("prime.discord.button.client", "Prime Client"), appUrl()),
+                new DiscordPresenceSnapshot.Button(
+                        PrimeLang.get("prime.discord.button.discord_app", "Discord App"), discordAppUrl())
         );
         return new DiscordPresenceSnapshot(
                 details,
                 state,
                 "prime_logo",
-                "Prime Client v" + primeVersion,
+                PrimeLang.get("prime.discord.client_version", "Prime Client v%s", primeVersion),
                 "prime_logo",
-                "Main Menu",
+                PrimeLang.get("prime.discord.main_menu_small", "Main Menu"),
                 start,
                 buttons
         );
@@ -206,11 +216,14 @@ public final class DiscordRpcService {
 
     private List<DiscordPresenceSnapshot.Button> buildButtons(String server, boolean singleplayer) {
         List<DiscordPresenceSnapshot.Button> buttons = new ArrayList<>();
-        buttons.add(new DiscordPresenceSnapshot.Button("Prime Client", appUrl()));
+        buttons.add(new DiscordPresenceSnapshot.Button(
+                PrimeLang.get("prime.discord.button.client", "Prime Client"), appUrl()));
         if (!singleplayer && settings.showServerIp() && server != null && !server.isBlank()) {
-            buttons.add(new DiscordPresenceSnapshot.Button("Server Status", serverStatusUrl(server)));
+            buttons.add(new DiscordPresenceSnapshot.Button(
+                    PrimeLang.get("prime.discord.button.server_status", "Server Status"), serverStatusUrl(server)));
         } else {
-            buttons.add(new DiscordPresenceSnapshot.Button("Discord App", discordAppUrl()));
+            buttons.add(new DiscordPresenceSnapshot.Button(
+                    PrimeLang.get("prime.discord.button.discord_app", "Discord App"), discordAppUrl()));
         }
         return buttons.size() > 2 ? buttons.subList(0, 2) : buttons;
     }
@@ -220,7 +233,7 @@ public final class DiscordRpcService {
             return account.username();
         }
         String name = adapter.playerName();
-        return name.isBlank() ? "Player" : name;
+        return name.isBlank() ? PrimeLang.get("prime.discord.player_fallback", "Player") : name;
     }
 
     private static int countEnabled(ModuleManager modules) {

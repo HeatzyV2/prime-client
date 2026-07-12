@@ -21,16 +21,29 @@ public interface RenderContext {
     /** Shadowless text with optional uniform scale — cleaner than vanilla MC labels. */
     default void drawSmoothText(String text, int x, int y, int argb, float scale) {
         if (Math.abs(scale - 1f) < 0.01f) {
-            drawText(text, x, y, argb, false);
+            drawUiText(text, x, y, argb);
             return;
         }
         pushTransform(x, y, scale);
-        drawText(text, 0, 0, argb, false);
+        drawUiText(text, 0, 0, argb);
         popTransform();
     }
 
     default int smoothTextWidth(String text, float scale) {
-        return Math.round(textWidth(text) * scale);
+        return Math.round(uiTextWidth(text) * scale);
+    }
+
+    /** Premium TTF UI labels (Inter). Falls back to vanilla in headless tests. */
+    default void drawUiText(String text, int x, int y, int argb) {
+        drawText(text, x, y, argb, false);
+    }
+
+    default int uiTextWidth(String text) {
+        return textWidth(text);
+    }
+
+    default int uiFontHeight() {
+        return fontHeight();
     }
 
     int textWidth(String text);
@@ -54,6 +67,14 @@ public interface RenderContext {
     /** Multiplies alpha on subsequent draw calls until the next {@link #setDrawOpacity(float)}. */
     void setDrawOpacity(float opacity);
 
+    /** Clips subsequent draw calls to the rectangle (screen space). No-op in headless tests. */
+    default void pushClip(int x, int y, int width, int height) {
+    }
+
+    /** Ends the innermost clip region opened by {@link #pushClip(int, int, int, int)}. */
+    default void popClip() {
+    }
+
     /**
      * Draws a mod GUI texture. {@code texturePath} is under {@code assets/primeclient/},
      * e.g. {@code textures/gui/logo.png}. Default is a no-op for headless tests.
@@ -72,5 +93,30 @@ public interface RenderContext {
             int color = dev.primeclient.core.util.ColorUtil.lerp(topArgb, bottomArgb, t);
             fillRect(x, y + row, width, 1, color);
         }
+    }
+
+    /** Horizontal gradient fill (left → right). */
+    default void fillGradientHorizontal(int x, int y, int width, int height, int leftArgb, int rightArgb) {
+        if (width <= 0) {
+            return;
+        }
+        for (int col = 0; col < width; col++) {
+            float t = col / (float) Math.max(1, width - 1);
+            int color = dev.primeclient.core.util.ColorUtil.lerp(leftArgb, rightArgb, t);
+            fillRect(x + col, y, 1, height, color);
+        }
+    }
+
+    default void fillRoundedRect(int x, int y, int width, int height, int radius, int argb) {
+        dev.primeclient.core.gui.RoundedRect.fill(this, x, y, width, height, radius, argb);
+    }
+
+    default void fillRoundedBorder(int x, int y, int width, int height, int radius,
+                                   int thickness, int borderArgb, int innerArgb) {
+        dev.primeclient.core.gui.RoundedRect.border(this, x, y, width, height, radius, thickness, borderArgb, innerArgb);
+    }
+
+    default void fillSoftShadow(int x, int y, int width, int height, int radius, int shadowArgb) {
+        dev.primeclient.core.gui.RoundedRect.softShadow(this, x, y, width, height, radius, shadowArgb);
     }
 }

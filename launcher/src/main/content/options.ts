@@ -92,3 +92,15 @@ export async function setActiveShaderPack(instanceId: string, fileName: string |
   lines = setOptionValue(lines, 'shaderPack', value)
   await writeOptionsLines(instanceId, lines)
 }
+
+/** Maps launcher locale to Minecraft options.txt language code. */
+export function launcherLocaleToMinecraftLang(locale: 'en' | 'fr'): string {
+  return locale === 'fr' ? 'fr_fr' : 'en_us'
+}
+
+/** Writes the Minecraft language key into options.txt for an instance. */
+export async function syncMinecraftLanguage(instanceId: string, locale: 'en' | 'fr'): Promise<void> {
+  let lines = await readOptionsLines(instanceId)
+  lines = setOptionValue(lines, 'lang', launcherLocaleToMinecraftLang(locale))
+  await writeOptionsLines(instanceId, lines)
+}

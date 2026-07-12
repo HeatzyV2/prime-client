@@ -3,6 +3,8 @@ package dev.primeclient.v1_21_11.screen;
 import dev.primeclient.core.PrimeClient;
 import dev.primeclient.core.gui.clickgui.ClickGui;
 import dev.primeclient.v1_21_11.render.GuiRenderContext;
+import dev.primeclient.core.gui.BlurBackdrop;
+import dev.primeclient.v1_21_11.render.PanelBlur;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -39,10 +41,28 @@ public final class ClickGuiScreen extends Screen {
     }
 
     @Override
+    public boolean panoramaShouldSpin() {
+        return true;
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        if (minecraft.level != null) {
+            // In-world: dim overlay only — MC 1.21.11 allows one blur call per frame.
+            BlurBackdrop.setActive(false);
+        } else {
+            renderPanorama(graphics, delta);
+            BlurBackdrop.setActive(false);
+        }
         renderContext.prepare(graphics);
-        renderContext.fillRect(0, 0, width, height, DIM_COLOR);
+        int dim = minecraft.level != null ? DIM_COLOR : 0x28000000;
+        renderContext.fillRect(0, 0, width, height, dim);
         PrimeClient.get().clickGui().render(renderContext, mouseX, mouseY);
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        // Skip default blurred background — we draw our own backdrop in render().
     }
 
     @Override
@@ -91,6 +111,7 @@ public final class ClickGuiScreen extends Screen {
 
     @Override
     public void onClose() {
+        PanelBlur.end(minecraft);
         PrimeClient.get().profiles().saveActive();
         super.onClose();
     }

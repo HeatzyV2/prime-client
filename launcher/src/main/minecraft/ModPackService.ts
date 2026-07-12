@@ -15,11 +15,20 @@ import type { InstanceLaunchConfig } from './constants'
 
 const FABRIC_API_PROJECT = 'P7dR8mSH'
 const PRIME_JAR_PREFIX = 'prime-client-1.21.11'
+const VERSION_PATTERN = /prime-client-1\.21\.11-(\d+)\.(\d+)\.(\d+)\.jar$/
 
 interface ModCacheManifest {
   tag: string
   fileName: string
   downloadedAt: string
+}
+
+type SemVer = [major: number, minor: number, patch: number]
+
+interface JarCandidate {
+  path: string
+  version: SemVer
+  source: string
 }
 
 async function downloadFile(url: string, dest: string): Promise<void> {
@@ -38,6 +47,33 @@ function modCacheManifestPath(): string {
   return join(modCacheDir(), 'manifest.json')
 }
 
+function parseJarVersion(fileName: string): SemVer | null {
+  const match = fileName.match(VERSION_PATTERN)
+  if (!match) {
+    return null
+  }
+  return [Number(match[1]), Number(match[2]), Number(match[3])]
+}
+
+function compareSemVer(a: SemVer, b: SemVer): number {
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) {
+      return a[i] - b[i]
+    }
+  }
+  return 0
+}
+
+function pickNewestCandidate(candidates: JarCandidate[]): JarCandidate | null {
+  let best: JarCandidate | null = null
+  for (const candidate of candidates) {
+    if (!best || compareSemVer(candidate.version, best.version) > 0) {
+      best = candidate
+    }
+  }
+  return best
+}
+
 async function readModCacheManifest(): Promise<ModCacheManifest | null> {
   try {
     const raw = await readFile(modCacheManifestPath(), 'utf8')
@@ -52,52 +88,72 @@ async function writeModCacheManifest(manifest: ModCacheManifest): Promise<void> 
   await writeFile(modCacheManifestPath(), JSON.stringify(manifest, null, 2), 'utf8')
 }
 
-async function findLocalBuildJar(): Promise<string | null> {
+async function candidateFromPath(path: string, source: string): Promise<JarCandidate | null> {
+  try {
+    const info = await stat(path)
+    if (!info.isFile() || info.size <= 0) {
+      return null
+    }
+    const version = parseJarVersion(basename(path))
+    if (!version) {
+      return null
+    }
+    return { path, version, source }
+  } catch {
+    return null
+  }
+}
+
+async function findLocalBuildJar(): Promise<JarCandidate | null> {
   const libsDir = join(getRepoRoot(), 'mc-1.21.11', 'build', 'libs')
   try {
     const files = await readdir(libsDir)
-    const match = files
-      .filter((f) => isPrimeModJarAsset(f, PRIME_JAR_PREFIX))
-      .sort()
-      .at(-1)
-    if (match) {
-      return join(libsDir, match)
+    const matches = files.filter((f) => isPrimeModJarAsset(f, PRIME_JAR_PREFIX))
+    let best: JarCandidate | null = null
+    for (const file of matches) {
+      const candidate = await candidateFromPath(join(libsDir, file), 'local-build')
+      if (candidate && (!best || compareSemVer(candidate.version, best.version) > 0)) {
+        best = candidate
+      }
     }
+    return best
   } catch {
-    // build output missing
+    return null
   }
-  return null
 }
 
-async function findEnvOverrideJar(): Promise<string | null> {
+async function findEnvOverrideJar(): Promise<JarCandidate | null> {
   if (!process.env.PRIME_CLIENT_JAR) {
     return null
   }
-  try {
-    const info = await stat(process.env.PRIME_CLIENT_JAR)
-    if (info.isFile()) {
-      return process.env.PRIME_CLIENT_JAR
-    }
-  } catch {
-    // fall through
-  }
-  return null
+  return candidateFromPath(process.env.PRIME_CLIENT_JAR, 'env-override')
 }
 
-async function resolveCachedGitHubJar(manifest: ModCacheManifest): Promise<string | null> {
-  const cached = join(modCacheDir(), manifest.fileName)
-  try {
-    const info = await stat(cached)
-    if (info.isFile() && info.size > 0) {
-      return cached
-    }
-  } catch {
-    // re-download below
-  }
-  return null
+async function findCachedGitHubJar(manifest: ModCacheManifest): Promise<JarCandidate | null> {
+  return candidateFromPath(join(modCacheDir(), manifest.fileName), 'github-cache')
 }
 
-async function downloadPrimeModFromRelease(release: GitHubRelease): Promise<string | null> {
+async function findInstalledInstanceJar(instanceId: string): Promise<JarCandidate | null> {
+  const modsDir = getInstanceModsDir(instanceId)
+  try {
+    const files = await readdir(modsDir)
+    let best: JarCandidate | null = null
+    for (const file of files) {
+      if (!isPrimeModJarAsset(file, PRIME_JAR_PREFIX)) {
+        continue
+      }
+      const candidate = await candidateFromPath(join(modsDir, file), 'instance-mods')
+      if (candidate && (!best || compareSemVer(candidate.version, best.version) > 0)) {
+        best = candidate
+      }
+    }
+    return best
+  } catch {
+    return null
+  }
+}
+
+async function downloadPrimeModFromRelease(release: GitHubRelease): Promise<JarCandidate | null> {
   const asset = pickPrimeModAsset(release, PRIME_JAR_PREFIX)
   if (!asset?.browser_download_url) {
     return null
@@ -118,28 +174,37 @@ async function downloadPrimeModFromRelease(release: GitHubRelease): Promise<stri
     fileName: asset.name,
     downloadedAt: new Date().toISOString()
   })
-  return dest
+  return candidateFromPath(dest, 'github-download')
 }
 
-/** Resolves Prime Client jar: env override → local Gradle build → GitHub Releases cache/download. */
-async function resolvePrimeClientSource(): Promise<string | null> {
+/** Resolves the newest Prime Client jar across dev build, instance, cache and GitHub. */
+async function resolvePrimeClientSource(instanceId: string): Promise<JarCandidate | null> {
+  const candidates: JarCandidate[] = []
+
   const envJar = await findEnvOverrideJar()
   if (envJar) {
-    return envJar
+    candidates.push(envJar)
   }
 
   const localJar = await findLocalBuildJar()
   if (localJar) {
-    return localJar
+    candidates.push(localJar)
+  }
+
+  const installedJar = await findInstalledInstanceJar(instanceId)
+  if (installedJar) {
+    candidates.push(installedJar)
   }
 
   const manifest = await readModCacheManifest()
   if (manifest) {
-    const cached = await resolveCachedGitHubJar(manifest)
+    const cached = await findCachedGitHubJar(manifest)
     if (cached) {
-      return cached
+      candidates.push(cached)
     }
   }
+
+  let best = pickNewestCandidate(candidates)
 
   emitLaunchProgress({
     phase: 'mods',
@@ -148,18 +213,37 @@ async function resolvePrimeClientSource(): Promise<string | null> {
   })
 
   const release = await fetchLatestGitHubRelease()
-  if (!release) {
-    return null
-  }
+  if (release) {
+    const asset = pickPrimeModAsset(release, PRIME_JAR_PREFIX)
+    const remoteVersion = asset ? parseJarVersion(asset.name) : null
 
-  if (manifest?.tag === release.tag_name) {
-    const cached = await resolveCachedGitHubJar(manifest)
-    if (cached) {
-      return cached
+    const shouldDownload =
+      asset?.browser_download_url &&
+      remoteVersion &&
+      (!best || compareSemVer(remoteVersion, best.version) > 0)
+
+    if (shouldDownload) {
+      const downloaded = await downloadPrimeModFromRelease(release)
+      if (downloaded && (!best || compareSemVer(downloaded.version, best.version) > 0)) {
+        best = downloaded
+      }
+    } else if (asset && remoteVersion && !best) {
+      const downloaded = await downloadPrimeModFromRelease(release)
+      if (downloaded) {
+        best = downloaded
+      }
     }
   }
 
-  return downloadPrimeModFromRelease(release)
+  if (best) {
+    emitLaunchProgress({
+      phase: 'mods',
+      detail: `Using Prime Client ${best.version.join('.')} (${best.source})`,
+      percent: 39
+    })
+  }
+
+  return best
 }
 
 async function removeStalePrimeJars(modsDir: string, keepFileName: string): Promise<void> {
@@ -246,21 +330,21 @@ export async function installInstanceMods(
 
   const fabricApiJar = await ensureFabricApi(config, modsDir)
 
-  const primeSource = await resolvePrimeClientSource()
-  if (!primeSource) {
+  const primeCandidate = await resolvePrimeClientSource(instanceId)
+  if (!primeCandidate) {
     return { primeJar: null, fabricApiJar }
   }
 
-  const primeDestName = basename(primeSource)
+  const primeDestName = basename(primeCandidate.path)
   await removeStalePrimeJars(modsDir, primeDestName)
 
   const primeDest = join(modsDir, primeDestName)
   emitLaunchProgress({
     phase: 'mods',
-    detail: 'Installing Prime Client mod…',
+    detail: `Installing Prime Client mod ${primeCandidate.version.join('.')}…`,
     percent: 40
   })
-  await copyFile(primeSource, primeDest)
+  await copyFile(primeCandidate.path, primeDest)
   return { primeJar: primeDest, fabricApiJar }
 }
 

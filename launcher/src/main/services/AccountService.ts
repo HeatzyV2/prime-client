@@ -1,5 +1,6 @@
 import type { MinecraftAccount, PrimeAccount } from '../../shared/types'
 import { microsoftAuth } from '../auth/MicrosoftAuth'
+import { formatLaunchError } from '../minecraft/formatLaunchError'
 import { newAccountId, offlineUuid, skinUrlForUuid, validateUsername } from '../auth/offline'
 import type { AuthResult, LaunchResult, StoredMinecraftAccount, SyncResult } from '../storage/account-types'
 import { accountStore } from '../storage/AccountStore'
@@ -137,6 +138,7 @@ export class AccountService {
         }
       }
     })
+    microsoftAuth.clearLaunchSession(accountId)
     return { ok: true }
   }
 
@@ -219,10 +221,10 @@ export class AccountService {
           }
           account!.lastUsedAt = new Date().toISOString()
         })
-      } catch {
+      } catch (err) {
         return {
           ok: false,
-          message: 'Microsoft session expired. Sign in again from Accounts.',
+          message: formatLaunchError(err),
           error: 'TOKEN_EXPIRED'
         }
       }

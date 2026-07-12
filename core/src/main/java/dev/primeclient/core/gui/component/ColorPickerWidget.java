@@ -2,6 +2,7 @@ package dev.primeclient.core.gui.component;
 
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.design.PrimeDesign;
+import dev.primeclient.core.gui.GuiLayout;
 import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.util.ColorUtil;
 
@@ -78,7 +79,7 @@ public final class ColorPickerWidget {
 
         // Preview + hex
         ctx.fillRect(previewX, previewY, 18, 12, selectedArgb());
-        ctx.drawText(ColorUtil.toHex(selectedArgb()), previewX + 22, previewY + 2, theme.foregroundMuted(), true);
+        GuiLayout.label(ctx, ColorUtil.toHex(selectedArgb()), previewX + 22, previewY + 2, theme.foregroundMuted());
     }
 
     public boolean mousePressed(double mx, double my, int x, int y, int button) {

@@ -2,6 +2,9 @@ package dev.primeclient.core.gui.clickgui;
 
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.gui.FavoritesManager;
+import dev.primeclient.core.design.PrimeDesign;
+import dev.primeclient.core.gui.GuiLayout;
+import dev.primeclient.core.gui.UiChrome;
 import dev.primeclient.core.module.BooleanSetting;
 import dev.primeclient.core.module.ColorSetting;
 import dev.primeclient.core.module.DoubleSetting;
@@ -9,6 +12,7 @@ import dev.primeclient.core.module.EnumSetting;
 import dev.primeclient.core.module.IntSetting;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.Setting;
+import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.module.StringSetting;
 import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.util.Easing;
@@ -18,10 +22,10 @@ import java.util.List;
 /** One draggable ClickGUI category panel. */
 final class Panel {
 
-    static final int WIDTH = 118;
-    static final int HEADER_HEIGHT = 16;
-    static final int ROW_HEIGHT = 14;
-    private static final int PADDING = 5;
+    static final int WIDTH = 160;
+    static final int HEADER_HEIGHT = 18;
+    static final int ROW_HEIGHT = 16;
+    private static final int PADDING = 6;
     private static final int SETTING_INDENT = 10;
 
     private final String title;
@@ -75,14 +79,19 @@ final class Panel {
     void render(RenderContext ctx, Theme theme, double mouseX, double mouseY) {
         int px = Math.round(x);
         int py = Math.round(y);
+        int totalH = height();
 
-        ctx.fillRect(px, py, WIDTH, HEADER_HEIGHT, theme.backgroundLight());
-        ctx.fillRect(px, py + HEADER_HEIGHT - 1, WIDTH, 1, theme.accent());
-        ctx.drawText(title, px + PADDING, py + (HEADER_HEIGHT - ctx.fontHeight()) / 2 + 1, theme.foreground(), true);
+        UiChrome.glassPanel(ctx, theme, px, py, WIDTH, totalH);
+        UiChrome.flatHeader(ctx, theme, px + 1, py + 1, WIDTH - 2, HEADER_HEIGHT);
+        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, title, WIDTH - PADDING * 2),
+                px + PADDING, py + (HEADER_HEIGHT - ctx.uiFontHeight()) / 2 + 1, theme.foreground());
 
         if (collapseProgress <= 0.01f) {
             return;
         }
+
+        int bodyH = totalH - HEADER_HEIGHT;
+        ctx.pushClip(px, py + HEADER_HEIGHT, WIDTH, bodyH);
 
         int visibleRows = Math.round(rowCount() * collapseProgress);
         int rowY = py + HEADER_HEIGHT;
@@ -101,42 +110,54 @@ final class Panel {
                         break;
                     }
                     ctx.fillRect(px, rowY, WIDTH, ROW_HEIGHT, theme.background());
-                    ctx.fillRect(px + SETTING_INDENT - 4, rowY, 1, ROW_HEIGHT, theme.accent());
+                    ctx.fillRect(px + SETTING_INDENT - 4, rowY, 1, ROW_HEIGHT, theme.accent() & 0x60FFFFFF);
                     renderSetting(ctx, theme, setting, px, rowY);
                     rowY += ROW_HEIGHT;
                     drawn++;
                 }
             }
         }
+        ctx.popClip();
     }
 
     private void renderModuleRow(RenderContext ctx, Theme theme, Module module, int px, int rowY,
                                  double mouseX, double mouseY) {
         boolean hovered = contains(mouseX, mouseY, px, rowY, WIDTH, ROW_HEIGHT);
         ctx.fillRect(px, rowY, WIDTH, ROW_HEIGHT, hovered ? theme.backgroundLight() : theme.background());
-        int nameColor = module.isEnabled() ? theme.accent() : theme.foreground();
-        ctx.drawText(module.name(), px + PADDING, rowY + (ROW_HEIGHT - ctx.fontHeight()) / 2 + 1, nameColor, true);
 
-        String star = favorites.isFavorite(module.id()) ? "*" : "+";
-        int starX = px + WIDTH - PADDING - ctx.textWidth(star);
+        int textY = rowY + (ROW_HEIGHT - ctx.uiFontHeight()) / 2 + 1;
+        int cursorX = px + WIDTH - PADDING;
+
+        String star = favorites.isFavorite(module.id()) ? "★" : "☆";
+        int starW = GuiLayout.labelWidth(ctx, star);
+        cursorX -= starW;
+        GuiLayout.label(ctx, star, cursorX, textY,
+                favorites.isFavorite(module.id()) ? theme.accent() : theme.foregroundMuted());
+
         if (!module.settings().isEmpty()) {
-            starX -= ctx.textWidth("+") + 4;
-            ctx.drawText(module == expanded ? "-" : "+",
-                    px + WIDTH - PADDING - ctx.textWidth("+"),
-                    rowY + (ROW_HEIGHT - ctx.fontHeight()) / 2 + 1, theme.foregroundMuted(), true);
+            cursorX -= 4;
+            String expand = module == expanded ? "−" : "+";
+            int expandW = GuiLayout.labelWidth(ctx, expand);
+            cursorX -= expandW;
+            GuiLayout.label(ctx, expand, cursorX, textY, theme.foregroundMuted());
         }
-        ctx.drawText(star, starX, rowY + (ROW_HEIGHT - ctx.fontHeight()) / 2 + 1,
-                favorites.isFavorite(module.id()) ? theme.accent() : theme.foregroundMuted(), true);
+
+        int nameColor = module.isEnabled() ? theme.accent() : theme.foreground();
+        int nameMaxW = Math.max(0, cursorX - 4 - px - PADDING);
+        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, module.name(), nameMaxW),
+                px + PADDING, textY, nameColor);
     }
 
     private void renderSetting(RenderContext ctx, Theme theme, Setting setting, int px, int rowY) {
-        int textY = rowY + (ROW_HEIGHT - ctx.fontHeight()) / 2 + 1;
+        int textY = rowY + (ROW_HEIGHT - ctx.uiFontHeight()) / 2 + 1;
         int textX = px + SETTING_INDENT;
         switch (setting) {
             case BooleanSetting bool -> {
-                ctx.drawText(setting.name(), textX, textY, theme.foreground(), true);
                 int boxSize = 8;
                 int boxX = px + WIDTH - PADDING - boxSize;
+                int nameMaxW = boxX - textX - 4;
+                GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, setting.name(), nameMaxW),
+                        textX, textY, theme.foreground());
                 int boxY = rowY + (ROW_HEIGHT - boxSize) / 2;
                 ctx.fillRect(boxX, boxY, boxSize, boxSize, theme.backgroundLight());
                 if (bool.get()) {
@@ -148,27 +169,40 @@ final class Panel {
             case DoubleSetting number -> renderSlider(ctx, theme, setting.name(), String.format("%.1f", number.get()),
                     (float) ((number.get() - number.min()) / (number.max() - number.min())), px, rowY, textX, textY);
             case EnumSetting<?> mode -> {
-                ctx.drawText(setting.name(), textX, textY, theme.foreground(), true);
-                String value = mode.get().name();
-                ctx.drawText(value, px + WIDTH - PADDING - ctx.textWidth(value), textY, theme.accent(), true);
+                String value = PrimeLang.enumValue(mode.get());
+                int valueW = GuiLayout.labelWidth(ctx, value);
+                GuiLayout.label(ctx, value, px + WIDTH - PADDING - valueW, textY, theme.accent());
+                int nameMaxW = WIDTH - SETTING_INDENT - PADDING - valueW - 4;
+                GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, setting.name(), nameMaxW),
+                        textX, textY, theme.foreground());
             }
             case ColorSetting color -> {
-                ctx.drawText(setting.name(), textX, textY, theme.foreground(), true);
                 int swatch = 8;
-                ctx.fillRect(px + WIDTH - PADDING - swatch, rowY + (ROW_HEIGHT - swatch) / 2, swatch, swatch, color.get());
+                int swatchX = px + WIDTH - PADDING - swatch;
+                int nameMaxW = swatchX - textX - 4;
+                GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, setting.name(), nameMaxW),
+                        textX, textY, theme.foreground());
+                ctx.fillRect(swatchX, rowY + (ROW_HEIGHT - swatch) / 2, swatch, swatch, color.get());
             }
             case StringSetting text -> {
-                ctx.drawText(setting.name(), textX, textY, theme.foreground(), true);
-                String value = text.get();
-                ctx.drawText(value, px + WIDTH - PADDING - ctx.textWidth(value), textY, theme.foregroundMuted(), true);
+                int valueMaxW = WIDTH - SETTING_INDENT - PADDING - 4;
+                String value = GuiLayout.trimToWidth(ctx, text.get(), valueMaxW / 2);
+                int valueW = GuiLayout.labelWidth(ctx, value);
+                GuiLayout.label(ctx, value, px + WIDTH - PADDING - valueW, textY, theme.foregroundMuted());
+                int nameMaxW = WIDTH - SETTING_INDENT - PADDING - valueW - 4;
+                GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, setting.name(), nameMaxW),
+                        textX, textY, theme.foreground());
             }
         }
     }
 
     private void renderSlider(RenderContext ctx, Theme theme, String name, String value, float fraction,
                               int px, int rowY, int textX, int textY) {
-        ctx.drawText(name, textX, textY, theme.foreground(), true);
-        ctx.drawText(value, px + WIDTH - PADDING - ctx.textWidth(value), textY - 4, theme.foregroundMuted(), true);
+        int valueW = GuiLayout.labelWidth(ctx, value);
+        GuiLayout.label(ctx, value, px + WIDTH - PADDING - valueW, textY, theme.foregroundMuted());
+        int nameMaxW = WIDTH - SETTING_INDENT - PADDING - valueW - 4;
+        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, name, nameMaxW), textX, textY, theme.foreground());
+
         int barX = sliderBarX(px);
         int barWidth = sliderBarWidth();
         int barY = rowY + ROW_HEIGHT - 5;
