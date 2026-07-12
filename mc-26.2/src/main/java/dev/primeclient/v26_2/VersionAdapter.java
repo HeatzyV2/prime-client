@@ -15,6 +15,7 @@ import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.component.DataComponents;
@@ -22,7 +23,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.core.particles.DustParticleOptions;
 import org.lwjgl.glfw.GLFW;
@@ -30,7 +33,10 @@ import org.lwjgl.glfw.GLFW;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 /** {@link MinecraftAdapter} for Minecraft 26.2. */
 public final class VersionAdapter implements MinecraftAdapter {
@@ -188,6 +194,86 @@ public final class VersionAdapter implements MinecraftAdapter {
     }
 
     @Override
+    public boolean isMultiplayer() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.getConnection() != null && !mc.isLocalServer();
+    }
+
+    @Override
+    public String playerUuid() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getUUID().toString() : "";
+    }
+
+    @Override
+    public int onlinePlayerCount() {
+        return tabPlayers().size();
+    }
+
+    @Override
+    public String onlinePlayerUuid(int index) {
+        List<PlayerInfo> players = tabPlayers();
+        if (index < 0 || index >= players.size()) {
+            return "";
+        }
+        return players.get(index).getProfile().id().toString();
+    }
+
+    @Override
+    public String onlinePlayerName(int index) {
+        List<PlayerInfo> players = tabPlayers();
+        if (index < 0 || index >= players.size()) {
+            return "";
+        }
+        return players.get(index).getProfile().name();
+    }
+
+    @Override
+    public double playerXForUuid(String playerUuid) {
+        return playerCoord(playerUuid, Coord.X);
+    }
+
+    @Override
+    public double playerYForUuid(String playerUuid) {
+        return playerCoord(playerUuid, Coord.Y);
+    }
+
+    @Override
+    public double playerZForUuid(String playerUuid) {
+        return playerCoord(playerUuid, Coord.Z);
+    }
+
+    private enum Coord { X, Y, Z }
+
+    private double playerCoord(String playerUuid, Coord axis) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || playerUuid == null || playerUuid.isBlank()) {
+            return Double.NaN;
+        }
+        try {
+            var entity = mc.level.getPlayerByUUID(UUID.fromString(playerUuid));
+            if (entity == null) {
+                return Double.NaN;
+            }
+            return switch (axis) {
+                case X -> entity.getX();
+                case Y -> entity.getY();
+                case Z -> entity.getZ();
+            };
+        } catch (IllegalArgumentException e) {
+            return Double.NaN;
+        }
+    }
+
+    private List<PlayerInfo> tabPlayers() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null || player.connection == null) {
+            return List.of();
+        }
+        return new ArrayList<>(player.connection.getOnlinePlayers());
+    }
+
+    @Override
     public float playerYaw() {
         return Minecraft.getInstance().player.getYRot();
     }
@@ -288,6 +374,313 @@ public final class VersionAdapter implements MinecraftAdapter {
     @Override
     public float attackCooldown() {
         return Minecraft.getInstance().player.getAttackStrengthScale(0);
+    }
+
+    @Override
+    public float targetDistance() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.crosshairPickEntity == null) {
+            return 0;
+        }
+        return mc.player.distanceTo(mc.crosshairPickEntity);
+    }
+
+    @Override
+    public float playerFallDistance() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? (float) player.fallDistance : 0f;
+    }
+
+    @Override
+    public boolean playerOnGround() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null && player.onGround();
+    }
+
+    @Override
+    public boolean playerFallFlying() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null && player.isFallFlying();
+    }
+
+    @Override
+    public boolean playerBlocking() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null && player.isUsingItem() && player.getUseItem().is(Items.SHIELD);
+    }
+
+    @Override
+    public boolean targetBlocking() {
+        var entity = Minecraft.getInstance().crosshairPickEntity;
+        if (entity instanceof net.minecraft.world.entity.player.Player player) {
+            return player.isUsingItem() && player.getUseItem().is(Items.SHIELD);
+        }
+        return false;
+    }
+
+    @Override
+    public int targetShieldDurabilityPercent() {
+        var entity = Minecraft.getInstance().crosshairPickEntity;
+        if (!(entity instanceof net.minecraft.world.entity.player.Player player)) {
+            return -1;
+        }
+        ItemStack stack = player.getOffhandItem();
+        if (stack.isEmpty() || !stack.is(Items.SHIELD)) {
+            stack = player.getMainHandItem();
+        }
+        if (stack.isEmpty() || !stack.is(Items.SHIELD)) {
+            return -1;
+        }
+        int max = stack.getMaxDamage();
+        if (max <= 0) {
+            return 100;
+        }
+        return (max - stack.getDamageValue()) * 100 / max;
+    }
+
+    @Override
+    public String offhandItemName() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return "";
+        }
+        ItemStack stack = player.getOffhandItem();
+        return stack.isEmpty() ? "" : stack.getHoverName().getString();
+    }
+
+    @Override
+    public int offhandShieldDurabilityPercent() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return -1;
+        }
+        ItemStack stack = player.getOffhandItem();
+        if (stack.isEmpty() || !stack.is(Items.SHIELD)) {
+            return -1;
+        }
+        int max = stack.getMaxDamage();
+        if (max <= 0) {
+            return 100;
+        }
+        return (max - stack.getDamageValue()) * 100 / max;
+    }
+
+    @Override
+    public int playerFoodLevel() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getFoodData().getFoodLevel() : 20;
+    }
+
+    @Override
+    public float playerSaturation() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getFoodData().getSaturationLevel() : 0;
+    }
+
+    @Override
+    public long worldDayTime() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null ? mc.level.getDayTime() % 24000L : 0L;
+    }
+
+    @Override
+    public boolean worldRaining() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null && mc.level.isRaining();
+    }
+
+    @Override
+    public boolean worldThundering() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null && mc.level.isThundering();
+    }
+
+    @Override
+    public int blockLightLevel() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) {
+            return 0;
+        }
+        return mc.level.getMaxLocalRawBrightness(mc.player.blockPosition());
+    }
+
+    @Override
+    public int playerEffectAmplifier(String effectId) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null || effectId == null || effectId.isBlank()) {
+            return -1;
+        }
+        for (MobEffectInstance effect : player.getActiveEffects()) {
+            String id = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT
+                    .getKey(effect.getEffect().value())
+                    .getPath();
+            if (effectId.equalsIgnoreCase(id)) {
+                return effect.getAmplifier();
+            }
+        }
+        return -1;
+    }
+
+    @Override
+    public String blockUnderPlayerName() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) {
+            return "";
+        }
+        var state = mc.level.getBlockState(mc.player.blockPosition().below());
+        return net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+    }
+
+    @Override
+    public int cropGrowthStage() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) {
+            return -1;
+        }
+        var state = mc.level.getBlockState(mc.player.blockPosition().below());
+        if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_7)) {
+            return state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_7);
+        }
+        if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_3)) {
+            return state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.AGE_3);
+        }
+        return -1;
+    }
+
+    @Override
+    public boolean mobSpawnSafeAtFeet() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) {
+            return true;
+        }
+        var pos = mc.player.blockPosition();
+        if (mc.level.getMaxLocalRawBrightness(pos) <= 7) {
+            var below = mc.level.getBlockState(pos.below());
+            if (below.isSolidRender()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public double[] raycastLookBlock(double maxDistance) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (player == null || mc.level == null) {
+            return null;
+        }
+        var hit = player.pick(maxDistance, 0f, false);
+        if (hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) {
+            return null;
+        }
+        var blockHit = (net.minecraft.world.phys.BlockHitResult) hit;
+        var center = net.minecraft.world.phys.Vec3.atCenterOf(blockHit.getBlockPos());
+        double dist = hit.getLocation().distanceTo(player.getEyePosition());
+        return new double[]{center.x, center.y, center.z, dist};
+    }
+
+    @Override
+    public String heldToolCategory() {
+        String name = heldItemName().toLowerCase(Locale.ROOT);
+        if (name.contains("sword")) {
+            return "sword";
+        }
+        if (name.contains("axe") && !name.contains("pickaxe")) {
+            return "axe";
+        }
+        if (name.contains("pickaxe")) {
+            return "pickaxe";
+        }
+        if (name.contains("shovel")) {
+            return "shovel";
+        }
+        return "";
+    }
+
+    @Override
+    public int fireworkRocketCount() {
+        return countItemsMatching("firework");
+    }
+
+    @Override
+    public int heldItemDurabilityPercent() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return -1;
+        }
+        ItemStack stack = player.getMainHandItem();
+        if (stack.isEmpty() || !stack.isDamageableItem()) {
+            return -1;
+        }
+        int max = stack.getMaxDamage();
+        if (max <= 0) {
+            return 100;
+        }
+        return (max - stack.getDamageValue()) * 100 / max;
+    }
+
+    @Override
+    public double spawnDistance() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) {
+            return 0;
+        }
+        double dx = worldSpawnX() - mc.player.getX();
+        double dz = worldSpawnZ() - mc.player.getZ();
+        return Math.sqrt(dx * dx + dz * dz);
+    }
+
+    @Override
+    public float itemCooldownReady(String key) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return 1f;
+        }
+        Item item = switch (key) {
+            case "pearl" -> Items.ENDER_PEARL;
+            case "gapple" -> Items.ENCHANTED_GOLDEN_APPLE;
+            case "chorus" -> Items.CHORUS_FRUIT;
+            case "wind" -> Items.WIND_CHARGE;
+            default -> null;
+        };
+        if (item == null) {
+            return 1f;
+        }
+        return 1f - player.getCooldowns().getCooldownPercent(new ItemStack(item), 0f);
+    }
+
+    @Override
+    public int countItemsMatching(String filter) {
+        if (filter == null || filter.isBlank()) {
+            return 0;
+        }
+        String needle = filter.toLowerCase(Locale.ROOT);
+        int total = 0;
+        for (int i = 0; i < inventorySlotCount(); i++) {
+            String name = inventorySlotItemName(i).toLowerCase(Locale.ROOT);
+            if (!name.isEmpty() && name.contains(needle)) {
+                total += inventorySlotItemCount(i);
+            }
+        }
+        return total;
+    }
+
+    @Override
+    public int countHotbarItemsMatching(String filter) {
+        if (filter == null || filter.isBlank()) {
+            return 0;
+        }
+        String needle = filter.toLowerCase(Locale.ROOT);
+        int total = 0;
+        int limit = Math.min(9, inventorySlotCount());
+        for (int i = 0; i < limit; i++) {
+            String name = inventorySlotItemName(i).toLowerCase(Locale.ROOT);
+            if (!name.isEmpty() && name.contains(needle)) {
+                total += inventorySlotItemCount(i);
+            }
+        }
+        return total;
     }
 
     @Override
@@ -462,6 +855,107 @@ public final class VersionAdapter implements MinecraftAdapter {
         return mc.level.getBiome(mc.player.blockPosition()).unwrapKey()
                 .map(key -> key.identifier().getPath())
                 .orElse("");
+    }
+
+    @Override
+    public String dimensionId() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null ? mc.level.dimension().identifier().getPath() : "overworld";
+    }
+
+    @Override
+    public double worldSpawnX() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null ? mc.level.getRespawnData().pos().getX() : 0;
+    }
+
+    @Override
+    public double worldSpawnZ() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null ? mc.level.getRespawnData().pos().getZ() : 0;
+    }
+
+    @Override
+    public int playerXpLevel() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.experienceLevel : 0;
+    }
+
+    @Override
+    public float playerXpProgress() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.experienceProgress : 0;
+    }
+
+    @Override
+    public String scoreboardTitle() {
+        return ScoreboardAccess.title();
+    }
+
+    @Override
+    public int scoreboardLineCount() {
+        return ScoreboardAccess.lineCount();
+    }
+
+    @Override
+    public String scoreboardLine(int index) {
+        return ScoreboardAccess.line(index);
+    }
+
+    @Override
+    public boolean isContainerScreenOpen() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null && player.containerMenu != player.inventoryMenu;
+    }
+
+    @Override
+    public int openContainerStorageSlotCount() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null || player.containerMenu == null) {
+            return 0;
+        }
+        return Math.max(0, player.containerMenu.slots.size() - 36);
+    }
+
+    @Override
+    public String openContainerSlotItemName(int index) {
+        return containerSlot(index, false);
+    }
+
+    @Override
+    public int openContainerSlotItemCount(int index) {
+        ItemStack stack = containerStack(index, false);
+        return stack.isEmpty() ? 0 : stack.getCount();
+    }
+
+    @Override
+    public int inventorySlotCount() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getInventory().getContainerSize() : 0;
+    }
+
+    @Override
+    public String inventorySlotItemName(int index) {
+        ItemStack stack = inventoryStack(index);
+        return stack.isEmpty() ? "" : stack.getHoverName().getString();
+    }
+
+    @Override
+    public int inventorySlotItemCount(int index) {
+        ItemStack stack = inventoryStack(index);
+        return stack.isEmpty() ? 0 : stack.getCount();
+    }
+
+    @Override
+    public boolean hasRecentInput() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.options.keyUp.isDown() || mc.options.keyDown.isDown()
+                || mc.options.keyLeft.isDown() || mc.options.keyRight.isDown()
+                || mc.options.keyJump.isDown() || mc.options.keyShift.isDown()
+                || mc.options.keyAttack.isDown() || mc.options.keyUse.isDown()
+                || isKeyDown(87) || isKeyDown(65) || isKeyDown(83) || isKeyDown(68)
+                || isKeyDown(32) || isKeyDown(340) || isKeyDown(341)
+                || isMouseButtonDown(0) || isMouseButtonDown(1) || isMouseButtonDown(2);
     }
 
     @Override
@@ -679,6 +1173,32 @@ public final class VersionAdapter implements MinecraftAdapter {
         }
         ItemStack stack = player.getMainHandItem();
         return stack.get(DataComponents.CONTAINER);
+    }
+
+    private static String containerSlot(int index, boolean includePlayerInv) {
+        ItemStack stack = containerStack(index, includePlayerInv);
+        return stack.isEmpty() ? "" : stack.getHoverName().getString();
+    }
+
+    private static ItemStack containerStack(int index, boolean includePlayerInv) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null || player.containerMenu == null || index < 0) {
+            return ItemStack.EMPTY;
+        }
+        int storageSlots = Math.max(0, player.containerMenu.slots.size() - 36);
+        int limit = includePlayerInv ? player.containerMenu.slots.size() : storageSlots;
+        if (index >= limit) {
+            return ItemStack.EMPTY;
+        }
+        return player.containerMenu.getSlot(index).getItem();
+    }
+
+    private static ItemStack inventoryStack(int index) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null || index < 0 || index >= player.getInventory().getContainerSize()) {
+            return ItemStack.EMPTY;
+        }
+        return player.getInventory().getItem(index);
     }
 
     @Override

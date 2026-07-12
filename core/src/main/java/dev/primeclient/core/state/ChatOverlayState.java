@@ -14,6 +14,8 @@ public final class ChatOverlayState {
 
     private static boolean enabled;
     private static boolean compact;
+    private static boolean highlightMentions;
+    private static String mentionPlayerName = "";
 
     private ChatOverlayState() {
     }
@@ -34,12 +36,25 @@ public final class ChatOverlayState {
         compact = value;
     }
 
+    public static void setHighlightMentions(boolean value, String playerName) {
+        highlightMentions = value;
+        mentionPlayerName = playerName != null ? playerName : "";
+    }
+
     /** Prepends a timestamp when {@link #enabled()} is true. Called by hooks before display. */
     public static String formatIncoming(String text, long timestampMillis) {
-        if (!enabled || text == null || text.isEmpty()) {
+        if (text == null || text.isEmpty()) {
             return text;
         }
-        String prefix = "[" + TIME_FORMAT.format(Instant.ofEpochMilli(timestampMillis)) + "]";
-        return compact ? prefix + text : prefix + " " + text;
+        String formatted = text;
+        if (enabled) {
+            String prefix = "[" + TIME_FORMAT.format(Instant.ofEpochMilli(timestampMillis)) + "]";
+            formatted = compact ? prefix + text : prefix + " " + text;
+        }
+        if (highlightMentions && !mentionPlayerName.isEmpty()
+                && text.toLowerCase(java.util.Locale.ROOT).contains(mentionPlayerName.toLowerCase(java.util.Locale.ROOT))) {
+            return "§e" + formatted;
+        }
+        return formatted;
     }
 }

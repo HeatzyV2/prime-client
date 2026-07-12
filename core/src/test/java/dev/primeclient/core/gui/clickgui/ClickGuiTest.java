@@ -119,6 +119,7 @@ class ClickGuiTest {
     }
 
     private ModuleManager modules;
+    private KeybindManager keybinds;
     private FavoritesManager favorites;
     private StubAdapter adapter;
     private CloudSyncManager cloudSync;
@@ -135,7 +136,8 @@ class ClickGuiTest {
 
     @BeforeEach
     void setUp() {
-        modules = new ModuleManager(new EventBus(), new KeybindManager());
+        keybinds = new KeybindManager();
+        modules = new ModuleManager(new EventBus(), keybinds);
         module = modules.register(new TestModule());
         favorites = new FavoritesManager();
         adapter = new StubAdapter();
@@ -149,7 +151,7 @@ class ClickGuiTest {
         cosmetics = new CosmeticManager();
         profiles = new ProfileManager(configManager, Path.of("profiles-test"));
         gui = new ClickGui(modules, new ThemeManager(), favorites, adapter, onboarding,
-                cloudSync, cosmetics, profiles, new TooltipRenderer());
+                cloudSync, cosmetics, profiles, keybinds, new TooltipRenderer());
         gui.onOpen();
         gui.showBrowse();
         gui.selectModuleForTests(module);
@@ -226,7 +228,7 @@ class ClickGuiTest {
         JsonObject saved = gui.saveConfig().getAsJsonObject();
 
         ClickGui fresh = new ClickGui(modules, new ThemeManager(), favorites, adapter,
-                new OnboardingManager(), cloudSync, cosmetics, profiles, new TooltipRenderer());
+                new OnboardingManager(), cloudSync, cosmetics, profiles, keybinds, new TooltipRenderer());
         fresh.loadConfig(saved);
         assertTrue(fresh.saveConfig().getAsJsonObject().getAsJsonObject("QoL").get("collapsed").getAsBoolean());
     }

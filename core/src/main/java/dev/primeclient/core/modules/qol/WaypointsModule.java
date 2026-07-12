@@ -32,7 +32,7 @@ public final class WaypointsModule extends Module {
     private boolean saveKeyDown;
 
     public WaypointsModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
-        super("waypoints", "Waypoints", "Shows distance and direction to a saved waypoint", ModuleCategory.QOL);
+        super("waypoints", "Waypoints", "Shows distance and direction to a saved waypoint", ModuleCategory.SURVIVAL);
         this.adapter = adapter;
         this.element = hud.register(new Element(themes, adapter, name, x, y, z));
         element.setVisible(false);

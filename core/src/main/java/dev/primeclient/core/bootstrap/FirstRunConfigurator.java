@@ -1,9 +1,12 @@
 package dev.primeclient.core.bootstrap;
 
 import dev.primeclient.core.PrimeClient;
+import dev.primeclient.core.bundle.ModuleBundle;
+import dev.primeclient.core.bundle.ModuleBundleRegistry;
 import dev.primeclient.core.gui.FavoritesManager;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleManager;
+import dev.primeclient.core.profile.ProfileManager;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -18,11 +21,17 @@ public final class FirstRunConfigurator {
     );
 
     private static final List<String> PVP_EXTRA = List.of(
-            "target-hud", "combo-counter", "hit-color", "armor-hud", "potion-hud"
+            "target-hud", "combo-counter", "combo-timer", "streak-counter",
+            "hit-color", "armor-hud", "potion-hud", "mace-smash", "pearl-cooldown",
+            "pearl-landing-marker", "totem-counter", "reach-hud", "shield-status",
+            "shield-break-alert", "health-alert", "crit-indicator", "knockback-indicator"
     );
 
     private static final List<String> SURVIVAL_EXTRA = List.of(
-            "waypoints", "auto-respawn", "item-counter", "toggle-sprint", "death-waypoint"
+            "waypoints", "auto-respawn", "toggle-sprint", "death-waypoint",
+            "day-time", "depth-hud", "light-level", "mob-spawn-safe", "crop-growth-hud",
+            "spawn-compass", "biome-coords", "spawn-distance", "tool-durability",
+            "fullbright", "bed-reminder", "raid-alert", "structure-log"
     );
 
     private FirstRunConfigurator() {
@@ -30,21 +39,50 @@ public final class FirstRunConfigurator {
 
     public static void applyStarter(PrimeClient client) {
         applyPreset(client.modules(), client.favorites(), "default");
+        seedGameplayProfiles(client);
         client.notifications().success("Prime Client",
                 "HUD premium activé — Right Shift pour le menu");
+    }
+
+    /** Writes default, pvp and survival profile files on first install. */
+    public static void seedGameplayProfiles(PrimeClient client) {
+        ProfileManager profiles = client.profiles();
+        String original = profiles.activeProfile();
+        profiles.saveActive();
+
+        for (String preset : List.of("pvp", "survival")) {
+            profiles.switchTo(preset);
+            applyPreset(client.modules(), client.favorites(), preset);
+            profiles.saveActive();
+        }
+
+        if (!original.equals(profiles.activeProfile())) {
+            profiles.switchTo(original);
+        }
     }
 
     public static void applyPreset(ModuleManager modules, FavoritesManager favorites, String preset) {
         Set<String> ids = new LinkedHashSet<>(CORE);
         if ("pvp".equals(preset)) {
             ids.addAll(PVP_EXTRA);
+            applyBundle(modules, ModuleBundleRegistry.CPVP_KIT);
         } else if ("survival".equals(preset)) {
             ids.addAll(SURVIVAL_EXTRA);
+            applyBundle(modules, ModuleBundleRegistry.HARDCORE_SURVIVAL);
         }
         for (String id : ids) {
             enable(modules, id);
         }
-        seedFavorites(favorites, preset);
+        if (favorites != null) {
+            seedFavorites(favorites, preset);
+        }
+    }
+
+    /** Enables all modules in a bundle preset. */
+    public static void applyBundle(ModuleManager modules, ModuleBundle bundle) {
+        for (String id : bundle.moduleIds()) {
+            enable(modules, id);
+        }
     }
 
     private static void enable(ModuleManager modules, String id) {
@@ -60,12 +98,19 @@ public final class FirstRunConfigurator {
         favorites.add("discord-rpc");
         favorites.add("fps");
         favorites.add("keystrokes");
+        favorites.add("module-bundles");
         if ("pvp".equals(preset)) {
             favorites.add("target-hud");
             favorites.add("combo-counter");
+            favorites.add("combo-timer");
+            favorites.add("mace-smash");
+            favorites.add("pearl-cooldown");
         } else if ("survival".equals(preset)) {
             favorites.add("waypoints");
-            favorites.add("zoom");
+            favorites.add("day-time");
+            favorites.add("spawn-compass");
+            favorites.add("mob-spawn-safe");
+            favorites.add("fullbright");
         } else {
             favorites.add("zoom");
             favorites.add("prime-cosmetics");

@@ -8,12 +8,22 @@ import dev.primeclient.core.design.PrimeLogo;
 import dev.primeclient.core.gui.GuiLayout;
 import dev.primeclient.core.gui.UiChrome;
 import dev.primeclient.core.i18n.PrimeLang;
+import dev.primeclient.core.keybind.KeyNames;
+import dev.primeclient.core.keybind.Keybind;
+import dev.primeclient.core.keybind.KeybindManager;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.theme.ThemeManager;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 /** Full settings hub with searchable categories. */
 public final class SettingsMenuRenderer {
+
+    private static final int ROW_HEIGHT = 16;
+    private static final int KEY_BTN_W = 88;
 
     public enum Category {
         GENERAL("General"),
@@ -39,13 +49,45 @@ public final class SettingsMenuRenderer {
 
     private Category active = Category.GENERAL;
     private final StringBuilder search = new StringBuilder();
+    private int controlsScroll;
+    private Keybind listeningFor;
 
     public Category active() {
         return active;
     }
 
+    public boolean capturingKey() {
+        return listeningFor != null;
+    }
+
+    public boolean captureKey(int glfwKey, KeybindManager keybinds) {
+        if (listeningFor == null) {
+            return false;
+        }
+        if (glfwKey == 256) {
+            listeningFor = null;
+            return true;
+        }
+        if (glfwKey == 259 || glfwKey == 261) {
+            keybinds.rebind(listeningFor, Keybind.UNBOUND);
+            listeningFor = null;
+            return true;
+        }
+        keybinds.rebind(listeningFor, glfwKey);
+        listeningFor = null;
+        return true;
+    }
+
+    public boolean scroll(double delta) {
+        if (active != Category.CONTROLS) {
+            return false;
+        }
+        controlsScroll = Math.max(0, controlsScroll - (int) delta);
+        return true;
+    }
+
     public void render(RenderContext ctx, Theme theme, ThemeManager themes, ProfileManager profiles,
-                       CloudSyncManager cloud, MinecraftAdapter adapter,
+                       CloudSyncManager cloud, MinecraftAdapter adapter, KeybindManager keybinds,
                        int screenW, int screenH, double mouseX, double mouseY) {
         int panelW = 340;
         int panelH = 240;
@@ -78,7 +120,8 @@ public final class SettingsMenuRenderer {
         ctx.popClip();
 
         int rowY = tabY + 22;
-        ctx.pushClip(x + 4, rowY, panelW - 8, panelH - 76);
+        int contentBottom = y + panelH - 28;
+        ctx.pushClip(x + 4, rowY, panelW - 8, contentBottom - rowY);
         switch (active) {
             case GENERAL -> {
                 row(ctx, theme, x + 12, rowY,
@@ -107,9 +150,7 @@ public final class SettingsMenuRenderer {
             case PERFORMANCE -> row(ctx, theme, x + 12, rowY,
                     PrimeLang.get("prime.gui.settings.row.tip", "Tip"),
                     PrimeLang.get("prime.gui.settings.tip.performance", "Use Performance Profiles module"));
-            case CONTROLS -> row(ctx, theme, x + 12, rowY,
-                    PrimeLang.get("prime.gui.settings.row.clickgui", "ClickGUI"),
-                    PrimeLang.get("prime.gui.settings.controls.hint", "Right Shift · HUD Editor: H"));
+            case CONTROLS -> renderControls(ctx, theme, keybinds, x, rowY, panelW, contentBottom);
             case ACCOUNT -> {
                 row(ctx, theme, x + 12, rowY,
                         PrimeLang.get("prime.gui.settings.row.player", "Player"), adapter.playerName());
@@ -134,14 +175,49 @@ public final class SettingsMenuRenderer {
         }
         ctx.popClip();
 
-        String q = search.isEmpty()
+        String footer = active == Category.CONTROLS
+                ? PrimeLang.get("prime.gui.settings.keybinds.footer",
+                "Click key to rebind · Backspace clears · Scroll for more")
+                : (search.isEmpty()
                 ? PrimeLang.get("prime.gui.settings.search.placeholder", "Search settings...")
-                : search.toString();
-        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, q, panelW - 24),
+                : search.toString());
+        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, footer, panelW - 24),
                 x + 12, y + panelH - 18, theme.foregroundMuted());
     }
 
-    public boolean mousePressed(RenderContext ctx, double mx, double my, int screenW, int screenH, ThemeManager themes) {
+    private void renderControls(RenderContext ctx, Theme theme, KeybindManager keybinds,
+                                int x, int rowY, int panelW, int contentBottom) {
+        List<Keybind> binds = filteredKeybinds(keybinds);
+        int maxScroll = Math.max(0, binds.size() - visibleControlRows(contentBottom - rowY));
+        controlsScroll = Math.min(controlsScroll, maxScroll);
+
+        int drawY = rowY;
+        int skipped = 0;
+        for (Keybind bind : binds) {
+            if (skipped++ < controlsScroll) {
+                continue;
+            }
+            if (drawY + ROW_HEIGHT > contentBottom) {
+                break;
+            }
+            boolean listening = bind == listeningFor;
+            GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, bind.displayName(), 130),
+                    x + 12, drawY + 3, theme.foreground());
+            int btnX = x + panelW - KEY_BTN_W - 20;
+            ctx.fillRoundedRect(btnX, drawY, KEY_BTN_W, 14, PrimeDesign.RADIUS_SM,
+                    listening ? theme.accent() : theme.backgroundLight());
+            String label = listening
+                    ? PrimeLang.get("prime.gui.settings.keybinds.listening", "Press a key…")
+                    : KeyNames.glfwName(bind.key());
+            int textColor = listening ? theme.background() : theme.foreground();
+            GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, label, KEY_BTN_W - 8),
+                    btnX + 4, drawY + 3, textColor);
+            drawY += ROW_HEIGHT;
+        }
+    }
+
+    public boolean mousePressed(RenderContext ctx, double mx, double my, int screenW, int screenH,
+                                ThemeManager themes, KeybindManager keybinds) {
         int panelW = 340;
         int panelH = 240;
         int x = (screenW - panelW) / 2;
@@ -161,6 +237,8 @@ public final class SettingsMenuRenderer {
             }
             if (mx >= tabX && mx < tabX + tw && my >= tabY && my < tabY + 14) {
                 active = cat;
+                controlsScroll = 0;
+                listeningFor = null;
                 return true;
             }
             tabX += tw + 4;
@@ -177,23 +255,70 @@ public final class SettingsMenuRenderer {
                 return true;
             }
         }
+        if (active == Category.CONTROLS) {
+            int rowY = tabY + 22;
+            int contentBottom = y + panelH - 28;
+            List<Keybind> binds = filteredKeybinds(keybinds);
+            int btnX = x + panelW - KEY_BTN_W - 20;
+            int drawY = rowY;
+            int skipped = 0;
+            for (Keybind bind : binds) {
+                if (skipped++ < controlsScroll) {
+                    continue;
+                }
+                if (drawY + ROW_HEIGHT > contentBottom) {
+                    break;
+                }
+                if (mx >= btnX && mx < btnX + KEY_BTN_W && my >= drawY && my < drawY + 14) {
+                    listeningFor = bind;
+                    return true;
+                }
+                drawY += ROW_HEIGHT;
+            }
+        }
         return mx >= x && mx < x + panelW && my >= y && my < y + panelH;
     }
 
     public boolean charTyped(char c) {
+        if (capturingKey()) {
+            return true;
+        }
         if (c < ' ') {
             return false;
         }
         search.append(c);
+        controlsScroll = 0;
         return true;
     }
 
     public boolean keyPressed(int key) {
+        if (capturingKey()) {
+            return true;
+        }
         if (key == 259 && !search.isEmpty()) {
             search.setLength(search.length() - 1);
+            controlsScroll = 0;
             return true;
         }
         return false;
+    }
+
+    private List<Keybind> filteredKeybinds(KeybindManager keybinds) {
+        List<Keybind> list = new ArrayList<>(keybinds.all());
+        list.sort(Comparator.comparing(Keybind::category).thenComparing(Keybind::displayName));
+        if (search.isEmpty()) {
+            return list;
+        }
+        String needle = search.toString().toLowerCase();
+        return list.stream()
+                .filter(bind -> bind.displayName().toLowerCase().contains(needle)
+                        || bind.category().toLowerCase().contains(needle)
+                        || KeyNames.glfwName(bind.key()).toLowerCase().contains(needle))
+                .toList();
+    }
+
+    private static int visibleControlRows(int clipHeight) {
+        return Math.max(1, clipHeight / ROW_HEIGHT);
     }
 
     private boolean matchesSearch(String label) {

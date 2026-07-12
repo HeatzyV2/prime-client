@@ -30,6 +30,7 @@ import dev.primeclient.core.gui.clickgui.ModuleCardBrowser;
 import dev.primeclient.core.gui.menu.ConfigurationsMenuRenderer;
 import dev.primeclient.core.gui.menu.CosmeticsMenuRenderer;
 import dev.primeclient.core.gui.menu.SettingsMenuRenderer;
+import dev.primeclient.core.keybind.KeybindManager;
 
 import dev.primeclient.core.util.Easing;
 
@@ -55,6 +56,7 @@ public final class ClickGui implements ConfigBinding {
     private final CloudSyncManager cloudSync;
     private final CosmeticManager cosmetics;
     private final ProfileManager profiles;
+    private final KeybindManager keybinds;
     private final TooltipRenderer tooltips;
     private final MainMenuRenderer mainMenu = new MainMenuRenderer();
     private final ModuleCardBrowser cardBrowser;
@@ -92,7 +94,7 @@ public final class ClickGui implements ConfigBinding {
                     FavoritesManager favorites, MinecraftAdapter adapter,
                     OnboardingManager onboarding, CloudSyncManager cloudSync,
                     CosmeticManager cosmetics, ProfileManager profiles,
-                    TooltipRenderer tooltips) {
+                    KeybindManager keybinds, TooltipRenderer tooltips) {
         this.modules = modules;
         this.themes = themes;
         this.favorites = favorites;
@@ -101,6 +103,7 @@ public final class ClickGui implements ConfigBinding {
         this.cloudSync = cloudSync;
         this.cosmetics = cosmetics;
         this.profiles = profiles;
+        this.keybinds = keybinds;
         this.tooltips = tooltips;
         this.cardBrowser = new ModuleCardBrowser(modules, favorites);
         float x = 8;
@@ -237,7 +240,7 @@ public final class ClickGui implements ConfigBinding {
             case ONBOARDING -> renderOnboarding(ctx, theme, mouseX, mouseY);
             case SETTINGS -> {
                 mainMenu.renderBackground(ctx, theme, openFade);
-                settingsMenu.render(ctx, theme, themes, profiles, cloudSync, adapter,
+                settingsMenu.render(ctx, theme, themes, profiles, cloudSync, adapter, keybinds,
                         screenWidth, screenHeight, mouseX, mouseY);
             }
             case COSMETICS -> {
@@ -349,7 +352,7 @@ public final class ClickGui implements ConfigBinding {
             return handleMainMenuPress(mouseX, mouseY);
         }
         if (view == ClickGuiView.SETTINGS) {
-            return settingsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, themes);
+            return settingsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, themes, keybinds);
         }
         if (view == ClickGuiView.COSMETICS) {
             return cosmeticsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, cosmetics);
@@ -381,6 +384,9 @@ public final class ClickGui implements ConfigBinding {
         }
         if (view == ClickGuiView.COSMETICS) {
             return cosmeticsMenu.scroll(verticalAmount);
+        }
+        if (view == ClickGuiView.SETTINGS) {
+            return settingsMenu.scroll(verticalAmount);
         }
         return false;
     }
@@ -505,6 +511,9 @@ public final class ClickGui implements ConfigBinding {
                 closeEditors();
             }
             return true;
+        }
+        if (view == ClickGuiView.SETTINGS && settingsMenu.capturingKey()) {
+            return settingsMenu.captureKey(glfwKey, keybinds);
         }
         if (glfwKey == 256 && view == ClickGuiView.ONBOARDING) {
             onboarding.skip();

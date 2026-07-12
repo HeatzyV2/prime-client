@@ -87,6 +87,56 @@ public interface MinecraftAdapter {
         return "";
     }
 
+    /** {@code true} when connected to a remote multiplayer server. */
+    default boolean isMultiplayer() {
+        return false;
+    }
+
+    /** Local player UUID string, or empty when unavailable. */
+    default String playerUuid() {
+        return "";
+    }
+
+    /** Players visible in the tab list (multiplayer). */
+    default int onlinePlayerCount() {
+        return 0;
+    }
+
+    default String onlinePlayerUuid(int index) {
+        return "";
+    }
+
+    default String onlinePlayerName(int index) {
+        return "";
+    }
+
+    /** Distance in blocks to another player, or {@link Double#POSITIVE_INFINITY}. */
+    default double distanceToPlayer(String playerUuid) {
+        if (playerUuid == null || playerUuid.isBlank()) {
+            return Double.POSITIVE_INFINITY;
+        }
+        double dx = playerXForUuid(playerUuid) - playerX();
+        double dy = playerYForUuid(playerUuid) - playerY();
+        double dz = playerZForUuid(playerUuid) - playerZ();
+        if (!Double.isFinite(dx)) {
+            return Double.POSITIVE_INFINITY;
+        }
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    /** World X for a player UUID, or {@link Double#NaN} when unknown. */
+    default double playerXForUuid(String playerUuid) {
+        return Double.NaN;
+    }
+
+    default double playerYForUuid(String playerUuid) {
+        return Double.NaN;
+    }
+
+    default double playerZForUuid(String playerUuid) {
+        return Double.NaN;
+    }
+
     // --- player ---
 
     default float playerYaw() {
@@ -157,6 +207,71 @@ public interface MinecraftAdapter {
         return 1.0f;
     }
 
+    /** Distance in blocks to crosshair target, or {@code 0} when none. */
+    default float targetDistance() {
+        return 0;
+    }
+
+    /** Blocks fallen since last landing — used for mace smash and crits. */
+    default float playerFallDistance() {
+        return 0;
+    }
+
+    default boolean playerOnGround() {
+        return true;
+    }
+
+    default boolean playerFallFlying() {
+        return false;
+    }
+
+    /** {@code true} while actively blocking with a shield. */
+    default boolean playerBlocking() {
+        return false;
+    }
+
+    /** {@code true} when crosshair target is blocking with a shield. */
+    default boolean targetBlocking() {
+        return false;
+    }
+
+    /** Shield durability percent of crosshair target, or {@code -1}. */
+    default int targetShieldDurabilityPercent() {
+        return -1;
+    }
+
+    default String offhandItemName() {
+        return "";
+    }
+
+    /** Shield durability percent in offhand, or {@code -1} if none. */
+    default int offhandShieldDurabilityPercent() {
+        return -1;
+    }
+
+    /** Food level 0–20. */
+    default int playerFoodLevel() {
+        return 20;
+    }
+
+    /**
+     * Item cooldown readiness 0–1 ({@code 1} = ready).
+     * Keys: {@code pearl}, {@code gapple}, {@code chorus}, {@code wind}.
+     */
+    default float itemCooldownReady(String key) {
+        return 1f;
+    }
+
+    /** Count inventory stacks whose name contains {@code filter} (case-insensitive). */
+    default int countItemsMatching(String filter) {
+        return 0;
+    }
+
+    /** Count items in hotbar slots 0–8 matching {@code filter}. */
+    default int countHotbarItemsMatching(String filter) {
+        return 0;
+    }
+
     // --- armor (0=boots, 1=leggings, 2=chest, 3=helmet) ---
 
     default int armorSlotCount() {
@@ -223,6 +338,73 @@ public interface MinecraftAdapter {
         return 0;
     }
 
+    default float playerSaturation() {
+        return 0;
+    }
+
+    /** Day time 0–23999. */
+    default long worldDayTime() {
+        return 0;
+    }
+
+    default boolean worldRaining() {
+        return false;
+    }
+
+    default boolean worldThundering() {
+        return false;
+    }
+
+    /** Block light 0–15 at the player's feet. */
+    default int blockLightLevel() {
+        return 0;
+    }
+
+    /** Effect amplifier for {@code effectId} (e.g. {@code bad_omen}), or {@code -1}. */
+    default int playerEffectAmplifier(String effectId) {
+        return -1;
+    }
+
+    /** Registry path of block at the player's feet, or empty. */
+    default String blockUnderPlayerName() {
+        return "";
+    }
+
+    /** Crop age 0–7, or {@code -1} when the block below is not a crop. */
+    default int cropGrowthStage() {
+        return -1;
+    }
+
+    /** {@code true} when mob spawning is unlikely at the player's feet. */
+    default boolean mobSpawnSafeAtFeet() {
+        return blockLightLevel() > 7;
+    }
+
+    /** Look-direction block raycast: {@code [x, y, z, distance]} or {@code null}. */
+    default double[] raycastLookBlock(double maxDistance) {
+        return null;
+    }
+
+    /** Held tool category: {@code sword}, {@code axe}, {@code pickaxe}, {@code shovel}, or empty. */
+    default String heldToolCategory() {
+        return "";
+    }
+
+    /** Firework rocket count in inventory. */
+    default int fireworkRocketCount() {
+        return countItemsMatching("firework");
+    }
+
+    /** Durability percent for held item, or {@code -1}. */
+    default int heldItemDurabilityPercent() {
+        return -1;
+    }
+
+    /** Horizontal distance to world spawn. */
+    default double spawnDistance() {
+        return 0;
+    }
+
     // --- memory ---
 
     default long usedMemoryMb() {
@@ -256,6 +438,78 @@ public interface MinecraftAdapter {
 
     default String biomeName() {
         return "";
+    }
+
+    /** Current dimension id path, e.g. {@code overworld} or {@code the_nether}. */
+    default String dimensionId() {
+        return "overworld";
+    }
+
+    default double worldSpawnX() {
+        return 0;
+    }
+
+    default double worldSpawnZ() {
+        return 0;
+    }
+
+    default int playerXpLevel() {
+        return 0;
+    }
+
+    default float playerXpProgress() {
+        return 0;
+    }
+
+    /** Sidebar scoreboard title, or empty when unavailable. */
+    default String scoreboardTitle() {
+        return "";
+    }
+
+    default int scoreboardLineCount() {
+        return 0;
+    }
+
+    /** Formatted sidebar line {@code index} (0 = top), or empty. */
+    default String scoreboardLine(int index) {
+        return "";
+    }
+
+    /** Whether a container screen (chest, hopper, etc.) is open. */
+    default boolean isContainerScreenOpen() {
+        return false;
+    }
+
+    /** Storage slots in the open container (excludes player inventory). */
+    default int openContainerStorageSlotCount() {
+        return 0;
+    }
+
+    default String openContainerSlotItemName(int index) {
+        return "";
+    }
+
+    default int openContainerSlotItemCount(int index) {
+        return 0;
+    }
+
+    default int inventorySlotCount() {
+        return 0;
+    }
+
+    default String inventorySlotItemName(int index) {
+        return "";
+    }
+
+    default int inventorySlotItemCount(int index) {
+        return 0;
+    }
+
+    /** Whether any movement, mouse, or keyboard input occurred recently. */
+    default boolean hasRecentInput() {
+        return isKeyDown(87) || isKeyDown(65) || isKeyDown(83) || isKeyDown(68)
+                || isKeyDown(32) || isKeyDown(340) || isKeyDown(341)
+                || isMouseButtonDown(0) || isMouseButtonDown(1) || isMouseButtonDown(2);
     }
 
     // --- options / performance ---

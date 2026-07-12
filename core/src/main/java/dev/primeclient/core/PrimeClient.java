@@ -14,6 +14,7 @@ import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.bootstrap.FirstRunConfigurator;
 import dev.primeclient.core.bootstrap.OnboardingFlow;
 import dev.primeclient.core.discord.DiscordRpcService;
+import dev.primeclient.core.voice.VoiceChatService;
 import dev.primeclient.core.event.ClientTickEvent;
 import dev.primeclient.core.event.EventBus;
 import dev.primeclient.core.event.WorldJoinEvent;
@@ -80,6 +81,7 @@ public final class PrimeClient {
     private final ClipRecorder clipRecorder;
     private final TooltipRenderer tooltips;
     private final DiscordRpcService discordRpc;
+    private final VoiceChatService voiceChat;
 
     private boolean debutSession;
     private int debutTicks;
@@ -108,6 +110,7 @@ public final class PrimeClient {
         this.tooltips = new TooltipRenderer();
         this.account = new PrimeAccountService();
         this.discordRpc = new DiscordRpcService();
+        this.voiceChat = new VoiceChatService();
 
         Path modRoot = adapter.configDirectory().resolve(MOD_ID);
         LocalCloudClient localCloud = new LocalCloudClient(modRoot.resolve("cloud"));
@@ -118,7 +121,7 @@ public final class PrimeClient {
         this.clipRecorder = new ClipRecorder(clipStorage, notifications);
         this.profiles = new ProfileManager(configManager, modRoot);
         this.clickGui = new ClickGui(modules, themes, favorites, adapter, onboarding,
-                cloudSync, cosmetics, profiles, tooltips);
+                cloudSync, cosmetics, profiles, keybinds, tooltips);
         this.clickGui.setOnboardingCompleteHandler(() -> OnboardingFlow.applyChoices(this));
 
         configManager.register(keybinds);
@@ -135,6 +138,7 @@ public final class PrimeClient {
         configManager.register(account);
         configManager.register(notificationPrefs);
         configManager.register(discordRpc.settings());
+        configManager.register(voiceChat.settings());
 
         hud.register(new WatermarkElement(themes, adapter.minecraftVersion()));
         hud.register(new NotificationsElement(notifications, themes, notificationPrefs));
@@ -232,6 +236,7 @@ public final class PrimeClient {
     }
 
     public void shutdown() {
+        voiceChat.shutdown();
         discordRpc.shutdown();
         profiles.saveActive();
         LOGGER.info("{} shut down, config saved", NAME);
@@ -272,4 +277,5 @@ public final class PrimeClient {
     public ClipRecorder clipRecorder() { return clipRecorder; }
     public TooltipRenderer tooltips() { return tooltips; }
     public DiscordRpcService discordRpc() { return discordRpc; }
+    public VoiceChatService voiceChat() { return voiceChat; }
 }

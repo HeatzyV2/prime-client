@@ -2,9 +2,10 @@ package dev.primeclient.core.module;
 
 import dev.primeclient.core.i18n.PrimeLang;
 
-/** The five Prime Client module families, in ClickGUI display order. */
+/** The six Prime Client module families, in ClickGUI display order. */
 public enum ModuleCategory {
     PVP("PvP", "P", 0xFFEF4444),
+    SURVIVAL("Survival", "S", 0xFF84CC16),
     PERFORMANCE("Performance", "F", 0xFF22C55E),
     QOL("QoL", "Q", 0xFF3B82F6),
     CREATOR("Creator", "C", 0xFFA855F7),

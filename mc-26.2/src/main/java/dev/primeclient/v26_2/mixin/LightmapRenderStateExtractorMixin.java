@@ -32,10 +32,11 @@ public abstract class LightmapRenderStateExtractorMixin {
         if (!PrimeHooks.fullbrightActive()) {
             return;
         }
-        renderState.brightness = 1.0F;
+        renderState.brightness = 15.0F;
         renderState.darknessEffectScale = 0.0F;
         renderState.bossOverlayWorldDarkening = 0.0F;
         renderState.nightVisionEffectIntensity = 1.0F;
-        renderState.blockFactor = 1.4F;
+        renderState.blockFactor = 1.5F;
+        renderState.needsUpdate = true;
     }
 }
