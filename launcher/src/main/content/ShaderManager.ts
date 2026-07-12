@@ -5,6 +5,7 @@ import { getShaderPacksDir } from './paths'
 import { getActiveShaderPack, setActiveShaderPack } from './options'
 import { patchContentMeta, readContentMeta } from './contentMeta'
 import { downloadModrinthFile, getModrinthVersion } from './ModrinthClient'
+import { downloadCurseForgeFile, getCurseForgeFile } from './CurseForgeClient'
 import { downloadService } from '../services/DownloadService'
 
 function shaderId(fileName: string): string {
@@ -117,6 +118,37 @@ export async function installShaderFromModrinth(
     })
 
     return { ok: true, fileName: file.filename }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Install failed.' }
+  }
+}
+
+export async function installShaderFromCurseForge(
+  instanceId: string,
+  modId: string,
+  title: string,
+  minecraftVersion: string
+): Promise<{ ok: boolean; error?: string; fileName?: string }> {
+  try {
+    const file = await getCurseForgeFile(modId, minecraftVersion)
+    const dir = getShaderPacksDir(instanceId)
+    await mkdir(dir, { recursive: true })
+    const dest = join(dir, file.fileName)
+    const taskId = await downloadService.beginDownload(`Shader: ${title}`)
+    await downloadCurseForgeFile(modId, file.id, dest, (percent, speed) => {
+      void downloadService.updateDownload(taskId, percent, speed)
+    })
+
+    await patchContentMeta(instanceId, (meta) => {
+      meta.shaders[file.fileName] = {
+        projectId: modId,
+        title,
+        versionNumber: file.fileName,
+        source: 'curseforge'
+      }
+    })
+
+    return { ok: true, fileName: file.fileName }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Install failed.' }
   }

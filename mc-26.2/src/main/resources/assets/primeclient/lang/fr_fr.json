@@ -103,6 +103,8 @@
   "prime.module.waypoints.description": "Affiche distance et direction vers un point enregistré",
   "prime.module.zoom.name": "Zoom",
   "prime.module.zoom.description": "Maintenir C pour zoomer la caméra",
+  "prime.module.fullbright.name": "Fullbright",
+  "prime.module.fullbright.description": "Luminosité maximale dans les grottes et la nuit",
   "prime.category.creator": "Créateur",
   "prime.gui.main_menu.resume": "Reprendre",
   "prime.gui.main_menu.modules": "Modules",

@@ -10,10 +10,10 @@ import { resolveLaunchAuthenticator } from './LaunchAuth'
 import { formatLaunchError } from './formatLaunchError'
 import { emitLaunchError, emitLaunchProgress } from './launchProgress'
 import { getInstanceGameDir, getRuntimeRoot } from './paths'
-import { syncMinecraftLanguage } from '../content/options'
+import { syncMinecraftLanguage, syncMinecraftDisplaySettings } from '../content/options'
 import { accountService } from '../services/AccountService'
 import { instanceService } from '../services/InstanceService'
-import { settingsStore } from '../storage/SettingsStore'
+import { settingsStore, type GameDisplayMode } from '../storage/SettingsStore'
 import { launchLogService } from '../services/LaunchLogService'
 import { analyzeGameExit, snapshotCrashReports } from '../services/CrashAnalyzerService'
 
@@ -143,10 +143,20 @@ function filterJvmArgs(args: string[]): string[] {
   return args.filter((arg) => !arg.includes('UseCompactObjectHeaders'))
 }
 
-function buildGameArgs(gameDirectory: string, joinServer?: { host: string; port: number }): string[] {
+function buildGameArgs(
+  gameDirectory: string,
+  joinServer?: { host: string; port: number },
+  display?: { mode: GameDisplayMode; width: number; height: number }
+): string[] {
   const args = ['--gameDir', gameDirectory]
   if (joinServer) {
     args.push('--server', joinServer.host, '--port', String(joinServer.port))
+  }
+  if (display?.mode === 'fullscreen') {
+    args.push('--fullscreen')
+    if (display.width > 0 && display.height > 0) {
+      args.push('--fullscreenWidth', String(display.width), '--fullscreenHeight', String(display.height))
+    }
   }
   return args
 }
@@ -320,6 +330,12 @@ export class MinecraftEngine {
 
     const settings = await settingsStore.load()
     await syncMinecraftLanguage(instanceId, settings.language)
+    await syncMinecraftDisplaySettings(
+      instanceId,
+      settings.gameWidth,
+      settings.gameHeight,
+      settings.gameDisplayMode
+    )
     emitLaunchProgress({ phase: 'launch', detail: 'Locating Java 21+…', percent: 68 })
     const javaPath = await resolveLaunchJava(config, settings.defaultJavaPath)
     emitLaunchProgress({ phase: 'launch', detail: `Using Java: ${javaPath}`, percent: 80 })
@@ -333,6 +349,9 @@ export class MinecraftEngine {
       detail: `Starting Minecraft ${config.minecraftVersion} (${config.loader})…`,
       percent: 85
     })
+
+    const gameWidth = settings.gameWidth > 0 ? settings.gameWidth : 854
+    const gameHeight = settings.gameHeight > 0 ? settings.gameHeight : 480
 
     const launchOptions: LaunchOptions = {
       path: runtimeRoot,
@@ -349,16 +368,20 @@ export class MinecraftEngine {
       verify: false,
       ignored: [],
       JVM_ARGS: mergedJvm,
-      GAME_ARGS: buildGameArgs(gameDirectory, joinServer),
+      GAME_ARGS: buildGameArgs(gameDirectory, joinServer, {
+        mode: settings.gameDisplayMode,
+        width: gameWidth,
+        height: gameHeight
+      }),
       java: {
         path: javaPath,
         version: '21',
         type: 'jre'
       },
       screen: {
-        width: 0,
-        height: 0,
-        fullscreen: false
+        width: gameWidth,
+        height: gameHeight,
+        fullscreen: settings.gameDisplayMode === 'fullscreen'
       },
       memory: {
         min: '512M',

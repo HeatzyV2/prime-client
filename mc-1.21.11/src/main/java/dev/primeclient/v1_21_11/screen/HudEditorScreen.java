@@ -3,7 +3,9 @@ package dev.primeclient.v1_21_11.screen;
 import dev.primeclient.core.PrimeClient;
 import dev.primeclient.core.hud.editor.HudEditor;
 import dev.primeclient.core.hud.editor.HudEditorHints;
+import dev.primeclient.core.hud.editor.HudEditorState;
 import dev.primeclient.v1_21_11.render.GuiRenderContext;
+import dev.primeclient.v1_21_11.render.PanelBlur;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -12,14 +14,12 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**
- * HUD editor screen for 1.21.11. Thin shell: all interaction logic lives in
- * the core {@link HudEditor}; this class only forwards events and draws a dim
- * backdrop plus the overlay. The HUD itself keeps rendering underneath
- * through the regular Fabric HUD layer.
+ * HUD editor screen for 1.21.11. Defers in-game HUD to this screen so the world
+ * can blur while Prime + vanilla HUD elements stay sharp.
  */
 public final class HudEditorScreen extends Screen {
 
-    private static final int DIM_COLOR = 0x40000000;
+    private static final int DIM_COLOR = 0x28000000;
 
     private final GuiRenderContext renderContext = new GuiRenderContext();
 
@@ -28,17 +28,40 @@ public final class HudEditorScreen extends Screen {
     }
 
     @Override
+    protected void init() {
+        HudEditorState.setActive(true);
+    }
+
+    @Override
     public boolean isPauseScreen() {
         return false;
     }
 
     @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        if (minecraft.level != null) {
+            super.renderBackground(graphics, mouseX, mouseY, delta);
+        }
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        PrimeClient client = PrimeClient.get();
         renderContext.prepare(graphics);
+        client.hud().layout(renderContext);
+
+        if (minecraft.level != null) {
+            HudEditorState.runVanillaHudRender(
+                    () -> minecraft.gui.render(graphics, minecraft.getDeltaTracker()));
+            client.hud().layout(renderContext);
+        }
+
         renderContext.fillRect(0, 0, width, height, DIM_COLOR);
-        PrimeClient.get().hudEditor().renderOverlay(renderContext, mouseX, mouseY);
-        int color = PrimeClient.get().themes().active().foreground();
-        int muted = PrimeClient.get().themes().active().foregroundMuted();
+        client.hud().render(renderContext);
+        client.hudEditor().renderOverlay(renderContext, mouseX, mouseY);
+
+        int color = client.themes().active().foreground();
+        int muted = client.themes().active().foregroundMuted();
         drawCenteredHint(HudEditorHints.LINE_1, height - 26, color);
         drawCenteredHint(HudEditorHints.LINE_2, height - 14, muted);
     }
@@ -91,6 +114,8 @@ public final class HudEditorScreen extends Screen {
 
     @Override
     public void onClose() {
+        HudEditorState.setActive(false);
+        PanelBlur.end(minecraft);
         PrimeClient.get().profiles().saveActive();
         super.onClose();
     }

@@ -76,8 +76,8 @@ public interface RenderContext {
     }
 
     /**
-     * Draws a mod GUI texture. Path is relative to {@code assets/<modid>/textures/},
-     * e.g. {@code gui/logo} for {@code textures/gui/logo.png}.
+     * Draws a mod GUI texture. Path is relative to {@code assets/<modid>/},
+     * e.g. {@code textures/gui/logo.png} for {@code assets/<modid>/textures/gui/logo.png}.
      */
     default void drawTexture(String texturePath, int x, int y, int width, int height,
                              int textureWidth, int textureHeight, int tintArgb) {

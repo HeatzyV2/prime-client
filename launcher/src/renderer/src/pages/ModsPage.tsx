@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion'
 import { Download, FolderOpen, Puzzle, Trash2, Upload } from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button, SearchInput, Tabs, Toggle } from '@renderer/design-system/components'
-import { ModrinthBrowseModal } from '@renderer/components/ModrinthBrowseModal'
+import { ContentBrowseModal } from '@renderer/components/ContentBrowseModal'
 import { useActiveInstance } from '@renderer/hooks/useActiveInstance'
 import { useI18n } from '@renderer/context/I18nProvider'
 import type { ModEntry } from '@shared/content-types'
@@ -80,7 +80,7 @@ export function ModsPage() {
             {t('actions.importJar')}
           </Button>
           <Button variant="primary" icon={<Download size={16} />} onClick={() => setShowBrowse(true)}>
-            {t('actions.browseModrinth')}
+            {t('actions.browseContent')}
           </Button>
         </div>
       }
@@ -142,7 +142,7 @@ export function ModsPage() {
 
       <AnimatePresence>
         {showBrowse && (
-          <ModrinthBrowseModal
+          <ContentBrowseModal
             type="mod"
             instanceId={instanceId}
             onClose={() => setShowBrowse(false)}

@@ -5,6 +5,8 @@ import { downloadService } from './DownloadService'
 import type { ModEntry, ResourcePackEntry, ShaderEntry } from '../../shared/content-types'
 import type { ModrinthSearchHit } from '../content/ModrinthClient'
 import { searchModrinth } from '../content/ModrinthClient'
+import type { CurseForgeSearchHit } from '../content/CurseForgeClient'
+import { searchCurseForge } from '../content/CurseForgeClient'
 import * as ModManager from '../content/ModManager'
 import * as ResourcePackManager from '../content/ResourcePackManager'
 import * as ShaderManager from '../content/ShaderManager'
@@ -81,6 +83,25 @@ export class ContentService {
     return result
   }
 
+  async installModFromCurseForge(projectId: string, title: string, instanceId?: string) {
+    const id = await resolveInstanceId(instanceId)
+    const stored = await instanceService.getStoredById(id)
+    if (!stored) {
+      return { ok: false, error: 'Instance not found.' }
+    }
+    const result = await ModManager.installModFromCurseForge(
+      id,
+      projectId,
+      title,
+      stored.minecraftVersion,
+      await loaderForInstance(id)
+    )
+    if (result.ok) {
+      await downloadService.trackContentInstall(`Mod: ${title}`)
+    }
+    return result
+  }
+
   async listResourcePacks(instanceId?: string): Promise<ResourcePackEntry[]> {
     return ResourcePackManager.listResourcePacks(await resolveInstanceId(instanceId))
   }
@@ -113,6 +134,24 @@ export class ContentService {
       return { ok: false, error: 'Instance not found.' }
     }
     const result = await ResourcePackManager.installResourcePackFromModrinth(
+      id,
+      projectId,
+      title,
+      stored.minecraftVersion
+    )
+    if (result.ok) {
+      await downloadService.trackContentInstall(`Resource pack: ${title}`)
+    }
+    return result
+  }
+
+  async installResourcePackFromCurseForge(projectId: string, title: string, instanceId?: string) {
+    const id = await resolveInstanceId(instanceId)
+    const stored = await instanceService.getStoredById(id)
+    if (!stored) {
+      return { ok: false, error: 'Instance not found.' }
+    }
+    const result = await ResourcePackManager.installResourcePackFromCurseForge(
       id,
       projectId,
       title,
@@ -162,6 +201,24 @@ export class ContentService {
     return result
   }
 
+  async installShaderFromCurseForge(projectId: string, title: string, instanceId?: string) {
+    const id = await resolveInstanceId(instanceId)
+    const stored = await instanceService.getStoredById(id)
+    if (!stored) {
+      return { ok: false, error: 'Instance not found.' }
+    }
+    const result = await ShaderManager.installShaderFromCurseForge(
+      id,
+      projectId,
+      title,
+      stored.minecraftVersion
+    )
+    if (result.ok) {
+      await downloadService.trackContentInstall(`Shader: ${title}`)
+    }
+    return result
+  }
+
   async searchModrinth(
     query: string,
     type: 'mod' | 'resourcepack' | 'shader',
@@ -174,6 +231,20 @@ export class ContentService {
     }
     const loader = type === 'mod' ? await loaderForInstance(id) : undefined
     return searchModrinth(query, type, stored.minecraftVersion, loader)
+  }
+
+  async searchCurseForge(
+    query: string,
+    type: 'mod' | 'resourcepack' | 'shader',
+    instanceId?: string
+  ): Promise<CurseForgeSearchHit[]> {
+    const id = await resolveInstanceId(instanceId)
+    const stored = await instanceService.getStoredById(id)
+    if (!stored) {
+      return []
+    }
+    const loader = type === 'mod' ? await loaderForInstance(id) : undefined
+    return searchCurseForge(query, type, stored.minecraftVersion, loader)
   }
 }
 

@@ -13,4 +13,9 @@ public abstract class GameRendererMixin {
     private float primeclient$applyZoomFov(float fov) {
         return fov * PrimeHooks.fovMultiplier();
     }
+
+    @ModifyReturnValue(method = "getDarkenWorldAmount", at = @At("RETURN"))
+    private float primeclient$noWorldDarkening(float amount) {
+        return PrimeHooks.fullbrightActive() ? 0.0F : amount;
+    }
 }

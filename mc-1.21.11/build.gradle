@@ -16,6 +16,9 @@ loom {
 			sourceSet project(':core').sourceSets.main
 		}
 	}
+	mixin {
+		defaultRefmapName = "primeclient-refmap.json"
+	}
 }
 
 dependencies {

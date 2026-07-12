@@ -124,6 +124,17 @@ export const fr: LocaleCatalog = {
     defaultRam: {
       label: 'Allocation RAM par défaut'
     },
+    gameResolution: {
+      label: 'Résolution du jeu',
+      hint: 'Taille de la fenêtre au lancement (largeur × hauteur en pixels)'
+    },
+    gameDisplayMode: {
+      label: "Mode d'affichage",
+      hint: 'Démarrage de Minecraft — le mode sans bordure utilise la résolution choisie en fenêtré',
+      windowed: 'Fenêtré',
+      borderless: 'Plein écran sans bordure',
+      fullscreen: 'Plein écran'
+    },
     performancePreset: {
       label: 'Profil de performance au lancement',
       low: 'PC faible',
@@ -247,6 +258,16 @@ export const fr: LocaleCatalog = {
       saving: 'Enregistrement…',
       create: 'Créer'
     },
+    browse: {
+      modsTitle: 'Parcourir — Mods',
+      resourcePacksTitle: 'Parcourir — Packs de ressources',
+      shadersTitle: 'Parcourir — Shaders',
+      subtitle: 'Recherchez sur Modrinth ou CurseForge — téléchargements vers l\'instance active.',
+      searching: 'Recherche…',
+      searchFailed: 'Échec de la recherche.',
+      installFailed: 'Échec de l\'installation.',
+      close: 'Fermer'
+    },
     modrinth: {
       modsTitle: 'Modrinth — Mods',
       resourcePacksTitle: 'Modrinth — Packs de ressources',
@@ -305,6 +326,8 @@ export const fr: LocaleCatalog = {
   actions: {
     import: 'Importer',
     browseModrinth: 'Parcourir Modrinth',
+    browseContent: 'Parcourir en ligne',
+    searchCurseForge: 'Rechercher sur CurseForge…',
     openFolder: 'Ouvrir le dossier',
     configure: 'Configurer',
     folder: 'Dossier',

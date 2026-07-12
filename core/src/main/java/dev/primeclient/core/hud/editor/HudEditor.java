@@ -137,8 +137,8 @@ public final class HudEditor {
             }
         }
         if (selected != null) {
-            String props = String.format("Scale %.1fx  Rot %.0f°  Opacity %.0f%%",
-                    selected.scale(), selected.rotation(), selected.opacity() * 100f);
+            String props = String.format("%s — Scale %.1fx  Rot %.0f°  Opacity %.0f%%",
+                    selected.name(), selected.scale(), selected.rotation(), selected.opacity() * 100f);
             ctx.drawText(props, 8, ctx.screenHeight() - 36, theme.foreground(), true);
         }
     }

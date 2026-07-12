@@ -98,6 +98,11 @@ export function registerServiceHandlers(): void {
     (_e, projectId: string, title: string, instanceId?: string) =>
       contentService.installModFromModrinth(projectId, title, instanceId)
   )
+  ipcMain.handle(
+    IPC.CONTENT_MODS_INSTALL_CURSEFORGE,
+    (_e, projectId: string, title: string, instanceId?: string) =>
+      contentService.installModFromCurseForge(projectId, title, instanceId)
+  )
 
   ipcMain.handle(IPC.CONTENT_RESOURCE_LIST, (_e, instanceId?: string) =>
     contentService.listResourcePacks(instanceId)
@@ -116,6 +121,11 @@ export function registerServiceHandlers(): void {
     (_e, projectId: string, title: string, instanceId?: string) =>
       contentService.installResourcePackFromModrinth(projectId, title, instanceId)
   )
+  ipcMain.handle(
+    IPC.CONTENT_RESOURCE_INSTALL_CURSEFORGE,
+    (_e, projectId: string, title: string, instanceId?: string) =>
+      contentService.installResourcePackFromCurseForge(projectId, title, instanceId)
+  )
 
   ipcMain.handle(IPC.CONTENT_SHADER_LIST, (_e, instanceId?: string) => contentService.listShaders(instanceId))
   ipcMain.handle(IPC.CONTENT_SHADER_SET_ACTIVE, (_e, fileName: string | null, instanceId?: string) =>
@@ -130,9 +140,17 @@ export function registerServiceHandlers(): void {
     (_e, projectId: string, title: string, instanceId?: string) =>
       contentService.installShaderFromModrinth(projectId, title, instanceId)
   )
+  ipcMain.handle(
+    IPC.CONTENT_SHADER_INSTALL_CURSEFORGE,
+    (_e, projectId: string, title: string, instanceId?: string) =>
+      contentService.installShaderFromCurseForge(projectId, title, instanceId)
+  )
 
   ipcMain.handle(IPC.CONTENT_MODRINTH_SEARCH, (_e, query: string, type: 'mod' | 'resourcepack' | 'shader', instanceId?: string) =>
     contentService.searchModrinth(query, type, instanceId)
+  )
+  ipcMain.handle(IPC.CONTENT_CURSEFORGE_SEARCH, (_e, query: string, type: 'mod' | 'resourcepack' | 'shader', instanceId?: string) =>
+    contentService.searchCurseForge(query, type, instanceId)
   )
 
   ipcMain.handle('mod:list', () => contentService.listMods())

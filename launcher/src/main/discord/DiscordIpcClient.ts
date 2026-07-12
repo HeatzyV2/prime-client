@@ -1,9 +1,14 @@
 import net from 'net'
+import { readdirSync } from 'fs'
 import type { DiscordPresencePayload } from './types'
 
 const OP_HANDSHAKE = 0
 const OP_FRAME = 1
 const OP_CLOSE = 2
+
+const CONNECT_TIMEOUT_MS = 3000
+const READ_TIMEOUT_MS = 5000
+const CONNECT_COOLDOWN_MS = 500
 
 export type DiscordIpcErrorCode =
   | 'discord_not_running'
@@ -30,6 +35,40 @@ function trim(text: string, max: number): string {
   return `${text.slice(0, Math.max(0, max - 1))}…`
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isPipeMissingError(message: string): boolean {
+  const lower = message.toLowerCase()
+  return (
+    lower.includes('enoent') ||
+    lower.includes('econnrefused') ||
+    lower.includes('connectex') ||
+    lower.includes('no such file')
+  )
+}
+
+/** Windows: scan named pipes; fallback to discord-ipc-0..9. */
+function discordPipeCandidates(): string[] {
+  if (process.platform === 'win32') {
+    try {
+      const names = readdirSync('\\\\.\\pipe\\')
+        .filter((name) => /^discord(?:-(?:ptb|canary))?-ipc-\d+$/i.test(name))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      if (names.length > 0) {
+        return names.map((name) => `\\\\.\\pipe\\${name}`)
+      }
+    } catch {
+      // ignore — fall through to defaults
+    }
+    return Array.from({ length: 10 }, (_, index) => `\\\\.\\pipe\\discord-ipc-${index}`)
+  }
+
+  const base = process.env.XDG_RUNTIME_DIR || '/tmp'
+  return Array.from({ length: 10 }, (_, index) => `${base}/discord-ipc-${index}`)
+}
+
 /** Minimal Discord Rich Presence IPC — Windows named pipes + Unix sockets. */
 export class DiscordIpcClient {
   private socket: net.Socket | null = null
@@ -50,26 +89,41 @@ export class DiscordIpcClient {
     if (this.connected) {
       return true
     }
-    const now = Date.now()
-    if (now - this.lastConnectAttempt < 2000) {
-      return false
+
+    const waitMs = CONNECT_COOLDOWN_MS - (Date.now() - this.lastConnectAttempt)
+    if (waitMs > 0) {
+      await sleep(waitMs)
     }
-    this.lastConnectAttempt = now
+
+    this.lastConnectAttempt = Date.now()
     this.close()
 
-    for (let i = 0; i < 10; i++) {
+    const paths = discordPipeCandidates()
+    const errors: string[] = []
+
+    for (const pipePath of paths) {
       try {
-        await this.openTransport(i)
+        await this.openTransport(pipePath)
         await this.handshake()
         this.connected = true
         this.lastError = null
         return true
       } catch (err) {
-        this.lastError = err instanceof Error ? err.message : String(err)
+        const message = err instanceof Error ? err.message : String(err)
+        errors.push(`${pipePath}: ${message}`)
+        this.lastError = message
         this.close()
       }
     }
-    this.lastError = 'Discord Desktop not detected — open Discord and restart the launcher.'
+
+    const allMissing = errors.length > 0 && errors.every((entry) => isPipeMissingError(entry))
+    if (allMissing || errors.length === 0) {
+      this.lastError =
+        'Discord Desktop not detected — open Discord and restart the launcher.'
+    } else if (errors.length > 0) {
+      this.lastError = `${this.lastError} (tried ${paths.length} pipe(s))`
+    }
+
     return false
   }
 
@@ -138,24 +192,25 @@ export class DiscordIpcClient {
     return this.connect()
   }
 
-  private openTransport(index: number): Promise<void> {
+  private openTransport(pipePath: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const path =
-        process.platform === 'win32'
-          ? `\\\\.\\pipe\\discord-ipc-${index}`
-          : `${process.env.XDG_RUNTIME_DIR || '/tmp'}/discord-ipc-${index}`
-
-      const socket = net.connect(path)
+      const socket = net.connect(pipePath)
       this.socket = socket
       this.recvBuffer = Buffer.alloc(0)
 
+      const cleanup = (): void => {
+        clearTimeout(timer)
+        socket.off('error', onError)
+        socket.off('connect', onConnect)
+      }
+
       const onError = (err: Error): void => {
+        cleanup()
         reject(err)
       }
 
-      socket.once('error', onError)
-      socket.once('connect', () => {
-        socket.off('error', onError)
+      const onConnect = (): void => {
+        cleanup()
         socket.on('data', (chunk: Buffer) => {
           this.recvBuffer = Buffer.concat([this.recvBuffer, chunk])
         })
@@ -166,14 +221,22 @@ export class DiscordIpcClient {
           this.connected = false
         })
         resolve()
-      })
+      }
+
+      const timer = setTimeout(() => {
+        socket.destroy()
+        reject(new DiscordIpcError(`Connection timeout (${pipePath})`, 'ipc_timeout'))
+      }, CONNECT_TIMEOUT_MS)
+
+      socket.once('error', onError)
+      socket.once('connect', onConnect)
     })
   }
 
   private async handshake(): Promise<void> {
     const payload = JSON.stringify({ v: 1, client_id: this.applicationId })
     await this.writePacket(OP_HANDSHAKE, payload)
-    const body = await this.readPacket()
+    const body = await this.readPacket(READ_TIMEOUT_MS)
     if (body) {
       this.assertNoError(body, 'handshake_failed')
     }
@@ -199,14 +262,16 @@ export class DiscordIpcClient {
     }
 
     if (includeButtons && snapshot.buttons?.length) {
-      const buttons: string[] = []
-      const labels: string[] = []
+      const buttons: Array<{ label: string; url: string }> = []
       for (const button of snapshot.buttons.slice(0, 2)) {
-        buttons.push(button.url)
-        labels.push(trim(button.label, 32))
+        buttons.push({
+          label: trim(button.label, 32),
+          url: button.url
+        })
       }
-      activity.buttons = buttons
-      activity.metadata = { button_label: labels }
+      if (buttons.length > 0) {
+        activity.buttons = buttons
+      }
     }
 
     return JSON.stringify({
@@ -232,10 +297,31 @@ export class DiscordIpcClient {
 
   private async sendFrame(json: string): Promise<void> {
     await this.writePacket(OP_FRAME, json)
-    const body = await this.readPacket()
-    if (body) {
-      this.assertNoError(body, 'activity_rejected')
+
+    const deadline = Date.now() + READ_TIMEOUT_MS
+    while (Date.now() < deadline) {
+      const body = await this.readPacket(Math.max(250, deadline - Date.now()))
+      if (!body) {
+        continue
+      }
+
+      try {
+        const parsed = JSON.parse(body) as { cmd?: string; evt?: string }
+        if (parsed.evt === 'ERROR') {
+          this.assertNoError(body, 'activity_rejected')
+        }
+        if (parsed.cmd === 'SET_ACTIVITY') {
+          return
+        }
+        // Ignore unrelated DISPATCH frames.
+      } catch (err) {
+        if (err instanceof DiscordIpcError) {
+          throw err
+        }
+      }
     }
+
+    throw new DiscordIpcError('Discord IPC read timeout', 'ipc_timeout')
   }
 
   private assertNoError(body: string, code: DiscordIpcErrorCode): void {
@@ -278,7 +364,7 @@ export class DiscordIpcClient {
     })
   }
 
-  private readPacket(): Promise<string | null> {
+  private readPacket(timeoutMs = READ_TIMEOUT_MS): Promise<string | null> {
     return new Promise((resolve, reject) => {
       const tryRead = (): void => {
         if (this.recvBuffer.length < 8) {
@@ -313,7 +399,7 @@ export class DiscordIpcClient {
       const timer = setTimeout(() => {
         cleanup()
         reject(new DiscordIpcError('Discord IPC read timeout', 'ipc_timeout'))
-      }, 5000)
+      }, timeoutMs)
 
       this.socket?.on('data', onData)
       tryRead()

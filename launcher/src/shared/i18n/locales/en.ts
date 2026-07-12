@@ -122,6 +122,17 @@ export const en = {
     defaultRam: {
       label: 'Default RAM allocation'
     },
+    gameResolution: {
+      label: 'Game resolution',
+      hint: 'Window size at launch (width × height in pixels)'
+    },
+    gameDisplayMode: {
+      label: 'Display mode',
+      hint: 'How Minecraft starts — borderless is windowed at your chosen resolution',
+      windowed: 'Windowed',
+      borderless: 'Borderless fullscreen',
+      fullscreen: 'Fullscreen'
+    },
     performancePreset: {
       label: 'Performance preset on launch',
       low: 'Low PC',
@@ -245,6 +256,16 @@ export const en = {
       saving: 'Saving…',
       create: 'Create'
     },
+    browse: {
+      modsTitle: 'Browse — Mods',
+      resourcePacksTitle: 'Browse — Resource Packs',
+      shadersTitle: 'Browse — Shaders',
+      subtitle: 'Search Modrinth or CurseForge — downloads go to your active instance folder.',
+      searching: 'Searching…',
+      searchFailed: 'Search failed.',
+      installFailed: 'Install failed.',
+      close: 'Close'
+    },
     modrinth: {
       modsTitle: 'Browse Modrinth — Mods',
       resourcePacksTitle: 'Browse Modrinth — Resource Packs',
@@ -303,6 +324,8 @@ export const en = {
   actions: {
     import: 'Import',
     browseModrinth: 'Browse Modrinth',
+    browseContent: 'Browse online',
+    searchCurseForge: 'Search CurseForge…',
     openFolder: 'Open Folder',
     configure: 'Configure',
     folder: 'Folder',

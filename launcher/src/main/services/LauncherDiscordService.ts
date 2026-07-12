@@ -166,9 +166,17 @@ export class LauncherDiscordService {
   private async publishIdleWithDiagnostics(context: string): Promise<void> {
     await this.publish(this.idlePresence())
     if (!this.ipc.isConnected() && this.enabled) {
+      const reason = this.ipc.lastError ?? ''
+      const waiting =
+        !reason ||
+        reason.includes('not detected') ||
+        reason.toLowerCase().includes('enoent') ||
+        reason.toLowerCase().includes('econnrefused')
       launchLogService.append(
         'warn',
-        `${context}: waiting for Discord Desktop… (Application ID ${DISCORD_APPLICATION_ID})`,
+        waiting
+          ? `${context}: waiting for Discord Desktop… (Application ID ${DISCORD_APPLICATION_ID})`
+          : `${context}: Discord RPC failed — ${reason}`,
         'start'
       )
     }

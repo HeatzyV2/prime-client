@@ -6,14 +6,14 @@ export interface ModMeta {
   projectId: string
   title: string
   versionNumber: string
-  source: 'modrinth'
+  source: 'modrinth' | 'curseforge'
 }
 
 export interface PackMeta {
   projectId: string
   title: string
   versionNumber: string
-  source: 'modrinth'
+  source: 'modrinth' | 'curseforge'
 }
 
 export interface ContentMetaFile {

@@ -70,3 +70,19 @@
   font-family: inherit;
   font-size: var(--text-sm);
 }
+
+.settings__resolution {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings__resolution-input {
+  width: 88px;
+  text-align: center;
+}
+
+.settings__resolution-sep {
+  color: var(--prime-muted);
+  font-size: var(--text-sm);
+}

@@ -82,6 +82,11 @@ public final class PrimeHooks {
         return dev.primeclient.core.state.CrosshairState.hideVanillaCrosshair();
     }
 
+    /** Called by lightmap mixins to force maximum brightness. */
+    public static boolean fullbrightActive() {
+        return dev.primeclient.core.state.FullbrightState.active();
+    }
+
     private static PrimeClient tryGet() {
         try {
             return PrimeClient.get();

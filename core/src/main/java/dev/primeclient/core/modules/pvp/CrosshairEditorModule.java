@@ -51,7 +51,6 @@ public final class CrosshairEditorModule extends Module {
     private final CrosshairPresetStore presets;
     private final CrosshairProfileManager profiles;
     private final CrosshairElement crosshair;
-    private final PreviewElement preview;
     private String lastPreset = "";
 
     public CrosshairEditorModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter,
@@ -63,9 +62,6 @@ public final class CrosshairEditorModule extends Module {
         this.presets = presets;
         this.profiles = profiles;
         this.crosshair = hud.register(new CrosshairElement(config));
-        this.preview = hud.register(new PreviewElement(themes, config));
-        crosshair.setVisible(false);
-        preview.setVisible(false);
 
         listen(ClientTickEvent.class, event -> syncConfig());
     }
@@ -74,14 +70,12 @@ public final class CrosshairEditorModule extends Module {
     protected void onEnable() {
         syncConfig();
         crosshair.setVisible(true);
-        preview.setVisible(true);
         CrosshairState.setActive(config, true);
     }
 
     @Override
     protected void onDisable() {
         crosshair.setVisible(false);
-        preview.setVisible(false);
         CrosshairState.setActive(config, false);
     }
 
@@ -164,36 +158,6 @@ public final class CrosshairEditorModule extends Module {
         @Override
         public void render(RenderContext ctx, long nowMillis) {
             CrosshairRenderer.render(ctx, config);
-        }
-    }
-
-    private static final class PreviewElement extends HudElement {
-        private static final int BOX = 48;
-        private final ThemeManager themes;
-        private final CrosshairConfig config;
-
-        PreviewElement(ThemeManager themes, CrosshairConfig config) {
-            super("crosshair-preview", "Crosshair Preview", HudAnchor.TOP_RIGHT, -BOX - 8, 8);
-            this.themes = themes;
-            this.config = config;
-        }
-
-        @Override
-        public int measureWidth(RenderContext ctx) {
-            return BOX;
-        }
-
-        @Override
-        public int measureHeight(RenderContext ctx) {
-            return BOX + 12;
-        }
-
-        @Override
-        public void render(RenderContext ctx, long nowMillis) {
-            var theme = themes.active();
-            ctx.fillRect(0, 0, BOX, BOX, theme.backgroundLight());
-            ctx.drawText("Preview", 4, BOX + 2, theme.foregroundMuted(), true);
-            CrosshairRenderer.renderPreview(ctx, config, BOX);
         }
     }
 }

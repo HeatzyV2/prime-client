@@ -5,7 +5,6 @@ import dev.primeclient.core.PrimeClient;
 import dev.primeclient.core.gui.menu.TitleScreenGate;
 import dev.primeclient.core.util.DirectionUtil;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.GraphicsPreset;
 import net.minecraft.client.gui.screens.DeathScreen;
@@ -631,6 +630,16 @@ public final class VersionAdapter implements MinecraftAdapter {
     @Override
     public boolean isHudHidden() {
         return hudHidden;
+    }
+
+    @Override
+    public float gamma() {
+        return Minecraft.getInstance().options.gamma().get().floatValue();
+    }
+
+    @Override
+    public void setGamma(float gamma) {
+        Minecraft.getInstance().options.gamma().set((double) Math.clamp(gamma, 0.0F, 1.0F));
     }
 
     private static ItemStack armorStack(int slot) {

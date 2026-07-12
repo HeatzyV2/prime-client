@@ -628,6 +628,16 @@ public final class VersionAdapter implements MinecraftAdapter {
         return Minecraft.getInstance().options.hideGui;
     }
 
+    @Override
+    public float gamma() {
+        return Minecraft.getInstance().options.gamma().get().floatValue();
+    }
+
+    @Override
+    public void setGamma(float gamma) {
+        Minecraft.getInstance().options.gamma().set((double) Math.clamp(gamma, 0.0F, 1.0F));
+    }
+
     private static ItemStack armorStack(int slot) {
         EquipmentSlot[] slots = {
                 EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD

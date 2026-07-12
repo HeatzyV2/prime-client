@@ -28,6 +28,7 @@ import dev.primeclient.core.hud.HudManager;
 import dev.primeclient.core.hud.editor.HudEditor;
 import dev.primeclient.core.hud.elements.NotificationsElement;
 import dev.primeclient.core.hud.elements.WatermarkElement;
+import dev.primeclient.core.hud.vanilla.VanillaHudElements;
 import dev.primeclient.core.keybind.KeybindManager;
 import dev.primeclient.core.module.ModuleManager;
 import dev.primeclient.core.notification.NotificationManager;
@@ -137,6 +138,7 @@ public final class PrimeClient {
 
         hud.register(new WatermarkElement(themes, adapter.minecraftVersion()));
         hud.register(new NotificationsElement(notifications, themes, notificationPrefs));
+        VanillaHudElements.registerAll(hud);
 
         if (account.username().isBlank() && adapter.hasPlayer()) {
             account.login(adapter.playerName());

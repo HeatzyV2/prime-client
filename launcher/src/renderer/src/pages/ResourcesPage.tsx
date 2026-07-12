@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion'
 import { Download, Image, Plus, Trash2, Upload } from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button } from '@renderer/design-system/components'
-import { ModrinthBrowseModal } from '@renderer/components/ModrinthBrowseModal'
+import { ContentBrowseModal } from '@renderer/components/ContentBrowseModal'
 import { useActiveInstance } from '@renderer/hooks/useActiveInstance'
 import { useI18n } from '@renderer/context/I18nProvider'
 import type { ResourcePackEntry } from '@shared/content-types'
@@ -61,7 +61,7 @@ export function ResourcesPage() {
             {t('resources.importZip')}
           </Button>
           <Button variant="primary" icon={<Download size={16} />} onClick={() => setShowBrowse(true)}>
-            {t('actions.browseModrinth')}
+            {t('actions.browseContent')}
           </Button>
         </div>
       }
@@ -105,7 +105,7 @@ export function ResourcesPage() {
 
       <AnimatePresence>
         {showBrowse && (
-          <ModrinthBrowseModal
+          <ContentBrowseModal
             type="resourcepack"
             instanceId={instanceId}
             onClose={() => setShowBrowse(false)}

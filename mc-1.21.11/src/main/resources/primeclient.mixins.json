@@ -8,7 +8,10 @@
 		"GameRendererMixin",
 		"LivingEntityRendererMixin",
 		"CameraMixin",
+		"LightTextureMixin",
 		"GuiMixin",
+		"ScoreboardSidebarBoundsMixin",
+		"GuiGraphicsScoreboardCaptureMixin",
 		"AvatarRendererMixin",
 		"TitleScreenMixin",
 		"ClientBrandRetrieverMixin"

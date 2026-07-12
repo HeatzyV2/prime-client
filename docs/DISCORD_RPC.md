@@ -47,6 +47,8 @@ Sans cet asset, la présence peut s’afficher sans image ou être rejetée.
 
 - Console launcher (**Console** dans la sidebar) : cherche `Discord Rich Presence active` ou `Discord RPC unavailable`
 - Vérifie l’App ID dans le message de log
-- Les **boutons** RPC peuvent être refusés par Discord sur une app non vérifiée — le launcher réessaie sans boutons automatiquement
+- Les **boutons** RPC doivent être des objets `{ "label", "url" }` (max 2). Sur une app non vérifiée, Discord peut les refuser — le client réessaie alors sans boutons.
+- Si Discord est ouvert mais le launcher ne le voit pas : **ferme complètement le launcher** puis relance-le depuis une build à jour (`npm run build` dans `launcher/`, ou réinstalle le setup). L’ancienne version installée peut tourner sans les correctifs IPC.
+- Discord **PTB** / **Canary** : le launcher détecte automatiquement les pipes `discord-ptb-ipc-*` et `discord-canary-ipc-*`.
 
 Application ID : **1525574680994648174**

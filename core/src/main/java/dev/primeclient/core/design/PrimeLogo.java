@@ -5,7 +5,7 @@ import dev.primeclient.core.adapter.RenderContext;
 /** Shared Prime logo asset and layout helpers. */
 public final class PrimeLogo {
 
-    public static final String TEXTURE = "gui/logo";
+    public static final String TEXTURE = "textures/gui/logo.png";
     public static final int SRC_WIDTH = 512;
     public static final int SRC_HEIGHT = 279;
 

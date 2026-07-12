@@ -37,6 +37,9 @@ interface SettingsState {
   concurrentDownloads: number
   developerMode: boolean
   jvmArgs: string
+  gameWidth: number
+  gameHeight: number
+  gameDisplayMode: 'windowed' | 'borderless' | 'fullscreen'
 }
 
 export function SettingsPage() {
@@ -68,7 +71,10 @@ export function SettingsPage() {
       discordRpc: s.discordRpc,
       concurrentDownloads: s.concurrentDownloads,
       developerMode: s.developerMode,
-      jvmArgs: s.jvmArgs.join('\n')
+      jvmArgs: s.jvmArgs.join('\n'),
+      gameWidth: s.gameWidth,
+      gameHeight: s.gameHeight,
+      gameDisplayMode: s.gameDisplayMode
     })
     const catalog = await window.primeLauncher.store.catalog()
     setOwnsCrimson(catalog.some((item: StoreItem) => item.id === 'theme-crimson' && item.owned))
@@ -111,7 +117,10 @@ export function SettingsPage() {
       jvmArgs: next.jvmArgs
         .split('\n')
         .map((l) => l.trim())
-        .filter(Boolean)
+        .filter(Boolean),
+      gameWidth: next.gameWidth,
+      gameHeight: next.gameHeight,
+      gameDisplayMode: next.gameDisplayMode
     })) as SettingsUpdateDto
 
     setRestartRequired(Boolean(result.restartRequired))
@@ -310,6 +319,50 @@ export function SettingsPage() {
                   <option value="4096">4096 MB</option>
                   <option value="6144">6144 MB</option>
                   <option value="8192">8192 MB</option>
+                </select>
+              </div>
+              <div className="settings__row">
+                <div>
+                  <div className="settings__label">{t('settings.gameResolution.label')}</div>
+                  <div className="settings__hint">{t('settings.gameResolution.hint')}</div>
+                </div>
+                <div className="settings__resolution">
+                  <input
+                    type="number"
+                    className="settings__select settings__resolution-input"
+                    min={320}
+                    max={7680}
+                    value={settings.gameWidth}
+                    onChange={(e) => void patch({ gameWidth: Number(e.target.value) || 854 })}
+                  />
+                  <span className="settings__resolution-sep">×</span>
+                  <input
+                    type="number"
+                    className="settings__select settings__resolution-input"
+                    min={240}
+                    max={4320}
+                    value={settings.gameHeight}
+                    onChange={(e) => void patch({ gameHeight: Number(e.target.value) || 480 })}
+                  />
+                </div>
+              </div>
+              <div className="settings__row">
+                <div>
+                  <div className="settings__label">{t('settings.gameDisplayMode.label')}</div>
+                  <div className="settings__hint">{t('settings.gameDisplayMode.hint')}</div>
+                </div>
+                <select
+                  className="settings__select"
+                  value={settings.gameDisplayMode}
+                  onChange={(e) =>
+                    void patch({
+                      gameDisplayMode: e.target.value as SettingsState['gameDisplayMode']
+                    })
+                  }
+                >
+                  <option value="windowed">{t('settings.gameDisplayMode.windowed')}</option>
+                  <option value="borderless">{t('settings.gameDisplayMode.borderless')}</option>
+                  <option value="fullscreen">{t('settings.gameDisplayMode.fullscreen')}</option>
                 </select>
               </div>
             </>

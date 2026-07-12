@@ -53,7 +53,9 @@ public final class DiscordIpcClient {
             if (!ensureConnected()) {
                 return;
             }
-            sendFrame(buildSetActivity(snapshot));
+            if (!sendActivity(snapshot, true)) {
+                sendActivity(snapshot, false);
+            }
         });
     }
 
@@ -62,14 +64,22 @@ public final class DiscordIpcClient {
             if (!connected.get()) {
                 return;
             }
-            sendFrame(buildClearActivity());
+            try {
+                sendFrame(buildClearActivity());
+            } catch (IOException e) {
+                connected.set(false);
+                closeTransport();
+            }
         });
     }
 
     public void shutdown() {
         executor.execute(() -> {
             if (connected.get()) {
-                sendFrame(buildClearActivity());
+                try {
+                    sendFrame(buildClearActivity());
+                } catch (IOException ignored) {
+                }
                 closeTransport();
             }
             connected.set(false);
@@ -136,18 +146,28 @@ public final class DiscordIpcClient {
         readPacket();
     }
 
-    private void sendFrame(String json) {
+    private void sendFrame(String json) throws IOException {
+        writePacket(OP_FRAME, json);
+        readPacket();
+    }
+
+    private boolean sendActivity(DiscordPresenceSnapshot snapshot, boolean includeButtons) {
         try {
-            writePacket(OP_FRAME, json);
-            readPacket();
+            sendFrame(buildSetActivity(snapshot, includeButtons));
+            return true;
         } catch (IOException e) {
-            PrimeClient.LOGGER.debug("Discord IPC frame failed: {}", e.getMessage());
+            PrimeClient.LOGGER.debug("Discord IPC activity failed (buttons={}): {}", includeButtons, e.getMessage());
             connected.set(false);
             closeTransport();
+            return false;
         }
     }
 
     private String buildSetActivity(DiscordPresenceSnapshot snapshot) {
+        return buildSetActivity(snapshot, true);
+    }
+
+    private String buildSetActivity(DiscordPresenceSnapshot snapshot, boolean includeButtons) {
         JsonObject activity = new JsonObject();
         activity.addProperty("type", 0);
         if (!snapshot.details().isEmpty()) {
@@ -169,15 +189,20 @@ public final class DiscordIpcClient {
             assets.addProperty("small_text", trim(snapshot.smallImageText(), 128));
         }
         activity.add("assets", assets);
-        if (!snapshot.buttons().isEmpty()) {
+        if (includeButtons && !snapshot.buttons().isEmpty()) {
             JsonArray buttons = new JsonArray();
-            JsonArray labels = new JsonArray();
             for (DiscordPresenceSnapshot.Button button : snapshot.buttons()) {
-                buttons.add(button.url());
-                labels.add(trim(button.label(), 32));
+                if (buttons.size() >= 2) {
+                    break;
+                }
+                JsonObject entry = new JsonObject();
+                entry.addProperty("label", trim(button.label(), 32));
+                entry.addProperty("url", button.url());
+                buttons.add(entry);
             }
-            activity.add("buttons", buttons);
-            activity.add("metadata", metadataWithLabels(labels));
+            if (!buttons.isEmpty()) {
+                activity.add("buttons", buttons);
+            }
         }
 
         JsonObject args = new JsonObject();
@@ -189,12 +214,6 @@ public final class DiscordIpcClient {
         root.addProperty("nonce", Long.toString(System.nanoTime()));
         root.add("args", args);
         return root.toString();
-    }
-
-    private static JsonObject metadataWithLabels(JsonArray labels) {
-        JsonObject metadata = new JsonObject();
-        metadata.add("button_label", labels);
-        return metadata;
     }
 
     private String buildClearActivity() {

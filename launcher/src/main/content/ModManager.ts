@@ -4,6 +4,7 @@ import type { ModEntry } from '../../shared/content-types'
 import { getModsDir } from './paths'
 import { patchContentMeta, readContentMeta } from './contentMeta'
 import { downloadModrinthFile, getModrinthVersion } from './ModrinthClient'
+import { downloadCurseForgeFile, getCurseForgeFile } from './CurseForgeClient'
 import { downloadService } from '../services/DownloadService'
 
 const DISABLED_SUFFIX = '.disabled'
@@ -56,9 +57,9 @@ export async function listMods(instanceId: string): Promise<ModEntry[]> {
       id: modIdFromFile(canonical),
       fileName: canonical,
       name: tracked?.title ?? displayNameFromFile(canonical),
-      description: tracked ? `Installed from Modrinth` : 'Local mod file',
+      description: tracked ? `Installed from ${tracked.source === 'curseforge' ? 'CurseForge' : 'Modrinth'}` : 'Local mod file',
       version: tracked?.versionNumber ?? versionFromFile(canonical),
-      author: tracked?.source === 'modrinth' ? 'Modrinth' : 'Unknown',
+      author: tracked?.source === 'curseforge' ? 'CurseForge' : tracked?.source === 'modrinth' ? 'Modrinth' : 'Unknown',
       enabled,
       source: tracked?.source ?? 'local'
     }
@@ -144,6 +145,40 @@ export async function installModFromModrinth(
     })
 
     return { ok: true, fileName: file.filename }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Install failed.' }
+  }
+}
+
+export async function installModFromCurseForge(
+  instanceId: string,
+  modId: string,
+  title: string,
+  minecraftVersion: string,
+  loader: 'fabric' | 'forge' | 'quilt' = 'fabric'
+): Promise<{ ok: boolean; error?: string; fileName?: string }> {
+  try {
+    const file = await getCurseForgeFile(modId, minecraftVersion, loader)
+
+    const modsDir = getModsDir(instanceId)
+    await mkdir(modsDir, { recursive: true })
+    const dest = join(modsDir, file.fileName)
+
+    const taskId = await downloadService.beginDownload(`Mod: ${title}`)
+    await downloadCurseForgeFile(modId, file.id, dest, (percent, speed) => {
+      void downloadService.updateDownload(taskId, percent, speed)
+    })
+
+    await patchContentMeta(instanceId, (meta) => {
+      meta.mods[file.fileName] = {
+        projectId: modId,
+        title,
+        versionNumber: file.fileName,
+        source: 'curseforge'
+      }
+    })
+
+    return { ok: true, fileName: file.fileName }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Install failed.' }
   }

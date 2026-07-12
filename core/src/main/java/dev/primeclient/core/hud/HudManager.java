@@ -4,6 +4,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.config.ConfigBinding;
+import dev.primeclient.core.hud.vanilla.VanillaHudComponent;
+import dev.primeclient.core.hud.vanilla.VanillaHudMeasurements;
+import dev.primeclient.core.hud.vanilla.VanillaHudProxyElement;
+import dev.primeclient.core.hud.vanilla.VanillaHudTransformHelper;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -41,7 +45,20 @@ public final class HudManager implements ConfigBinding {
     }
 
     public void render(RenderContext ctx) {
+        layout(ctx);
         long now = System.currentTimeMillis();
+        HudElement[] elements = this.renderList;
+        for (int i = 0; i < elements.length; i++) {
+            HudElement element = elements[i];
+            if (!element.isVisible()) {
+                continue;
+            }
+            drawElement(ctx, element, now);
+        }
+    }
+
+    /** Computes element bounds without drawing — used before vanilla HUD transforms in the editor. */
+    public void layout(RenderContext ctx) {
         int screenWidth = ctx.screenWidth();
         int screenHeight = ctx.screenHeight();
         HudElement[] elements = this.renderList;
@@ -55,19 +72,43 @@ public final class HudManager implements ConfigBinding {
             int localHeight = element.measureHeight(ctx);
             float width = localWidth * scale;
             float height = localHeight * scale;
-            float x = element.anchor().baseX(screenWidth, width) + element.offsetX();
-            float y = element.anchor().baseY(screenHeight, height) + element.offsetY();
+            float x;
+            float y;
+            if (element instanceof VanillaHudProxyElement proxy) {
+                VanillaHudComponent component = proxy.component();
+                if (component == VanillaHudComponent.SCOREBOARD) {
+                    VanillaHudMeasurements.Bounds bounds = VanillaHudMeasurements.scoreboard();
+                    if (bounds.valid()) {
+                        x = VanillaHudTransformHelper.targetX(element, component, screenWidth, width);
+                        y = VanillaHudTransformHelper.targetY(element, component, screenHeight, height);
+                        element.setLastBounds(x, y, width, height);
+                        continue;
+                    }
+                }
+            }
+            x = element.anchor().baseX(screenWidth, width) + element.offsetX();
+            y = element.anchor().baseY(screenHeight, height) + element.offsetY();
             element.setLastBounds(x, y, width, height);
-
-            float pivotX = localWidth / 2f;
-            float pivotY = localHeight / 2f;
-            ctx.pushTransform(x + width / 2f, y + height / 2f, scale,
-                    element.rotation(), pivotX, pivotY);
-            ctx.setDrawOpacity(element.opacity());
-            element.render(ctx, now);
-            ctx.setDrawOpacity(1f);
-            ctx.popTransform();
         }
+    }
+
+    private static void drawElement(RenderContext ctx, HudElement element, long now) {
+        float scale = element.scale();
+        int localWidth = element.measureWidth(ctx);
+        int localHeight = element.measureHeight(ctx);
+        float width = localWidth * scale;
+        float height = localHeight * scale;
+        float x = element.lastX();
+        float y = element.lastY();
+
+        float pivotX = localWidth / 2f;
+        float pivotY = localHeight / 2f;
+        ctx.pushTransform(x + width / 2f, y + height / 2f, scale,
+                element.rotation(), pivotX, pivotY);
+        ctx.setDrawOpacity(element.opacity());
+        element.render(ctx, now);
+        ctx.setDrawOpacity(1f);
+        ctx.popTransform();
     }
 
     public HudElement elementAt(double x, double y) {

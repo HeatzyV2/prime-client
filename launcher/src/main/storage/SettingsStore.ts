@@ -3,6 +3,8 @@ import { mkdir, readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import type { PerformancePreset } from '../../shared/content-types'
 
+export type GameDisplayMode = 'windowed' | 'borderless' | 'fullscreen'
+
 export interface LauncherSettings {
   version: 1
   language: 'en' | 'fr'
@@ -15,10 +17,14 @@ export interface LauncherSettings {
   performancePreset: PerformancePreset
   analytics: boolean
   discordRpc: boolean
+  curseForgeApiKey?: string
   concurrentDownloads: number
   developerMode: boolean
   jvmArgs: string[]
   defaultJavaPath: string | null
+  gameWidth: number
+  gameHeight: number
+  gameDisplayMode: GameDisplayMode
   lastUpdateCheck?: string
   lastPrimeSync?: string
 }
@@ -38,7 +44,10 @@ const DEFAULT_SETTINGS = (): LauncherSettings => ({
   concurrentDownloads: 3,
   developerMode: false,
   jvmArgs: ['-XX:+UseG1GC'],
-  defaultJavaPath: null
+  defaultJavaPath: null,
+  gameWidth: 1920,
+  gameHeight: 1080,
+  gameDisplayMode: 'windowed'
 })
 
 export class SettingsStore {

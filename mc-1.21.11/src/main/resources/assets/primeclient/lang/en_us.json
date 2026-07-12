@@ -103,6 +103,8 @@
   "prime.module.waypoints.description": "Shows distance and direction to a saved waypoint",
   "prime.module.zoom.name": "Zoom",
   "prime.module.zoom.description": "Hold C to zoom the camera",
+  "prime.module.fullbright.name": "Fullbright",
+  "prime.module.fullbright.description": "Maximum brightness in caves and at night",
   "prime.category.pvp": "PvP",
   "prime.category.performance": "Performance",
   "prime.category.qol": "QoL",

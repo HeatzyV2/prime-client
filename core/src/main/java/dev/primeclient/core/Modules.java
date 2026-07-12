@@ -44,6 +44,7 @@ import dev.primeclient.core.modules.qol.BetterTooltipsModule;
 import dev.primeclient.core.modules.qol.ChatFilterModule;
 import dev.primeclient.core.modules.qol.ChatTimestampModule;
 import dev.primeclient.core.modules.qol.DeathWaypointModule;
+import dev.primeclient.core.modules.qol.FullbrightModule;
 import dev.primeclient.core.modules.qol.InventorySearchModule;
 import dev.primeclient.core.modules.qol.ItemCounterModule;
 import dev.primeclient.core.modules.qol.ServerSwitcherModule;
@@ -103,6 +104,7 @@ final class Modules {
 
         // QoL (15)
         modules.register(new ZoomModule(adapter));
+        modules.register(new FullbrightModule(adapter));
         modules.register(new ToggleSprintModule(adapter));
         modules.register(new ToggleSneakModule(adapter));
         modules.register(new AutoRespawnModule(adapter));

@@ -47,17 +47,21 @@ export const IPC = {
   CONTENT_MODS_REMOVE: 'content:mods-remove',
   CONTENT_MODS_IMPORT: 'content:mods-import',
   CONTENT_MODS_INSTALL_MODRINTH: 'content:mods-install-modrinth',
+  CONTENT_MODS_INSTALL_CURSEFORGE: 'content:mods-install-curseforge',
   CONTENT_RESOURCE_LIST: 'content:resource-list',
   CONTENT_RESOURCE_SET_ACTIVE: 'content:resource-set-active',
   CONTENT_RESOURCE_REMOVE: 'content:resource-remove',
   CONTENT_RESOURCE_IMPORT: 'content:resource-import',
   CONTENT_RESOURCE_INSTALL_MODRINTH: 'content:resource-install-modrinth',
+  CONTENT_RESOURCE_INSTALL_CURSEFORGE: 'content:resource-install-curseforge',
   CONTENT_SHADER_LIST: 'content:shader-list',
   CONTENT_SHADER_SET_ACTIVE: 'content:shader-set-active',
   CONTENT_SHADER_REMOVE: 'content:shader-remove',
   CONTENT_SHADER_IMPORT: 'content:shader-import',
   CONTENT_SHADER_INSTALL_MODRINTH: 'content:shader-install-modrinth',
+  CONTENT_SHADER_INSTALL_CURSEFORGE: 'content:shader-install-curseforge',
   CONTENT_MODRINTH_SEARCH: 'content:modrinth-search',
+  CONTENT_CURSEFORGE_SEARCH: 'content:curseforge-search',
 
   STORE_CATALOG: 'store:catalog',
   STORE_BALANCE: 'store:balance',
@@ -241,10 +245,14 @@ export interface LauncherSettingsDto {
   performancePreset: string
   analytics: boolean
   discordRpc: boolean
+  curseForgeApiKey?: string
   concurrentDownloads: number
   developerMode: boolean
   jvmArgs: string[]
   defaultJavaPath: string | null
+  gameWidth: number
+  gameHeight: number
+  gameDisplayMode: 'windowed' | 'borderless' | 'fullscreen'
   lastUpdateCheck?: string
   lastPrimeSync?: string
 }

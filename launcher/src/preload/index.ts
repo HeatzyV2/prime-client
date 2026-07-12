@@ -87,8 +87,13 @@ const api = {
     removeMod: (fileName: string, instanceId?: string) =>
       ipcRenderer.invoke(IPC.CONTENT_MODS_REMOVE, fileName, instanceId),
     importMod: (instanceId?: string) => ipcRenderer.invoke(IPC.CONTENT_MODS_IMPORT, instanceId),
-    installMod: (projectId: string, title: string, instanceId?: string) =>
-      ipcRenderer.invoke(IPC.CONTENT_MODS_INSTALL_MODRINTH, projectId, title, instanceId),
+    installMod: (projectId: string, title: string, instanceId?: string, source?: 'modrinth' | 'curseforge') =>
+      ipcRenderer.invoke(
+        source === 'curseforge' ? IPC.CONTENT_MODS_INSTALL_CURSEFORGE : IPC.CONTENT_MODS_INSTALL_MODRINTH,
+        projectId,
+        title,
+        instanceId
+      ),
     listResourcePacks: (instanceId?: string) =>
       ipcRenderer.invoke(IPC.CONTENT_RESOURCE_LIST, instanceId),
     setResourcePackActive: (fileName: string | null, instanceId?: string) =>
@@ -97,21 +102,36 @@ const api = {
       ipcRenderer.invoke(IPC.CONTENT_RESOURCE_REMOVE, fileName, instanceId),
     importResourcePack: (instanceId?: string) =>
       ipcRenderer.invoke(IPC.CONTENT_RESOURCE_IMPORT, instanceId),
-    installResourcePack: (projectId: string, title: string, instanceId?: string) =>
-      ipcRenderer.invoke(IPC.CONTENT_RESOURCE_INSTALL_MODRINTH, projectId, title, instanceId),
+    installResourcePack: (projectId: string, title: string, instanceId?: string, source?: 'modrinth' | 'curseforge') =>
+      ipcRenderer.invoke(
+        source === 'curseforge' ? IPC.CONTENT_RESOURCE_INSTALL_CURSEFORGE : IPC.CONTENT_RESOURCE_INSTALL_MODRINTH,
+        projectId,
+        title,
+        instanceId
+      ),
     listShaders: (instanceId?: string) => ipcRenderer.invoke(IPC.CONTENT_SHADER_LIST, instanceId),
     setShaderActive: (fileName: string | null, instanceId?: string) =>
       ipcRenderer.invoke(IPC.CONTENT_SHADER_SET_ACTIVE, fileName, instanceId),
     removeShader: (fileName: string, instanceId?: string) =>
       ipcRenderer.invoke(IPC.CONTENT_SHADER_REMOVE, fileName, instanceId),
     importShader: (instanceId?: string) => ipcRenderer.invoke(IPC.CONTENT_SHADER_IMPORT, instanceId),
-    installShader: (projectId: string, title: string, instanceId?: string) =>
-      ipcRenderer.invoke(IPC.CONTENT_SHADER_INSTALL_MODRINTH, projectId, title, instanceId),
+    installShader: (projectId: string, title: string, instanceId?: string, source?: 'modrinth' | 'curseforge') =>
+      ipcRenderer.invoke(
+        source === 'curseforge' ? IPC.CONTENT_SHADER_INSTALL_CURSEFORGE : IPC.CONTENT_SHADER_INSTALL_MODRINTH,
+        projectId,
+        title,
+        instanceId
+      ),
     searchModrinth: (
       query: string,
       type: 'mod' | 'resourcepack' | 'shader',
       instanceId?: string
-    ) => ipcRenderer.invoke(IPC.CONTENT_MODRINTH_SEARCH, query, type, instanceId)
+    ) => ipcRenderer.invoke(IPC.CONTENT_MODRINTH_SEARCH, query, type, instanceId),
+    searchCurseForge: (
+      query: string,
+      type: 'mod' | 'resourcepack' | 'shader',
+      instanceId?: string
+    ) => ipcRenderer.invoke(IPC.CONTENT_CURSEFORGE_SEARCH, query, type, instanceId)
   },
   cloud: {
     getSyncStatus: () => ipcRenderer.invoke('cloud:sync-status'),

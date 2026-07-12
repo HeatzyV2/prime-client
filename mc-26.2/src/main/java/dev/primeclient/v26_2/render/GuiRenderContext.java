@@ -122,23 +122,24 @@ public final class GuiRenderContext implements RenderContext {
     @Override
     public void drawTexture(String texturePath, int x, int y, int width, int height,
                               int textureWidth, int textureHeight, int tintArgb) {
-        Identifier id = textureId(texturePath);
-        extractor.blit(RenderPipelines.GUI_TEXTURED, id, x, y, 0, 0, width, height,
-                textureWidth, textureHeight, applyOpacity(tintArgb));
+        Identifier id = Identifier.fromNamespaceAndPath(PrimeClient.MOD_ID, normalizeTexturePath(texturePath));
+        extractor.blit(RenderPipelines.GUI_TEXTURED, id, x, y, 0f, 0f, width, height,
+                textureWidth, textureHeight, textureTint(tintArgb));
     }
 
-    private static Identifier textureId(String texturePath) {
-        String path = texturePath.replace('\\', '/');
-        if (path.startsWith("textures/")) {
-            path = path.substring("textures/".length());
-        }
-        if (path.endsWith(".png")) {
-            path = path.substring(0, path.length() - 4);
-        }
-        return Identifier.fromNamespaceAndPath(PrimeClient.MOD_ID, path);
+    private static String normalizeTexturePath(String texturePath) {
+        return texturePath.replace('\\', '/');
     }
 
     private int applyOpacity(int argb) {
         return drawOpacity >= 0.999f ? argb : ColorUtil.withAlpha(argb, drawOpacity);
+    }
+
+    private int textureTint(int argb) {
+        int tinted = applyOpacity(argb);
+        if (((tinted >>> 24) & 0xFF) == 0) {
+            tinted |= 0xFF000000;
+        }
+        return tinted;
     }
 }

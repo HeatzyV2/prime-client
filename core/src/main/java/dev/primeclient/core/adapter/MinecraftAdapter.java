@@ -354,6 +354,15 @@ public interface MinecraftAdapter {
         return false;
     }
 
+    /** Vanilla brightness slider value (0.0–1.0). */
+    default float gamma() {
+        return 0.5F;
+    }
+
+    /** Sets the vanilla brightness slider (0.0–1.0). */
+    default void setGamma(float gamma) {
+    }
+
     /** Spawns client-side hit particles at world coordinates. */
     default void spawnHitParticles(double x, double y, double z, int color, float size, int count) {
     }

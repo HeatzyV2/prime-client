@@ -26,6 +26,10 @@ public final class PrimeClientEntrypoint implements ClientModInitializer {
         adapter = new VersionAdapter();
         PrimeClient.bootstrap(adapter);
 
+        ClientLifecycleEvents.CLIENT_STARTED.register(client ->
+                client.getTextureManager().getTexture(
+                        Identifier.fromNamespaceAndPath(PrimeClient.MOD_ID, "textures/gui/logo.png")));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             trackHealth();
             PrimeClient.get().tick();
@@ -56,6 +60,9 @@ public final class PrimeClientEntrypoint implements ClientModInitializer {
         HudElementRegistry.addLast(
                 Identifier.fromNamespaceAndPath(PrimeClient.MOD_ID, "hud"),
                 (graphics, deltaTracker) -> {
+                    if (dev.primeclient.core.hud.editor.HudEditorState.isActive()) {
+                        return;
+                    }
                     renderContext.prepare(graphics);
                     var client = PrimeClient.get();
                     client.hud().render(renderContext);

@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { dirname } from 'path'
 import { getOptionsPath } from './paths'
+import type { GameDisplayMode } from '../storage/SettingsStore'
 
 export async function readOptionsLines(instanceId: string): Promise<string[]> {
   try {
@@ -102,5 +103,23 @@ export function launcherLocaleToMinecraftLang(locale: 'en' | 'fr'): string {
 export async function syncMinecraftLanguage(instanceId: string, locale: 'en' | 'fr'): Promise<void> {
   let lines = await readOptionsLines(instanceId)
   lines = setOptionValue(lines, 'lang', launcherLocaleToMinecraftLang(locale))
+  await writeOptionsLines(instanceId, lines)
+}
+
+/** Syncs resolution and display mode into options.txt before launch. */
+export async function syncMinecraftDisplaySettings(
+  instanceId: string,
+  width: number,
+  height: number,
+  mode: GameDisplayMode
+): Promise<void> {
+  let lines = await readOptionsLines(instanceId)
+  if (width > 0) {
+    lines = setOptionValue(lines, 'overrideWidth', String(width))
+  }
+  if (height > 0) {
+    lines = setOptionValue(lines, 'overrideHeight', String(height))
+  }
+  lines = setOptionValue(lines, 'fullscreen', mode === 'fullscreen' ? 'true' : 'false')
   await writeOptionsLines(instanceId, lines)
 }
