@@ -1,4 +1,4 @@
-package dev.primeclient.core.modules.creator;
+package dev.primeclient.core.modules.streamers;
 
 import dev.primeclient.core.event.ClientTickEvent;
 import dev.primeclient.core.hud.HudElement;
@@ -6,47 +6,52 @@ import dev.primeclient.core.hud.HudManager;
 import dev.primeclient.core.module.BooleanSetting;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
+import dev.primeclient.core.stream.StreamerPrivacyState;
 
 import java.util.HashSet;
 import java.util.Set;
 
-/** Hides coords and server IP sensitive HUD elements for streams. */
-public final class StreamSafeHudModule extends Module {
+/** Hides Prime branding HUD elements without touching the vanilla game HUD. */
+public final class StreamBrandingModule extends Module {
 
-    private final BooleanSetting hideCoords =
-            addSetting(new BooleanSetting("hide-coords", "Hide coords", "Hide coordinates HUD", true));
-    private final BooleanSetting hideServer =
-            addSetting(new BooleanSetting("hide-server", "Hide server", "Hide server-related HUD", true));
+    private final BooleanSetting hideWatermark =
+            addSetting(new BooleanSetting(
+                    "hide-watermark", "Hide watermark", "Hide the Prime watermark", true));
+    private final BooleanSetting hidePrimeBranding =
+            addSetting(new BooleanSetting(
+                    "hide-prime-branding", "Hide Prime branding", "Hide Prime account branding", true));
 
     private final HudManager hud;
     private final Set<String> hiddenIds = new HashSet<>();
     private final Set<String> savedVisible = new HashSet<>();
 
-    public StreamSafeHudModule(HudManager hud) {
-        super("stream-safe-hud", "Stream Safe HUD", "Hide sensitive HUD for streams", ModuleCategory.CREATOR);
+    public StreamBrandingModule(HudManager hud) {
+        super("stream-branding", "Stream Branding",
+                "Hides Prime branding for a cleaner stream overlay", ModuleCategory.STREAMERS);
         this.hud = hud;
         listen(ClientTickEvent.class, event -> apply());
     }
 
     @Override
     protected void onEnable() {
+        StreamerPrivacyState.setBrandingHide(true);
         apply();
     }
 
     @Override
     protected void onDisable() {
         restore();
+        StreamerPrivacyState.setBrandingHide(false);
     }
 
     private void apply() {
-        if (hideCoords.get()) {
-            hideElement("coordinates");
-            hideElement("chunk-coords");
-            hideElement("biome-coords");
+        if (!isEnabled()) {
+            return;
         }
-        if (hideServer.get()) {
-            hideElement("ping");
-            hideElement("server-switcher");
+        if (hideWatermark.get()) {
+            hideElement("watermark");
+        }
+        if (hidePrimeBranding.get()) {
             hideElement("prime-account");
         }
     }

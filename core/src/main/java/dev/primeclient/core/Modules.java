@@ -7,8 +7,12 @@ import dev.primeclient.core.modules.creator.ClipBookmarkModule;
 import dev.primeclient.core.modules.creator.ClipToolsModule;
 import dev.primeclient.core.modules.creator.ReplayToolsModule;
 import dev.primeclient.core.modules.creator.ScreenshotModeModule;
-import dev.primeclient.core.modules.creator.StreamSafeHudModule;
-import dev.primeclient.core.modules.creator.StreamerModeModule;
+import dev.primeclient.core.modules.streamers.StreamBrandingModule;
+import dev.primeclient.core.modules.streamers.StreamChatRedactModule;
+import dev.primeclient.core.modules.streamers.StreamDebugShieldModule;
+import dev.primeclient.core.modules.streamers.StreamHudShieldModule;
+import dev.primeclient.core.modules.streamers.StreamNameMaskModule;
+import dev.primeclient.core.modules.streamers.StreamPrivacySuiteModule;
 import dev.primeclient.core.modules.performance.AdaptiveFpsModule;
 import dev.primeclient.core.modules.performance.AnimationOptimizerModule;
 import dev.primeclient.core.modules.performance.ChunkOptimizerModule;
@@ -250,12 +254,19 @@ final class Modules {
         modules.register(new InventorySearchModule(hud, themes, adapter));
         modules.register(new ServerSwitcherModule(hud, themes, adapter));
 
-        // Creator (9)
+        // Streamers (6)
+        modules.register(new StreamPrivacySuiteModule(modules));
+        modules.register(new StreamDebugShieldModule());
+        modules.register(new StreamChatRedactModule());
+        modules.register(new StreamNameMaskModule());
+        modules.register(new StreamHudShieldModule(hud));
+        modules.register(new StreamBrandingModule(hud));
+        client.keybinds().rebind(client.keybinds().get("module.stream-privacy-suite"), 299);
+
+        // Creator (7)
         modules.register(new CinematicCameraModule(hud, themes, adapter));
         modules.register(new CinematicGridModule(hud));
         modules.register(new ScreenshotModeModule(adapter));
-        modules.register(new StreamerModeModule(hud, adapter));
-        modules.register(new StreamSafeHudModule(hud));
         modules.register(new CameraZoomModule(adapter));
         modules.register(new ReplayToolsModule(hud, themes, adapter, client.replaySession(), client.replayStorage()));
         modules.register(new ClipToolsModule(hud, themes, adapter, client.clipRecorder(), client.keybinds()));

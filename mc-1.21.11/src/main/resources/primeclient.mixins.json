@@ -7,6 +7,9 @@
 	"client": [
 		"GameRendererMixin",
 		"LivingEntityRendererMixin",
+		"EntityRendererMixin",
+		"DebugScreenOverlayMixin",
+		"ChatComponentMixin",
 		"CameraMixin",
 		"LevelMixin",
 		"LightTextureMixin",

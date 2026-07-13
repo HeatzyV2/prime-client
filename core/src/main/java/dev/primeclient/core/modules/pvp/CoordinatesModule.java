@@ -7,6 +7,7 @@ import dev.primeclient.core.hud.HudElement;
 import dev.primeclient.core.hud.HudManager;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
+import dev.primeclient.core.stream.StreamerPrivacyState;
 import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.theme.ThemeManager;
 
@@ -68,6 +69,10 @@ public final class CoordinatesModule extends Module {
         }
 
         private void refresh() {
+            if (StreamerPrivacyState.hudShield() || StreamerPrivacyState.blockLocationHud()) {
+                text = "§8[hidden]";
+                return;
+            }
             if (!adapter.hasPlayer()) {
                 if (text.isEmpty()) {
                     text = "X: ? Y: ? Z: ?";

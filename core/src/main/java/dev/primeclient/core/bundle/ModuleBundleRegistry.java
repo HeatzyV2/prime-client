@@ -40,7 +40,9 @@ public final class ModuleBundleRegistry {
             "Streamer Pack",
             "Recording and stream-safe tools",
             List.of(
-                    "streamer-mode", "stream-safe-hud", "cinematic-camera", "cinematic-grid",
+                    "stream-privacy-suite", "stream-debug-shield", "stream-chat-redact",
+                    "stream-name-mask", "stream-hud-shield", "stream-branding",
+                    "cinematic-camera", "cinematic-grid",
                     "clip-recorder", "clip-bookmark", "screenshot-mode", "replay-tools"
             ));
 

@@ -9,6 +9,8 @@ import dev.primeclient.core.state.CinematicCameraState;
 import dev.primeclient.core.state.ChatFilterState;
 import dev.primeclient.core.state.ChatOverlayState;
 import dev.primeclient.core.state.ZoomState;
+import dev.primeclient.core.stream.StreamRedactor;
+import dev.primeclient.core.stream.StreamerPrivacyState;
 
 /**
  * Bridge from version-layer Fabric hooks and mixins into the common core.
@@ -36,7 +38,31 @@ public final class PrimeHooks {
         if (outgoing) {
             return text;
         }
-        return ChatOverlayState.formatIncoming(text, timestampMillis);
+        String formatted = ChatOverlayState.formatIncoming(text, timestampMillis);
+        if (streamChatRedact()) {
+            formatted = StreamRedactor.redact(formatted);
+        }
+        return formatted;
+    }
+
+    /** Called by debug overlay mixins to replace F3 with a stream-safe view. */
+    public static boolean streamDebugShield() {
+        return StreamerPrivacyState.debugShield();
+    }
+
+    /** Called by chat mixins to redact sensitive chat content. */
+    public static boolean streamChatRedact() {
+        return StreamerPrivacyState.chatRedact();
+    }
+
+    /** Called by entity renderer mixins to mask player nametags. */
+    public static boolean streamNameMask() {
+        return StreamerPrivacyState.nameMask();
+    }
+
+    /** Whether the local player's nametag should be masked. */
+    public static boolean streamNameMaskSelf() {
+        return StreamerPrivacyState.maskSelf();
     }
 
     public static void onAttackEntity(String targetName) {
