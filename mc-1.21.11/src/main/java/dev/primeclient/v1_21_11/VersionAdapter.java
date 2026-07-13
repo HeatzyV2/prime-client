@@ -480,19 +480,19 @@ public final class VersionAdapter implements MinecraftAdapter {
     @Override
     public long worldDayTime() {
         Minecraft mc = Minecraft.getInstance();
-        return mc.level != null ? mc.level.getDayTime() % 24000L : 0L;
+        return mc.level != null ? mc.level.getLevelData().getDayTime() % 24000L : 0L;
     }
 
     @Override
     public boolean worldRaining() {
         Minecraft mc = Minecraft.getInstance();
-        return mc.level != null && mc.level.isRaining();
+        return mc.level != null && mc.level.getLevelData().isRaining();
     }
 
     @Override
     public boolean worldThundering() {
         Minecraft mc = Minecraft.getInstance();
-        return mc.level != null && mc.level.isThundering();
+        return mc.level != null && mc.level.getLevelData().isThundering();
     }
 
     @Override

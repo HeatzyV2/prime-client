@@ -10,6 +10,7 @@
 		"HudMixin",
 		"ScoreboardSidebarBoundsMixin",
 		"GuiGraphicsScoreboardCaptureMixin",
+		"LevelMixin",
 		"LightmapMixin",
 		"LightmapRenderStateExtractorMixin",
 		"AvatarRendererMixin",

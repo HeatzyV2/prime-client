@@ -480,7 +480,7 @@ public final class VersionAdapter implements MinecraftAdapter {
     @Override
     public long worldDayTime() {
         Minecraft mc = Minecraft.getInstance();
-        return mc.level != null ? mc.level.getDayTime() % 24000L : 0L;
+        return mc.level != null ? mc.level.getOverworldClockTime() % 24000L : 0L;
     }
 
     @Override

@@ -87,6 +87,16 @@ public final class PrimeHooks {
         return dev.primeclient.core.state.FullbrightState.active();
     }
 
+    /** Called by level mixins to hide client-side precipitation. */
+    public static boolean noRainActive() {
+        return dev.primeclient.core.state.NoRainState.active();
+    }
+
+    /** Called by level mixins to render the world as daytime. */
+    public static boolean alwaysDayActive() {
+        return dev.primeclient.core.state.AlwaysDayState.active();
+    }
+
     private static PrimeClient tryGet() {
         try {
             return PrimeClient.get();
