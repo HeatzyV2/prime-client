@@ -97,6 +97,15 @@ public final class PrimeHooks {
         return dev.primeclient.core.state.AlwaysDayState.active();
     }
 
+    /** Called by screen effect mixins to lower the fire overlay. */
+    public static boolean lowFireActive() {
+        return dev.primeclient.core.state.LowFireState.active();
+    }
+
+    public static float lowFireHeightOffset() {
+        return dev.primeclient.core.state.LowFireState.heightOffset();
+    }
+
     private static PrimeClient tryGet() {
         try {
             return PrimeClient.get();

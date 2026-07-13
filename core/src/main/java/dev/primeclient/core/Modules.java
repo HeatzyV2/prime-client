@@ -81,6 +81,7 @@ import dev.primeclient.core.modules.qol.DeathReplayModule;
 import dev.primeclient.core.modules.qol.DeathWaypointModule;
 import dev.primeclient.core.modules.qol.AlwaysDayModule;
 import dev.primeclient.core.modules.qol.FullbrightModule;
+import dev.primeclient.core.modules.qol.LowFireModule;
 import dev.primeclient.core.modules.qol.NoRainModule;
 import dev.primeclient.core.modules.qol.InventorySearchModule;
 import dev.primeclient.core.modules.qol.ItemCounterModule;
@@ -227,11 +228,12 @@ final class Modules {
         modules.register(new FastLoadingModule(adapter));
         modules.register(new PerformanceProfilesModule(adapter));
 
-        // QoL (19)
+        // QoL (20)
         modules.register(new ZoomModule(adapter));
         modules.register(new FullbrightModule(adapter));
         modules.register(new NoRainModule());
         modules.register(new AlwaysDayModule());
+        modules.register(new LowFireModule());
         modules.register(new ToggleSprintModule(adapter));
         modules.register(new ToggleSneakModule(adapter));
         modules.register(new AutoRespawnModule(adapter));

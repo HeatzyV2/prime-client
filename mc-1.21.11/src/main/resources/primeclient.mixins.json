@@ -10,6 +10,7 @@
 		"CameraMixin",
 		"LevelMixin",
 		"LightTextureMixin",
+		"ScreenEffectRendererMixin",
 		"GuiMixin",
 		"ScoreboardSidebarBoundsMixin",
 		"GuiGraphicsScoreboardCaptureMixin",

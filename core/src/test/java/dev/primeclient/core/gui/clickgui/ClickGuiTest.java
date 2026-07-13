@@ -240,4 +240,14 @@ class ClickGuiTest {
         gui.keyPressed(256);
         gui.render(new FakeRenderContext(SCREEN_W, 600), 100, 100);
     }
+
+    @Test
+    void searchWithNoResultsKeepsClipStackBalanced() {
+        for (char c : "zzzz".toCharArray()) {
+            assertTrue(gui.charTyped(c));
+        }
+        FakeRenderContext ctx = new FakeRenderContext(SCREEN_W, 600);
+        gui.render(ctx, 100, 100);
+        assertEquals(0, ctx.clipDepth());
+    }
 }

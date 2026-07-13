@@ -225,7 +225,9 @@ public final class ClickGui implements ConfigBinding {
 
         if (isSearching()) {
             renderSearchBar(ctx, theme);
-            searchPanel.render(ctx, theme, mouseX, mouseY);
+            if (searchPanel != null) {
+                searchPanel.render(ctx, theme, mouseX, mouseY);
+            }
             return;
         }
 

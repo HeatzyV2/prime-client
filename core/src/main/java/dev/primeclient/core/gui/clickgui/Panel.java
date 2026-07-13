@@ -91,33 +91,35 @@ final class Panel {
         }
 
         int bodyH = totalH - HEADER_HEIGHT;
-        ctx.pushClip(px, py + HEADER_HEIGHT, WIDTH, bodyH);
+        if (bodyH > 0) {
+            ctx.pushClip(px, py + HEADER_HEIGHT, WIDTH, bodyH);
 
-        int visibleRows = Math.round(rowCount() * collapseProgress);
-        int rowY = py + HEADER_HEIGHT;
-        int drawn = 0;
-        for (Module module : modules) {
-            if (drawn >= visibleRows) {
-                break;
-            }
-            renderModuleRow(ctx, theme, module, px, rowY, mouseX, mouseY);
-            rowY += ROW_HEIGHT;
-            drawn++;
+            int visibleRows = Math.round(rowCount() * collapseProgress);
+            int rowY = py + HEADER_HEIGHT;
+            int drawn = 0;
+            for (Module module : modules) {
+                if (drawn >= visibleRows) {
+                    break;
+                }
+                renderModuleRow(ctx, theme, module, px, rowY, mouseX, mouseY);
+                rowY += ROW_HEIGHT;
+                drawn++;
 
-            if (module == expanded) {
-                for (Setting setting : module.settings()) {
-                    if (drawn >= visibleRows) {
-                        break;
+                if (module == expanded) {
+                    for (Setting setting : module.settings()) {
+                        if (drawn >= visibleRows) {
+                            break;
+                        }
+                        ctx.fillRect(px, rowY, WIDTH, ROW_HEIGHT, theme.background());
+                        ctx.fillRect(px + SETTING_INDENT - 4, rowY, 1, ROW_HEIGHT, theme.accent() & 0x60FFFFFF);
+                        renderSetting(ctx, theme, setting, px, rowY);
+                        rowY += ROW_HEIGHT;
+                        drawn++;
                     }
-                    ctx.fillRect(px, rowY, WIDTH, ROW_HEIGHT, theme.background());
-                    ctx.fillRect(px + SETTING_INDENT - 4, rowY, 1, ROW_HEIGHT, theme.accent() & 0x60FFFFFF);
-                    renderSetting(ctx, theme, setting, px, rowY);
-                    rowY += ROW_HEIGHT;
-                    drawn++;
                 }
             }
+            ctx.popClip();
         }
-        ctx.popClip();
     }
 
     private void renderModuleRow(RenderContext ctx, Theme theme, Module module, int px, int rowY,

@@ -15,11 +15,13 @@ public final class GuiRenderContext implements RenderContext {
     private GuiGraphicsExtractor extractor;
     private Font font;
     private float drawOpacity = 1f;
+    private int clipDepth;
 
     public void prepare(GuiGraphicsExtractor extractor) {
         this.extractor = extractor;
         this.font = Minecraft.getInstance().font;
         this.drawOpacity = 1f;
+        this.clipDepth = 0;
     }
 
     @Override
@@ -111,12 +113,16 @@ public final class GuiRenderContext implements RenderContext {
         int y1 = Math.min(sh, y + height);
         if (x1 > x0 && y1 > y0) {
             extractor.enableScissor(x0, y0, x1, y1);
+            clipDepth++;
         }
     }
 
     @Override
     public void popClip() {
-        extractor.disableScissor();
+        if (clipDepth > 0) {
+            extractor.disableScissor();
+            clipDepth--;
+        }
     }
 
     @Override

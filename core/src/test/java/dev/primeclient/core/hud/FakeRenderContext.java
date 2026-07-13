@@ -9,6 +9,7 @@ public final class FakeRenderContext implements RenderContext {
     private final int height;
     public int fillCalls;
     public int textCalls;
+    private int clipDepth;
 
     public FakeRenderContext(int width, int height) {
         this.width = width;
@@ -70,9 +71,19 @@ public final class FakeRenderContext implements RenderContext {
 
     @Override
     public void pushClip(int x, int y, int width, int height) {
+        if (width > 0 && height > 0) {
+            clipDepth++;
+        }
     }
 
     @Override
     public void popClip() {
+        if (clipDepth > 0) {
+            clipDepth--;
+        }
+    }
+
+    public int clipDepth() {
+        return clipDepth;
     }
 }

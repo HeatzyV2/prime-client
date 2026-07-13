@@ -17,6 +17,7 @@ public final class GuiRenderContext implements RenderContext {
     private int screenWidth;
     private int screenHeight;
     private float drawOpacity = 1f;
+    private int clipDepth;
 
     public void prepare(GuiGraphics graphics) {
         Minecraft minecraft = Minecraft.getInstance();
@@ -25,6 +26,7 @@ public final class GuiRenderContext implements RenderContext {
         this.screenWidth = minecraft.getWindow().getGuiScaledWidth();
         this.screenHeight = minecraft.getWindow().getGuiScaledHeight();
         this.drawOpacity = 1f;
+        this.clipDepth = 0;
     }
 
     @Override
@@ -113,12 +115,16 @@ public final class GuiRenderContext implements RenderContext {
         int y1 = Math.min(screenHeight, y + height);
         if (x1 > x0 && y1 > y0) {
             graphics.enableScissor(x0, y0, x1, y1);
+            clipDepth++;
         }
     }
 
     @Override
     public void popClip() {
-        graphics.disableScissor();
+        if (clipDepth > 0) {
+            graphics.disableScissor();
+            clipDepth--;
+        }
     }
 
     @Override

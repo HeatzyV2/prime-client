@@ -12,6 +12,7 @@
 		"GuiGraphicsScoreboardCaptureMixin",
 		"LevelMixin",
 		"LightmapMixin",
+		"ScreenEffectRendererMixin",
 		"LightmapRenderStateExtractorMixin",
 		"AvatarRendererMixin",
 		"TitleScreenMixin",
