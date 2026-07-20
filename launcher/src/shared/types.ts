@@ -84,6 +84,7 @@ export type NavSection =
   | 'cosmetics'
   | 'servers'
   | 'friends'
+  | 'chat'
   | 'news'
   | 'media'
   | 'performance'
@@ -108,6 +109,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'cosmetics', label: 'Cosmetics', phase: 3 },
   { id: 'servers', label: 'Servers', phase: 3 },
   { id: 'friends', label: 'Friends', phase: 3 },
+  { id: 'chat', label: 'Chat', phase: 3 },
   { id: 'news', label: 'News', phase: 3 },
   { id: 'media', label: 'Media', phase: 3 },
   { id: 'performance', label: 'Performance', phase: 3 },

@@ -11,6 +11,30 @@ repositories {
 	mavenCentral()
 }
 
+/** Keeps {@code PrimeVersion.VERSION} identical to root {@code mod_version}. */
+tasks.register("generatePrimeVersion") {
+	def versionFile = layout.projectDirectory.file("src/main/java/dev/primeclient/core/design/PrimeVersion.java")
+	inputs.property("modVersion", rootProject.mod_version)
+	outputs.file(versionFile)
+	doLast {
+		versionFile.asFile.text = """\
+package dev.primeclient.core.design;
+
+/** Build-time version — synced from gradle.properties {@code mod_version}. Do not hand-edit. */
+public final class PrimeVersion {
+    public static final String VERSION = "${rootProject.mod_version}";
+
+    private PrimeVersion() {
+    }
+}
+"""
+	}
+}
+
+tasks.named("compileJava").configure {
+	dependsOn("generatePrimeVersion")
+}
+
 dependencies {
 	// Provided at runtime by Fabric Loader; never bundled.
 	api "org.slf4j:slf4j-api:${slf4j_version}"

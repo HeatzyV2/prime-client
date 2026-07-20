@@ -38,6 +38,8 @@ final class VoiceRelayClient implements WebSocket.Listener {
     }
 
     private final HttpClient http = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .proxy(HttpClient.Builder.NO_PROXY)
             .connectTimeout(Duration.ofSeconds(8))
             .build();
 

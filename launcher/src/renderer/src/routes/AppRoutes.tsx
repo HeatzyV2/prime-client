@@ -9,6 +9,7 @@ import { StorePage } from '@renderer/pages/StorePage'
 import { CosmeticsPage } from '@renderer/pages/CosmeticsPage'
 import { ServersPage } from '@renderer/pages/ServersPage'
 import { FriendsPage } from '@renderer/pages/FriendsPage'
+import { ChatPage } from '@renderer/pages/ChatPage'
 import { NewsPage } from '@renderer/pages/NewsPage'
 import { MediaPage } from '@renderer/pages/MediaPage'
 import { PerformancePage } from '@renderer/pages/PerformancePage'
@@ -35,6 +36,7 @@ export function AppRoutes({ news, servers }: AppRoutesProps) {
       <Route path="cosmetics" element={<CosmeticsPage />} />
       <Route path="servers" element={<ServersPage />} />
       <Route path="friends" element={<FriendsPage />} />
+      <Route path="chat" element={<ChatPage />} />
       <Route path="news" element={<NewsPage />} />
       <Route path="media" element={<MediaPage />} />
       <Route path="performance" element={<PerformancePage />} />

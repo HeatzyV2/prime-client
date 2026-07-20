@@ -127,4 +127,29 @@ public final class ConfigManager {
             }
         }
     }
+
+    /**
+     * Reloads a single section from disk (launcher bridge cosmetics sync).
+     * Missing section or binding is a no-op.
+     */
+    public void reloadSection(Path file, String key) {
+        if (key == null || key.isBlank() || !Files.isRegularFile(file)) {
+            return;
+        }
+        ConfigBinding binding = bindings.get(key);
+        if (binding == null) {
+            return;
+        }
+        try {
+            JsonObject root = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8))
+                    .getAsJsonObject();
+            JsonElement section = root.get(key);
+            if (section == null) {
+                return;
+            }
+            binding.loadConfig(section);
+        } catch (IOException | RuntimeException e) {
+            PrimeClient.LOGGER.debug("Failed to reload config section '{}' from {}", key, file);
+        }
+    }
 }

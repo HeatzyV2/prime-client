@@ -176,11 +176,37 @@ const api = {
   friends: {
     list: () => ipcRenderer.invoke(IPC.FRIENDS_LIST),
     add: (username: string, note?: string) => ipcRenderer.invoke(IPC.FRIENDS_ADD, username, note),
+    accept: (friendId: string) => ipcRenderer.invoke(IPC.FRIENDS_ACCEPT, friendId),
     remove: (friendId: string) => ipcRenderer.invoke(IPC.FRIENDS_REMOVE, friendId),
     updateNote: (friendId: string, note: string) =>
       ipcRenderer.invoke(IPC.FRIENDS_UPDATE_NOTE, friendId, note),
     refreshAll: () => ipcRenderer.invoke(IPC.FRIENDS_REFRESH_ALL),
     refresh: (friendId: string) => ipcRenderer.invoke(IPC.FRIENDS_REFRESH, friendId)
+  },
+  chat: {
+    connect: () => ipcRenderer.invoke(IPC.SOCIAL_CONNECT),
+    conversations: () => ipcRenderer.invoke(IPC.CHAT_CONVERSATIONS),
+    openDm: (uuid: string) => ipcRenderer.invoke(IPC.CHAT_OPEN_DM, uuid),
+    messages: (conversationId: string) => ipcRenderer.invoke(IPC.CHAT_MESSAGES, conversationId),
+    send: (conversationId: string, text: string, imageUrl?: string | null) =>
+      ipcRenderer.invoke(IPC.CHAT_SEND, conversationId, text, imageUrl),
+    upload: (filePath: string) => ipcRenderer.invoke(IPC.CHAT_UPLOAD, filePath)
+  },
+  social: {
+    connect: () => ipcRenderer.invoke(IPC.SOCIAL_CONNECT),
+    onEvent: (listener: (event: Record<string, unknown>) => void): (() => void) => {
+      const handler = (_event: IpcRendererEvent, payload: Record<string, unknown>): void => {
+        listener(payload)
+      }
+      ipcRenderer.on(IPC.SOCIAL_EVENT, handler)
+      return () => ipcRenderer.removeListener(IPC.SOCIAL_EVENT, handler)
+    }
+  },
+  party: {
+    get: () => ipcRenderer.invoke(IPC.PARTY_GET),
+    create: () => ipcRenderer.invoke(IPC.PARTY_CREATE),
+    invite: (uuid: string) => ipcRenderer.invoke(IPC.PARTY_INVITE, uuid),
+    leave: () => ipcRenderer.invoke(IPC.PARTY_LEAVE)
   },
   news: {
     list: () => ipcRenderer.invoke(IPC.NEWS_LIST)

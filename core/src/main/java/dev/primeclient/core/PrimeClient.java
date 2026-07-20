@@ -34,6 +34,8 @@ import dev.primeclient.core.keybind.KeybindManager;
 import dev.primeclient.core.module.ModuleManager;
 import dev.primeclient.core.notification.NotificationManager;
 import dev.primeclient.core.notification.NotificationPreferences;
+import dev.primeclient.core.presence.PrimePresenceService;
+import dev.primeclient.core.social.SocialService;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.replay.ReplaySession;
 import dev.primeclient.core.replay.ReplayStorage;
@@ -82,6 +84,8 @@ public final class PrimeClient {
     private final TooltipRenderer tooltips;
     private final DiscordRpcService discordRpc;
     private final VoiceChatService voiceChat;
+    private final PrimePresenceService presence;
+    private final SocialService social;
 
     private boolean debutSession;
     private int debutTicks;
@@ -111,6 +115,8 @@ public final class PrimeClient {
         this.account = new PrimeAccountService();
         this.discordRpc = new DiscordRpcService();
         this.voiceChat = new VoiceChatService();
+        this.presence = new PrimePresenceService(adapter);
+        this.social = new SocialService(adapter, notifications);
 
         Path modRoot = adapter.configDirectory().resolve(MOD_ID);
         LocalCloudClient localCloud = new LocalCloudClient(modRoot.resolve("cloud"));
@@ -139,6 +145,7 @@ public final class PrimeClient {
         configManager.register(notificationPrefs);
         configManager.register(discordRpc.settings());
         configManager.register(voiceChat.settings());
+        configManager.register(social.settings());
 
         hud.register(new WatermarkElement(themes, adapter.minecraftVersion()));
         hud.register(new NotificationsElement(notifications, themes, notificationPrefs));
@@ -169,6 +176,11 @@ public final class PrimeClient {
         client.debutSession = freshInstall;
         if (freshInstall) {
             FirstRunConfigurator.applyStarter(client);
+        }
+        // Social is always-on infrastructure — keep the module enabled so settings sync.
+        var socialHub = client.modules.get("social-hub");
+        if (socialHub != null && !socialHub.isEnabled()) {
+            socialHub.setEnabled(true);
         }
         client.loadingOverlay.setStage(PrimeLang.get("prime.gui.loading.ready", "Prime Client ready"), 1f);
         LOGGER.info("{} v{} bootstrapped (Minecraft {}, {} modules, profile '{}'{})",
@@ -210,6 +222,8 @@ public final class PrimeClient {
             }
         }
         tooltips.tick(50);
+        profiles.pollExternalBridgeChanges();
+        social.tick();
         if (adapter.isScreenOpen()) {
             keybinds.releaseAll();
         } else {
@@ -224,6 +238,8 @@ public final class PrimeClient {
             account.login(adapter.playerName());
         }
         crosshairProfiles.applyForServer(adapter.serverAddress());
+        presence.onWorldJoin();
+        social.onWorldJoin();
         eventBus.post(WorldJoinEvent.INSTANCE);
     }
 
@@ -232,11 +248,14 @@ public final class PrimeClient {
         if (cloudSync.autoSync() && account.loggedIn()) {
             cloudSync.uploadNow(profiles.activeProfile());
         }
+        presence.onWorldLeave();
+        social.onWorldLeave();
         eventBus.post(WorldLeaveEvent.INSTANCE);
     }
 
     public void shutdown() {
         voiceChat.shutdown();
+        social.onWorldLeave();
         discordRpc.shutdown();
         profiles.saveActive();
         LOGGER.info("{} shut down, config saved", NAME);
@@ -278,4 +297,6 @@ public final class PrimeClient {
     public TooltipRenderer tooltips() { return tooltips; }
     public DiscordRpcService discordRpc() { return discordRpc; }
     public VoiceChatService voiceChat() { return voiceChat; }
+    public PrimePresenceService presence() { return presence; }
+    public SocialService social() { return social; }
 }

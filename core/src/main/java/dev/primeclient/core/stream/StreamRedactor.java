@@ -10,14 +10,22 @@ public final class StreamRedactor {
 
     private static final Pattern XYZ_LABEL =
             Pattern.compile("(?i)([xyz])\\s*[:=]\\s*-?\\d+(?:\\.\\d+)?");
-    private static final Pattern TRIPLET =
-            Pattern.compile("(?<!\\w)-?\\d{1,6}(?:\\.\\d+)?\\s+-?\\d{1,3}(?:\\.\\d+)?\\s+-?\\d{1,6}(?:\\.\\d+)?(?!\\w)");
+    private static final Pattern PAREN_COORDS =
+            Pattern.compile("\\(\\s*-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?\\s*\\)");
     private static final Pattern BRACKET_COORDS =
             Pattern.compile("\\[\\s*-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?\\s*\\]");
+    private static final Pattern COMMA_TRIPLET =
+            Pattern.compile("(?<![\\w./])-?\\d{1,6}(?:\\.\\d+)?\\s*,\\s*-?\\d{1,3}(?:\\.\\d+)?\\s*,\\s*-?\\d{1,6}(?:\\.\\d+)?(?![\\w./])");
+    private static final Pattern SPACE_TRIPLET =
+            Pattern.compile("(?<![\\w.])-?\\d{1,6}(?:\\.\\d+)?\\s+-?\\d{1,3}(?:\\.\\d+)?\\s+-?\\d{1,6}(?:\\.\\d+)?(?![\\w.])");
+    private static final Pattern COMPACT_XYZ =
+            Pattern.compile("(?i)(?<![\\w])([xyz])\\s*=\\s*-?\\d+(?:\\.\\d+)?");
     private static final Pattern TP_COMMAND =
-            Pattern.compile("(?i)/tp(?:\\s+\\S+)?\\s+-?\\d+(?:\\.\\d+)?(?:\\s+-?\\d+(?:\\.\\d+)?){0,2}");
+            Pattern.compile("(?i)/tp(?:\\s+\\S+)?\\s+-?\\d+(?:\\.\\d+)?(?:\\s*[,\\s]\\s*-?\\d+(?:\\.\\d+)?){0,2}");
     private static final Pattern DIMENSION_COORD =
-            Pattern.compile("(?i)(overworld|nether|the\\s+end|end)\\s*[:\\-]\\s*-?\\d+(?:\\.\\d+)?(?:\\s*/\\s*-?\\d+(?:\\.\\d+)?){0,2}");
+            Pattern.compile("(?i)(overworld|nether|the\\s+end|end)\\s*[:\\-]\\s*-?\\d+(?:\\.\\d+)?(?:\\s*[,/]\\s*-?\\d+(?:\\.\\d+)?){0,2}");
+    private static final Pattern WORLDEDIT_POS =
+            Pattern.compile("(?i)(pos\\d?|position|selection|located|teleported|set\\s+to|at)\\s*[:@]?\\s*[^\\n]{0,40}?(-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?)");
     private static final Pattern IPV4 =
             Pattern.compile("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b");
     private static final Pattern PORT =
@@ -36,11 +44,15 @@ public final class StreamRedactor {
         }
         String out = input;
         if (StreamerPrivacyState.redactCoords()) {
-            out = XYZ_LABEL.matcher(out).replaceAll("$1: " + HIDDEN);
+            out = PAREN_COORDS.matcher(out).replaceAll("(" + HIDDEN + ")");
             out = BRACKET_COORDS.matcher(out).replaceAll("[" + HIDDEN + "]");
+            out = XYZ_LABEL.matcher(out).replaceAll("$1: " + HIDDEN);
+            out = COMPACT_XYZ.matcher(out).replaceAll("$1=" + HIDDEN);
             out = TP_COMMAND.matcher(out).replaceAll("/tp " + HIDDEN);
             out = DIMENSION_COORD.matcher(out).replaceAll("$1: " + HIDDEN);
-            out = replaceTriplets(out);
+            out = WORLDEDIT_POS.matcher(out).replaceAll("$1: " + HIDDEN);
+            out = replaceAll(COMMA_TRIPLET, out);
+            out = replaceAll(SPACE_TRIPLET, out);
         }
         if (StreamerPrivacyState.redactIps()) {
             out = IPV4.matcher(out).replaceAll(HIDDEN);
@@ -58,8 +70,8 @@ public final class StreamRedactor {
         return redact(plainText);
     }
 
-    private static String replaceTriplets(String input) {
-        Matcher matcher = TRIPLET.matcher(input);
+    private static String replaceAll(Pattern pattern, String input) {
+        Matcher matcher = pattern.matcher(input);
         StringBuffer buffer = new StringBuffer();
         while (matcher.find()) {
             matcher.appendReplacement(buffer, Matcher.quoteReplacement(HIDDEN));

@@ -17,7 +17,7 @@ public final class FirstRunConfigurator {
 
     private static final List<String> CORE = List.of(
             "fps", "coordinates", "keystrokes", "cps", "ping",
-            "discord-rpc", "crosshair-editor", "prime-cosmetics"
+            "discord-rpc", "crosshair-editor", "prime-cosmetics", "social-hub"
     );
 
     private static final List<String> PVP_EXTRA = List.of(

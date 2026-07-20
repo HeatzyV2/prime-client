@@ -1,8 +1,8 @@
 {
   "name": "prime-voice-relay",
   "private": true,
-  "version": "1.0.0",
-  "description": "WebSocket relay for Prime Client voice chat",
+  "version": "2.0.0",
+  "description": "Deprecated entry — use ../backend (unified social + voice)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

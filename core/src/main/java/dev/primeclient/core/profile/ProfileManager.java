@@ -33,6 +33,8 @@ public final class ProfileManager {
     private final Path stateFile;
 
     private String activeProfile = DEFAULT_PROFILE;
+    private long lastBridgePollMs;
+    private long lastProfileMtime = -1;
 
     public ProfileManager(ConfigManager configManager, Path clientConfigDir) {
         this.configManager = configManager;
@@ -45,13 +47,36 @@ public final class ProfileManager {
         Path file = profileFile(DEFAULT_PROFILE);
         boolean freshInstall = !Files.isRegularFile(file);
         this.activeProfile = readPersistedProfileName();
-        configManager.loadFrom(profileFile(activeProfile));
+        Path active = profileFile(activeProfile);
+        configManager.loadFrom(active);
+        lastProfileMtime = readMtime(active);
         return freshInstall;
+    }
+
+    /**
+     * Reloads cosmetics when the launcher bridge rewrites the active profile file.
+     * Called from the client tick — cheap mtime check every 2s.
+     */
+    public void pollExternalBridgeChanges() {
+        long now = System.currentTimeMillis();
+        if (now - lastBridgePollMs < 2_000L) {
+            return;
+        }
+        lastBridgePollMs = now;
+        Path file = profileFile(activeProfile);
+        long mtime = readMtime(file);
+        if (mtime < 0 || mtime == lastProfileMtime) {
+            return;
+        }
+        lastProfileMtime = mtime;
+        configManager.reloadSection(file, "cosmetics");
     }
 
     /** Saves the active profile to disk. */
     public void saveActive() {
-        configManager.saveTo(profileFile(activeProfile));
+        Path file = profileFile(activeProfile);
+        configManager.saveTo(file);
+        lastProfileMtime = readMtime(file);
     }
 
     /**
@@ -134,6 +159,17 @@ public final class ProfileManager {
             Files.writeString(stateFile, state.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             PrimeClient.LOGGER.error("Failed to persist active profile", e);
+        }
+    }
+
+    private static long readMtime(Path file) {
+        try {
+            if (!Files.isRegularFile(file)) {
+                return -1;
+            }
+            return Files.getLastModifiedTime(file).toMillis();
+        } catch (IOException e) {
+            return -1;
         }
     }
 }

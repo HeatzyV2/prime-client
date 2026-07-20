@@ -1,6 +1,6 @@
 import { accountService } from './AccountService'
 import { minecraftEngine } from '../minecraft/MinecraftEngine'
-import { emitLaunchError, emitLaunchProgress } from '../minecraft/launchProgress'
+import { emitLaunchError, emitLaunchProgress, setLaunchServerAddress } from '../minecraft/launchProgress'
 import { formatLaunchError } from '../minecraft/formatLaunchError'
 import { launchLogService } from './LaunchLogService'
 import { parseServerAddress } from './ServerService'
@@ -23,6 +23,7 @@ export class LaunchService {
     }
 
     try {
+      setLaunchServerAddress(serverAddress)
       const settings = await settingsStore.load()
       launchLogService.append('info', `Launching instance ${instanceId}…`, 'start')
 

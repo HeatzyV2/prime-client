@@ -15,6 +15,7 @@ export const fr: LocaleCatalog = {
     cosmetics: 'Cosmétiques',
     servers: 'Serveurs',
     friends: 'Amis',
+    chat: 'Chat',
     news: 'Actualités',
     media: 'Médias',
     performance: 'Performances',
@@ -246,7 +247,11 @@ export const fr: LocaleCatalog = {
     },
     friends: {
       title: 'Amis',
-      subtitle: 'Liste locale — notes et scrims restent sur ce PC.'
+      subtitle: 'Amis Prime sync launcher ↔ jeu — demandes et présence en direct.'
+    },
+    chat: {
+      title: 'Chat',
+      subtitle: 'Messages privés sync avec le jeu. Images supportées ici.'
     },
     news: {
       title: 'Actualités',
@@ -368,10 +373,25 @@ export const fr: LocaleCatalog = {
     notePlaceholder: 'Modifier la note…',
     saveNote: 'Enregistrer',
     remove: 'Supprimer',
-    empty: 'Aucun ami. Ajoutez des pseudos avec lesquels vous jouez.',
+    empty: 'Aucun ami. Les deux joueurs doivent ouvrir Prime une fois.',
     offline: 'Hors ligne',
     addFailed: 'Impossible d\'ajouter l\'ami.',
-    refreshStatus: 'Actualiser le statut'
+    refreshStatus: 'Actualiser le statut',
+    message: 'Message',
+    inviteParty: 'Inviter party',
+    accept: 'Accepter',
+    partyServer: 'Serveur de party',
+    joinPartyServer: 'Rejoindre le serveur'
+  },
+  chat: {
+    refresh: 'Actualiser',
+    conversations: 'Conversations',
+    empty: 'Aucune conversation. Ouvre un DM depuis Amis.',
+    selectConversation: 'Sélectionne une conversation',
+    messagePlaceholder: 'Écrire un message…',
+    send: 'Envoyer',
+    image: 'Image',
+    imagePathPrompt: 'Chemin du fichier image'
   },
   actions: {
     import: 'Importer',
@@ -506,6 +526,7 @@ export const fr: LocaleCatalog = {
     suggestion: 'Piste de correction',
     openReport: 'Ouvrir le crash report',
     openLogs: 'Ouvrir les logs',
+    sendReport: 'Envoyer à Prime',
     dismiss: 'Fermer',
     fix: {
       blurOnce:

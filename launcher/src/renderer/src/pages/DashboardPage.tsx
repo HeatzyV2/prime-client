@@ -80,7 +80,12 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
     setLaunching(true)
     clearLaunchMessage()
     await window.primeLauncher.profile.setInstance(instance.id)
-    await launch(instance.id)
+    const settings = await window.primeLauncher.settings.get()
+    const lastServer =
+      typeof settings.lastServerAddress === 'string' && settings.lastServerAddress.trim()
+        ? settings.lastServerAddress.trim()
+        : undefined
+    await launch(instance.id, lastServer)
     setLaunching(false)
   }
 
@@ -92,6 +97,7 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
     setLaunching(true)
     clearLaunchMessage()
     await window.primeLauncher.profile.setInstance(instance.id)
+    await window.primeLauncher.settings.update({ lastServerAddress: address })
     await launch(instance.id, address)
     setLaunching(false)
   }

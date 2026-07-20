@@ -9,6 +9,18 @@ launcher/node_modules/
 launcher/out/
 launcher/release/
 launcher/dist/
+launcher/resources/launch-bridge/node_modules/
+
+# Launcher (Tauri)
+launcher/src-tauri/target/
+
+# Backend
+backend/node_modules/
+backend/data/
+backend/uploads/
+
+# Voice relay (legacy redirect)
+voice-relay/node_modules/
 
 # IDE
 .idea/
@@ -44,3 +56,6 @@ instances.json
 ecosystem.json
 settings.json
 downloads.json
+
+backend/.zip
+*.zip

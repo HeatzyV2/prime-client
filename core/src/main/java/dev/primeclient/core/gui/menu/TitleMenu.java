@@ -36,13 +36,13 @@ public final class TitleMenu {
         }
 
         TitleMenuTopBar.Action top = TitleMenuTopBar.hitAction(
-                mouseX, mouseY, screenWidth, adapter.playerName());
+                mouseX, mouseY, screenWidth, adapter.playerName(), adapter.sessionAccountType());
         if (top != null) {
             switch (top) {
                 case DISCORD -> adapter.openExternalLink(TitleMenuTopBar.discordUrl());
                 case VANILLA -> adapter.openVanillaTitleScreen();
                 case SETTINGS -> adapter.openPrimeSettings();
-                case PROFILE -> adapter.openOptions();
+                case PROFILE -> adapter.openAccountSwitcher();
             }
             return true;
         }

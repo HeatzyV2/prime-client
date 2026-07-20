@@ -33,7 +33,8 @@ public final class TitleMenuRenderer {
         TitleMenuLayout layout = TitleMenuLayout.compute(ctx.screenWidth(), ctx.screenHeight(), MENU_BUTTON_COUNT);
 
         renderVignette(ctx, eased);
-        TitleMenuTopBar.render(ctx, theme, adapter.playerName(), mouseX, mouseY, eased);
+        TitleMenuTopBar.render(ctx, theme, adapter.playerName(), adapter.sessionAccountType(),
+                mouseX, mouseY, eased);
         renderBranding(ctx, theme, layout, eased);
         renderButtons(ctx, theme, layout, mouseX, mouseY, eased);
         renderQuitLink(ctx, theme, layout, mouseX, mouseY, eased);

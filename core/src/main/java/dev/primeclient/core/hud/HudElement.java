@@ -15,6 +15,9 @@ public abstract class HudElement {
 
     private final String id;
     private final String name;
+    private final HudAnchor defaultAnchor;
+    private final float defaultOffsetX;
+    private final float defaultOffsetY;
 
     private HudAnchor anchor;
     private float offsetX;
@@ -33,9 +36,24 @@ public abstract class HudElement {
     protected HudElement(String id, String name, HudAnchor defaultAnchor, float defaultOffsetX, float defaultOffsetY) {
         this.id = id;
         this.name = name;
+        this.defaultAnchor = defaultAnchor;
+        this.defaultOffsetX = defaultOffsetX;
+        this.defaultOffsetY = defaultOffsetY;
         this.anchor = defaultAnchor;
         this.offsetX = defaultOffsetX;
         this.offsetY = defaultOffsetY;
+    }
+
+    /** Restores the constructor-time layout plus neutral scale, rotation, opacity and tint. */
+    public final void resetToDefaults() {
+        this.anchor = defaultAnchor;
+        this.offsetX = defaultOffsetX;
+        this.offsetY = defaultOffsetY;
+        this.scale = 1.0f;
+        this.rotation = 0f;
+        this.opacity = 1.0f;
+        this.tintArgb = 0;
+        this.visible = true;
     }
 
     public abstract int measureWidth(RenderContext ctx);

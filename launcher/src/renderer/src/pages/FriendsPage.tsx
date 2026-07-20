@@ -4,6 +4,7 @@ import type { FriendEntry } from '@shared/content-types'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Avatar, Button } from '@renderer/design-system/components'
 import { useI18n } from '@renderer/context/I18nProvider'
+import { useAccounts } from '@renderer/context/AccountProvider'
 
 function statusDot(status: FriendEntry['status']): string {
   switch (status) {
@@ -20,17 +21,33 @@ function statusDot(status: FriendEntry['status']): string {
 
 export function FriendsPage() {
   const { t } = useI18n()
+  const { launch } = useAccounts()
   const [friends, setFriends] = useState<FriendEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const [username, setUsername] = useState('')
   const [note, setNote] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editNote, setEditNote] = useState('')
+  const [party, setParty] = useState<{
+    serverAddress?: string | null
+    members?: { uuid: string; username: string; leader?: boolean }[]
+  } | null>(null)
 
   const [busy, setBusy] = useState(false)
 
   const refresh = useCallback(async () => {
     setFriends(await window.primeLauncher.friends.list())
+    try {
+      const p = (await window.primeLauncher.party.get()) as {
+        party?: {
+          serverAddress?: string | null
+          members?: { uuid: string; username: string; leader?: boolean }[]
+        } | null
+      }
+      setParty(p?.party ?? null)
+    } catch {
+      setParty(null)
+    }
   }, [])
 
   async function handleRefreshAll() {
@@ -41,6 +58,23 @@ export function FriendsPage() {
 
   useEffect(() => {
     void refresh()
+    void window.primeLauncher.social.connect().catch(() => {
+      // offline
+    })
+  }, [refresh])
+
+  useEffect(() => {
+    const unsub = window.primeLauncher.social.onEvent((event) => {
+      if (event.t === 'party') {
+        const partyPayload = event.party as typeof party
+        setParty(partyPayload ?? null)
+        return
+      }
+      if (event.t === 'party_join_server') {
+        void refresh()
+      }
+    })
+    return unsub
   }, [refresh])
 
   async function handleAdd() {
@@ -110,6 +144,29 @@ export function FriendsPage() {
         </p>
       )}
 
+      {party?.serverAddress ? (
+        <div className="list-row" style={{ marginBottom: 16 }}>
+          <div className="list-row__body">
+            <div className="list-row__title">{t('friends.partyServer')}</div>
+            <div className="list-row__desc">{party.serverAddress}</div>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() =>
+              void (async () => {
+                const inst = await window.primeLauncher.instance.getDefault()
+                if (!inst?.id || !party.serverAddress) return
+                await window.primeLauncher.settings.update({ lastServerAddress: party.serverAddress })
+                await launch(inst.id, party.serverAddress)
+              })()
+            }
+          >
+            {t('friends.joinPartyServer')}
+          </Button>
+        </div>
+      ) : null}
+
       {friends.length === 0 ? (
         <p className="text-caption">{t('friends.empty')}</p>
       ) : (
@@ -142,6 +199,29 @@ export function FriendsPage() {
                     {t('actions.save')}
                   </Button>
                 )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    void window.primeLauncher.chat.openDm(friend.id).then(() => {
+                      window.location.hash = '#/chat'
+                    })
+                  }
+                >
+                  {t('friends.message')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void window.primeLauncher.party.invite(friend.id)}
+                >
+                  {t('friends.inviteParty')}
+                </Button>
+                {friend.activity === 'Pending friend request' ? (
+                  <Button variant="secondary" size="sm" onClick={() => void window.primeLauncher.friends.accept(friend.id).then(refresh)}>
+                    {t('friends.accept')}
+                  </Button>
+                ) : null}
                 <Button variant="ghost" size="sm" onClick={() => void handleRemove(friend.id)}>
                   {t('friends.remove')}
                 </Button>

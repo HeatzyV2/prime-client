@@ -56,9 +56,24 @@ export class CosmeticService {
 
     const { instanceService } = await import('./InstanceService')
     const { launcherBridgeService } = await import('./LauncherBridgeService')
+    const { profileService } = await import('./ProfileService')
+    const { minecraftEngine } = await import('../minecraft/MinecraftEngine')
+
+    const profile = await profileService.getActiveProfile()
+    const targetIds = new Set<string>()
+    if (profile.instanceId) {
+      targetIds.add(profile.instanceId)
+    }
+    const runningId = minecraftEngine.getActiveInstanceId()
+    if (runningId) {
+      targetIds.add(runningId)
+    }
+
     const instances = await instanceService.list()
     await Promise.all(
-      instances.filter((inst) => inst.includePrimeMod).map((inst) => launcherBridgeService.syncToInstance(inst.id))
+      instances
+        .filter((inst) => inst.includePrimeMod && targetIds.has(inst.id))
+        .map((inst) => launcherBridgeService.syncToInstance(inst.id))
     )
 
     return { ok: true }

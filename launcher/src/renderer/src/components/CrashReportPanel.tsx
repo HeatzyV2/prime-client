@@ -95,6 +95,36 @@ export function CrashReportPanel({ crash, onDismiss }: CrashReportPanelProps) {
           </Button>
         )}
         <Button
+          variant="secondary"
+          size="sm"
+          onClick={() =>
+            void (async () => {
+              try {
+                const session = (await window.primeLauncher.chat.connect()) as { token?: string }
+                const token = session?.token
+                if (!token) return
+                const text = [crash.title, crash.description, crash.exceptionType, crash.exceptionMessage, crash.screen]
+                  .filter(Boolean)
+                  .join('\n')
+                const base = (import.meta as { env?: { VITE_PRIME_API?: string } }).env?.VITE_PRIME_API
+                  || 'http://194.9.172.102:26005'
+                await fetch(`${base.replace(/\/$/, '')}/v1/crash`, {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ title: crash.title, text })
+                })
+              } catch {
+                /* ignore */
+              }
+            })()
+          }
+        >
+          {t('crash.sendReport')}
+        </Button>
+        <Button
           variant="ghost"
           size="sm"
           icon={<ExternalLink size={14} />}

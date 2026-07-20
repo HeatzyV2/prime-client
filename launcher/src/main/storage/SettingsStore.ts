@@ -30,6 +30,8 @@ export interface LauncherSettings {
   lastPrimeSync?: string
   /** Suppresses home-screen update banner until newer versions appear. */
   dismissedUpdateBanner?: string
+  /** Last multiplayer address used for Quick Play. */
+  lastServerAddress?: string
 }
 
 const DEFAULT_SETTINGS = (): LauncherSettings => ({

@@ -13,6 +13,7 @@ export const en = {
     cosmetics: 'Cosmetics',
     servers: 'Servers',
     friends: 'Friends',
+    chat: 'Chat',
     news: 'News',
     media: 'Media',
     performance: 'Performance',
@@ -244,7 +245,11 @@ export const en = {
     },
     friends: {
       title: 'Friends',
-      subtitle: 'Local friends list — notes and scrim dates stay on this PC.'
+      subtitle: 'Prime friends synced launcher ↔ game — live presence and requests.'
+    },
+    chat: {
+      title: 'Chat',
+      subtitle: 'Private messages synced with the game. Images supported here.'
     },
     news: {
       title: 'News',
@@ -366,10 +371,25 @@ export const en = {
     notePlaceholder: 'Edit note…',
     saveNote: 'Save',
     remove: 'Remove',
-    empty: 'No friends yet. Add Minecraft usernames you play with.',
+    empty: 'No friends yet. Both players must open Prime once.',
     offline: 'Offline',
     addFailed: 'Could not add friend.',
-    refreshStatus: 'Refresh status'
+    refreshStatus: 'Refresh status',
+    message: 'Message',
+    inviteParty: 'Invite to party',
+    accept: 'Accept',
+    partyServer: 'Party server',
+    joinPartyServer: 'Join party server'
+  },
+  chat: {
+    refresh: 'Refresh',
+    conversations: 'Conversations',
+    empty: 'No conversations. Open a DM from Friends.',
+    selectConversation: 'Select a conversation',
+    messagePlaceholder: 'Write a message…',
+    send: 'Send',
+    image: 'Image',
+    imagePathPrompt: 'Image file path'
   },
   actions: {
     import: 'Import',
@@ -504,6 +524,7 @@ export const en = {
     suggestion: 'Suggested fix',
     openReport: 'Open crash report',
     openLogs: 'Open logs',
+    sendReport: 'Send to Prime',
     dismiss: 'Dismiss',
     fix: {
       blurOnce:

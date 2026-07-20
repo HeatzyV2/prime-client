@@ -1,0 +1,14 @@
+{
+  "name": "prime-backend",
+  "private": true,
+  "version": "1.1.0",
+  "description": "Unified Prime social + voice backend (friends, chat, party, presence, voice)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

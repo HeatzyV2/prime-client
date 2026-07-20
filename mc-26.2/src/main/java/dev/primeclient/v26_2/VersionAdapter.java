@@ -4,9 +4,15 @@ import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.PrimeClient;
 import dev.primeclient.core.gui.menu.TitleScreenGate;
 import dev.primeclient.core.util.DirectionUtil;
+import dev.primeclient.v26_2.mixin.MinecraftUserAccessor;
+import dev.primeclient.core.account.LauncherAccountStore;
+import dev.primeclient.v26_2.screen.AccountSwitcherScreen;
+import dev.primeclient.v26_2.screen.SocialHubScreen;
+import dev.primeclient.v26_2.screen.PrimeTitleScreen;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.GraphicsPreset;
+import net.minecraft.client.User;
 import net.minecraft.client.gui.screens.DeathScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -36,6 +42,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 /** {@link MinecraftAdapter} for Minecraft 26.2. */
@@ -168,6 +175,92 @@ public final class VersionAdapter implements MinecraftAdapter {
     }
 
     @Override
+    public void openAccountSwitcher() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null) {
+            PrimeClient.get().notifications().warning(
+                    "Account",
+                    "Return to the main menu before switching accounts.");
+            return;
+        }
+        Screen parent = mc.gui.screen() instanceof PrimeTitleScreen
+                ? mc.gui.screen()
+                : new PrimeTitleScreen();
+        mc.gui.setScreen(new AccountSwitcherScreen(parent));
+    }
+
+    @Override
+    public void openSocialHub() {
+        Minecraft mc = Minecraft.getInstance();
+        Screen parent = mc.gui.screen();
+        mc.gui.setScreen(new SocialHubScreen(parent));
+    }
+
+    @Override
+    public void joinMultiplayerServer(String address) {
+        if (address == null || address.isBlank()) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        ServerData data = new ServerData("Party", address.trim(), ServerData.Type.OTHER);
+        Screen parent = mc.gui.screen() != null ? mc.gui.screen() : new JoinMultiplayerScreen(null);
+        net.minecraft.client.gui.screens.ConnectScreen.startConnecting(
+                parent, mc, ServerAddress.parseString(address.trim()), data, false, null);
+    }
+
+    @Override
+    public String sessionAccountType() {
+        Minecraft mc = Minecraft.getInstance();
+        User user = mc.getUser();
+        if (user == null) {
+            return "";
+        }
+        String token = user.getAccessToken();
+        if (token == null || token.isBlank() || "0".equals(token)) {
+            return "offline";
+        }
+        String uuid = user.getProfileId().toString();
+        for (LauncherAccountStore.AccountEntry account : LauncherAccountStore.list()) {
+            if (uuid.equalsIgnoreCase(account.uuid())) {
+                return account.microsoft() ? "microsoft" : "offline";
+            }
+        }
+        return "microsoft";
+    }
+
+    @Override
+    public void closeAccountSwitcher() {
+        Minecraft.getInstance().gui.setScreen(new PrimeTitleScreen());
+    }
+
+    @Override
+    public boolean applyMinecraftSession(String username, String uuid, String accessToken, boolean microsoft) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null || username == null || username.isBlank() || uuid == null || uuid.isBlank()) {
+            return false;
+        }
+        try {
+            UUID id = parseUuid(uuid);
+            String token = accessToken == null || accessToken.isBlank() ? "0" : accessToken;
+            User user = new User(username, id, token, Optional.empty(), Optional.empty());
+            ((MinecraftUserAccessor) (Object) mc).primeclient$setUser(user);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static UUID parseUuid(String raw) {
+        String uuid = raw.trim();
+        if (!uuid.contains("-") && uuid.length() == 32) {
+            uuid = uuid.substring(0, 8) + "-" + uuid.substring(8, 12) + "-"
+                    + uuid.substring(12, 16) + "-" + uuid.substring(16, 20) + "-"
+                    + uuid.substring(20, 32);
+        }
+        return UUID.fromString(uuid);
+    }
+
+    @Override
     public void quitGame() {
         Minecraft.getInstance().stop();
     }
@@ -202,7 +295,11 @@ public final class VersionAdapter implements MinecraftAdapter {
     @Override
     public String playerUuid() {
         LocalPlayer player = Minecraft.getInstance().player;
-        return player != null ? player.getUUID().toString() : "";
+        if (player != null) {
+            return player.getUUID().toString();
+        }
+        User user = Minecraft.getInstance().getUser();
+        return user != null ? user.getProfileId().toString() : "";
     }
 
     @Override

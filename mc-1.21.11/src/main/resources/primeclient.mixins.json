@@ -15,10 +15,14 @@
 		"LightTextureMixin",
 		"ScreenEffectRendererMixin",
 		"GuiMixin",
+		"GuiLayerInvoker",
 		"ScoreboardSidebarBoundsMixin",
 		"GuiGraphicsScoreboardCaptureMixin",
 		"AvatarRendererMixin",
+		"PlayerTabOverlayMixin",
 		"TitleScreenMixin",
+		"PauseScreenMixin",
+		"MinecraftUserAccessor",
 		"ClientBrandRetrieverMixin"
 	],
 	"injectors": {

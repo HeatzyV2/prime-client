@@ -17,13 +17,19 @@ function LauncherApp() {
 
   useEffect(() => {
     void (async () => {
-      const [newsItems, favServers] = await Promise.all([
-        window.primeLauncher.news.list(),
-        window.primeLauncher.servers.list()
-      ])
-      setNews(newsItems)
-      setServers(favServers)
-      setReady(true)
+      try {
+        const [newsItems, favServers] = await Promise.all([
+          window.primeLauncher.news.list(),
+          window.primeLauncher.servers.list()
+        ])
+        setNews(newsItems)
+        setServers(favServers)
+      } catch {
+        setNews([])
+        setServers([])
+      } finally {
+        setReady(true)
+      }
     })()
   }, [])
 

@@ -9,7 +9,7 @@ import dev.primeclient.core.state.LowFireState;
 /** Lowers the on-fire screen overlay without changing burn damage or duration. */
 public final class LowFireModule extends Module {
 
-    private static final float MAX_TRANSLATE = 0.6F;
+    private static final float MAX_TRANSLATE = 0.8F;
 
     private final DoubleSetting heightOffset =
             addSetting(new DoubleSetting(

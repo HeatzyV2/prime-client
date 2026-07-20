@@ -25,6 +25,8 @@ import dev.primeclient.core.modules.performance.MemorySpikeAlertModule;
 import dev.primeclient.core.modules.performance.ParticleOptimizerModule;
 import dev.primeclient.core.modules.performance.PerformanceProfilesModule;
 import dev.primeclient.core.modules.performance.RamCleanerModule;
+import dev.primeclient.core.modules.prime.ClientBadgeModule;
+import dev.primeclient.core.modules.prime.SocialHubModule;
 import dev.primeclient.core.modules.prime.DiscordRichPresenceModule;
 import dev.primeclient.core.modules.prime.GameplayDnaModule;
 import dev.primeclient.core.modules.prime.ModuleBundlesModule;
@@ -242,7 +244,7 @@ final class Modules {
         modules.register(new ToggleSneakModule(adapter));
         modules.register(new AutoRespawnModule(adapter));
         modules.register(new AutoGgModule(adapter));
-        modules.register(new SessionRecapModule(adapter, client.notifications()));
+        modules.register(new SessionRecapModule(adapter, client.notifications(), client.social()));
         modules.register(new MentionHighlightModule(adapter));
         modules.register(new DeathReplayModule(adapter, client.notifications()));
         modules.register(new ChatTimestampModule());
@@ -282,6 +284,8 @@ final class Modules {
         modules.register(new PrimeConfigCloudModule(client.cloudSync(), client.profiles()));
         modules.register(new PrimeCosmeticsModule(client.cosmetics()));
         modules.register(new PrimeAccountModule(hud, themes, adapter, client.account()));
+        modules.register(new ClientBadgeModule(client.presence()));
+        modules.register(new SocialHubModule(client.social()));
         modules.register(new DiscordRichPresenceModule(client.discordRpc(), adapter, modules, client.account()));
         modules.register(new VoiceChatModule(client.voiceChat(), hud, themes, adapter,
                 client.notifications(), client.keybinds()));

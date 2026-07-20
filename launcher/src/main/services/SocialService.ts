@@ -1,0 +1,426 @@
+import { WebSocket } from 'ws'
+import type { FriendEntry } from '../../shared/content-types'
+import { accountService } from './AccountService'
+import { accountStore } from '../storage/AccountStore'
+import { ecosystemStore } from '../storage/EcosystemStore'
+
+/** Production default — same host/port as voice; path differs. */
+export const DEFAULT_API_BASE = 'http://194.9.172.102:26005'
+
+export interface SocialFriend {
+  friendshipId: string
+  status: 'pending' | 'accepted' | 'blocked'
+  incoming: boolean
+  uuid: string
+  username: string
+  presence: { status: string; activity: string; serverAddress: string | null }
+}
+
+export interface ChatMessage {
+  id: string
+  conversationId: string
+  senderUuid: string
+  senderUsername?: string
+  text: string
+  imageUrl: string | null
+  createdAt: string
+}
+
+export interface Conversation {
+  id: string
+  type: string
+  participantUuids: string[]
+  participants: { uuid: string; username: string }[]
+  updatedAt: string
+}
+
+type Listener = (event: Record<string, unknown>) => void
+
+function apiBase(): string {
+  return (process.env.PRIME_API_BASE || DEFAULT_API_BASE).replace(/\/$/, '')
+}
+
+function socialWsUrl(token: string): string {
+  const base = apiBase().replace(/^http/, 'ws')
+  return `${base}/social?token=${encodeURIComponent(token)}`
+}
+
+/** Remote Prime social API + live WebSocket (friends, chat, party, presence). */
+export class SocialService {
+  private token: string | null = null
+  private uuid: string | null = null
+  private ws: WebSocket | null = null
+  private listeners = new Set<Listener>()
+  private connecting: Promise<void> | null = null
+
+  onEvent(listener: Listener): () => void {
+    this.listeners.add(listener)
+    return () => this.listeners.delete(listener)
+  }
+
+  private emit(event: Record<string, unknown>): void {
+    for (const listener of this.listeners) {
+      try {
+        listener(event)
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  async ensureSession(): Promise<{ token: string; uuid: string }> {
+    const db = await accountStore.getDb()
+    const account = db.accounts.find((a) => a.id === db.activeAccountId) || db.accounts[0]
+    if (!account) {
+      throw new Error('No Minecraft account. Log in first.')
+    }
+    if (this.token && this.uuid === account.uuid) {
+      return { token: this.token, uuid: this.uuid }
+    }
+    const res = await fetch(`${apiBase()}/v1/auth/session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        uuid: account.uuid,
+        username: account.username,
+        offline: account.type === 'offline',
+        client: 'launcher'
+      })
+    })
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as { error?: string } | null
+      throw new Error(err?.error || `Auth failed (${res.status})`)
+    }
+    const data = (await res.json()) as { token: string }
+    this.token = data.token
+    this.uuid = account.uuid
+    await this.connectWs()
+    return { token: this.token, uuid: this.uuid }
+  }
+
+  private async connectWs(): Promise<void> {
+    if (!this.token) return
+    if (this.connecting) return this.connecting
+    this.connecting = new Promise((resolve) => {
+      try {
+        this.ws?.close()
+      } catch {
+        // ignore
+      }
+      const ws = new WebSocket(socialWsUrl(this.token!))
+      this.ws = ws
+      ws.on('open', () => {
+        this.connecting = null
+        this.setPresence('online', 'In launcher')
+        resolve()
+      })
+      ws.on('message', (raw) => {
+        try {
+          const msg = JSON.parse(raw.toString()) as Record<string, unknown>
+          this.emit(msg)
+        } catch {
+          // ignore
+        }
+      })
+      ws.on('close', () => {
+        this.ws = null
+        this.connecting = null
+        setTimeout(() => {
+          if (this.token) void this.connectWs()
+        }, 3000)
+      })
+      ws.on('error', () => {
+        this.connecting = null
+        resolve()
+      })
+    })
+    return this.connecting
+  }
+
+  private async authHeaders(): Promise<Record<string, string>> {
+    const { token } = await this.ensureSession()
+    return {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json'
+    }
+  }
+
+  async listFriends(): Promise<FriendEntry[]> {
+    const headers = await this.authHeaders()
+    const res = await fetch(`${apiBase()}/v1/friends`, { headers })
+    if (!res.ok) throw new Error('Failed to load friends')
+    const data = (await res.json()) as { friends: SocialFriend[] }
+    const notes = await this.localNotes()
+    return data.friends
+      .filter((f) => f.status === 'accepted' || f.incoming)
+      .map((f) => ({
+        id: f.uuid,
+        username: f.username,
+        status: mapStatus(f.presence?.status),
+        activity:
+          notes[f.uuid] ||
+          (f.status === 'pending'
+            ? 'Pending friend request'
+            : f.presence?.activity ||
+              (f.presence?.serverAddress ? `Playing ${f.presence.serverAddress}` : 'Offline'))
+      }))
+  }
+
+  async requestFriend(username: string, note?: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const headers = await this.authHeaders()
+      const res = await fetch(`${apiBase()}/v1/friends/request`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ username: username.trim() })
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string; friendship?: { toUuid?: string } }
+      if (!res.ok) return { ok: false, error: data.error || 'Request failed' }
+      if (note?.trim() && data.friendship?.toUuid) {
+        await this.saveNote(data.friendship.toUuid, note.trim())
+      }
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Request failed' }
+    }
+  }
+
+  async acceptFriend(uuid: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const headers = await this.authHeaders()
+      const res = await fetch(`${apiBase()}/v1/friends/accept`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ uuid })
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        return { ok: false, error: data.error || 'Accept failed' }
+      }
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Accept failed' }
+    }
+  }
+
+  async removeFriend(uuid: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const headers = await this.authHeaders()
+      const res = await fetch(`${apiBase()}/v1/friends/${encodeURIComponent(uuid)}`, {
+        method: 'DELETE',
+        headers
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        return { ok: false, error: data.error || 'Remove failed' }
+      }
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Remove failed' }
+    }
+  }
+
+  async listConversations(): Promise<Conversation[]> {
+    const headers = await this.authHeaders()
+    const res = await fetch(`${apiBase()}/v1/conversations`, { headers })
+    if (!res.ok) throw new Error('Failed to load conversations')
+    const data = (await res.json()) as { conversations: Conversation[] }
+    return data.conversations
+  }
+
+  async openDm(uuid: string): Promise<Conversation> {
+    const headers = await this.authHeaders()
+    const res = await fetch(`${apiBase()}/v1/conversations/dm`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ uuid })
+    })
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(data.error || 'Failed to open DM')
+    }
+    const data = (await res.json()) as { conversation: Conversation }
+    return data.conversation
+  }
+
+  async listMessages(conversationId: string): Promise<ChatMessage[]> {
+    const headers = await this.authHeaders()
+    const res = await fetch(
+      `${apiBase()}/v1/conversations/${encodeURIComponent(conversationId)}/messages`,
+      { headers }
+    )
+    if (!res.ok) throw new Error('Failed to load messages')
+    const data = (await res.json()) as { messages: ChatMessage[] }
+    return data.messages.map((m) => ({
+      ...m,
+      imageUrl: m.imageUrl ? absolutize(m.imageUrl) : null
+    }))
+  }
+
+  async sendMessage(
+    conversationId: string,
+    text: string,
+    imageUrl?: string | null
+  ): Promise<ChatMessage> {
+    const headers = await this.authHeaders()
+    const res = await fetch(
+      `${apiBase()}/v1/conversations/${encodeURIComponent(conversationId)}/messages`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ text, imageUrl: imageUrl || null })
+      }
+    )
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(data.error || 'Send failed')
+    }
+    const data = (await res.json()) as { message: ChatMessage }
+    return {
+      ...data.message,
+      imageUrl: data.message.imageUrl ? absolutize(data.message.imageUrl) : null
+    }
+  }
+
+  async uploadImage(filePath: string): Promise<string> {
+    const { readFile } = await import('fs/promises')
+    const { basename } = await import('path')
+    const buf = await readFile(filePath)
+    const { token } = await this.ensureSession()
+    const boundary = '----PrimeUpload' + Date.now()
+    const filename = basename(filePath)
+    const ext = filename.toLowerCase()
+    const contentType = ext.endsWith('.png')
+      ? 'image/png'
+      : ext.endsWith('.webp')
+        ? 'image/webp'
+        : ext.endsWith('.gif')
+          ? 'image/gif'
+          : 'image/jpeg'
+    const preamble = Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${contentType}\r\n\r\n`
+    )
+    const closing = Buffer.from(`\r\n--${boundary}--\r\n`)
+    const body = Buffer.concat([preamble, buf, closing])
+    const res = await fetch(`${apiBase()}/v1/upload`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`
+      },
+      body
+    })
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(data.error || 'Upload failed')
+    }
+    const data = (await res.json()) as { url: string }
+    return absolutize(data.url)
+  }
+
+  async createParty(): Promise<unknown> {
+    const headers = await this.authHeaders()
+    const res = await fetch(`${apiBase()}/v1/party`, { method: 'POST', headers })
+    if (!res.ok) throw new Error('Failed to create party')
+    return res.json()
+  }
+
+  async inviteToParty(uuid: string): Promise<unknown> {
+    const headers = await this.authHeaders()
+    const res = await fetch(`${apiBase()}/v1/party/invite`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ uuid })
+    })
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(data.error || 'Invite failed')
+    }
+    return res.json()
+  }
+
+  async leaveParty(): Promise<void> {
+    const headers = await this.authHeaders()
+    await fetch(`${apiBase()}/v1/party/leave`, { method: 'POST', headers })
+  }
+
+  async getParty(): Promise<unknown> {
+    const headers = await this.authHeaders()
+    const res = await fetch(`${apiBase()}/v1/party`, { headers })
+    if (!res.ok) throw new Error('Failed to load party')
+    return res.json()
+  }
+
+  /** Push presence to the social WebSocket (`{ t: 'presence', status, activity, serverAddress }`). */
+  setPresence(status: string, activity: string, serverAddress?: string | null): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return
+    }
+    try {
+      this.ws.send(
+        JSON.stringify({
+          t: 'presence',
+          status,
+          activity,
+          serverAddress: serverAddress ?? null
+        })
+      )
+    } catch {
+      // ignore send failures — reconnect loop will restore session
+    }
+  }
+
+  async updateNote(friendId: string, note: string): Promise<void> {
+    await this.saveNote(friendId, note)
+  }
+
+  private async localNotes(): Promise<Record<string, string>> {
+    const db = await ecosystemStore.load()
+    const notes: Record<string, string> = {}
+    for (const f of db.friends) {
+      if (f.activity && !isPresenceActivity(f.activity)) {
+        notes[f.id] = f.activity
+      }
+    }
+    return notes
+  }
+
+  private async saveNote(uuid: string, note: string): Promise<void> {
+    await ecosystemStore.mutate((db) => {
+      const existing = db.friends.find((f) => f.id === uuid)
+      if (existing) {
+        existing.activity = note
+      } else {
+        db.friends.push({ id: uuid, username: uuid, status: 'offline', activity: note })
+      }
+    })
+  }
+}
+
+function mapStatus(status?: string): FriendEntry['status'] {
+  if (status === 'in-game') return 'in-game'
+  if (status === 'away') return 'away'
+  if (status === 'online') return 'online'
+  return 'offline'
+}
+
+function isPresenceActivity(text: string): boolean {
+  return (
+    text.startsWith('Playing') ||
+    text === 'Offline' ||
+    text === 'In launcher' ||
+    text === 'In game' ||
+    text === 'Pending friend request'
+  )
+}
+
+function absolutize(url: string): string {
+  if (url.startsWith('http')) return url
+  return `${apiBase()}${url.startsWith('/') ? '' : '/'}${url}`
+}
+
+export const socialService = new SocialService()
+
+// Touch accountService so tree-shaking keeps the import used for session context
+void accountService

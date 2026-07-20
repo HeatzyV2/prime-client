@@ -19,6 +19,8 @@
 		"LightmapRenderStateExtractorMixin",
 		"AvatarRendererMixin",
 		"TitleScreenMixin",
+		"PauseScreenMixin",
+		"MinecraftUserAccessor",
 		"ClientBrandRetrieverMixin"
 	],
 	"injectors": {

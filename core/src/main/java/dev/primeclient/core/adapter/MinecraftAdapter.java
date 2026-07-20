@@ -69,6 +69,35 @@ public interface MinecraftAdapter {
     default void openOptions() {
     }
 
+    /** Opens the in-game Minecraft account switcher (title menu). */
+    default void openAccountSwitcher() {
+    }
+
+    /** Opens the in-game social hub overlay (pause menu). */
+    default void openSocialHub() {
+    }
+
+    /** Connects to a multiplayer server by address (e.g. party join). */
+    default void joinMultiplayerServer(String address) {
+    }
+
+    /** Active session type: {@code microsoft}, {@code offline}, or empty when unknown. */
+    default String sessionAccountType() {
+        return "";
+    }
+
+    /** Closes the account switcher and returns to the Prime title menu. */
+    default void closeAccountSwitcher() {
+    }
+
+    /**
+     * Replaces the active Minecraft {@code User} session without restarting the client.
+     * Only safe from the title screen (no world loaded).
+     */
+    default boolean applyMinecraftSession(String username, String uuid, String accessToken, boolean microsoft) {
+        return false;
+    }
+
     /** Closes the game from the title menu. */
     default void quitGame() {
     }

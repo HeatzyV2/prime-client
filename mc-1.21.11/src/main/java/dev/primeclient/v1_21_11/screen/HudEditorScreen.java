@@ -1,9 +1,8 @@
 package dev.primeclient.v1_21_11.screen;
 
 import dev.primeclient.core.PrimeClient;
-import dev.primeclient.core.hud.editor.HudEditor;
-import dev.primeclient.core.hud.editor.HudEditorHints;
 import dev.primeclient.core.hud.editor.HudEditorState;
+import dev.primeclient.v1_21_11.hud.VanillaHudLayerRenderer;
 import dev.primeclient.v1_21_11.render.GuiRenderContext;
 import dev.primeclient.v1_21_11.render.PanelBlur;
 import net.minecraft.client.Minecraft;
@@ -14,12 +13,14 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**
- * HUD editor screen for 1.21.11. Defers in-game HUD to this screen so the world
- * can blur while Prime + vanilla HUD elements stay sharp.
+ * HUD editor: flat dim backdrop (no world/blur) + lightweight vanilla HUD layers only.
  */
 public final class HudEditorScreen extends Screen {
 
-    private static final int DIM_COLOR = 0x28000000;
+    /** Dim over flat backdrop — vanilla HUD draws on top. */
+    private static final int WORLD_DIM = 0x68000000;
+    /** Title / no level: same flat backdrop. */
+    private static final int MENU_DIM = 0xE0101010;
 
     private final GuiRenderContext renderContext = new GuiRenderContext();
 
@@ -39,35 +40,24 @@ public final class HudEditorScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-        if (minecraft.level != null) {
-            super.renderBackground(graphics, mouseX, mouseY, delta);
-        }
+        // Intentionally empty — super renders the 3D world + blur every frame (~10 FPS on servers).
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
         PrimeClient client = PrimeClient.get();
         renderContext.prepare(graphics);
-        client.hud().layout(renderContext);
+        int dim = minecraft.level != null ? WORLD_DIM : MENU_DIM;
+        renderContext.fillRect(0, 0, width, height, dim);
 
         if (minecraft.level != null && minecraft.player != null) {
             HudEditorState.runVanillaHudRender(
-                    () -> minecraft.gui.render(graphics, minecraft.getDeltaTracker()));
+                    () -> VanillaHudLayerRenderer.renderVisibleLayers(graphics, minecraft.getDeltaTracker()));
             client.hud().layout(renderContext);
         }
 
-        renderContext.fillRect(0, 0, width, height, DIM_COLOR);
         client.hud().render(renderContext);
         client.hudEditor().renderOverlay(renderContext, mouseX, mouseY);
-
-        int color = client.themes().active().foreground();
-        int muted = client.themes().active().foregroundMuted();
-        drawCenteredHint(HudEditorHints.LINE_1, height - 26, color);
-        drawCenteredHint(HudEditorHints.LINE_2, height - 14, muted);
-    }
-
-    private void drawCenteredHint(String text, int y, int color) {
-        renderContext.drawText(text, (width - renderContext.textWidth(text)) / 2, y, color, true);
     }
 
     @Override
@@ -106,7 +96,7 @@ public final class HudEditorScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (PrimeClient.get().hudEditor().keyPressed(event.key())) {
+        if (PrimeClient.get().hudEditor().keyPressed(event.key(), event.hasShiftDown(), event.hasControlDown())) {
             return true;
         }
         return super.keyPressed(event);

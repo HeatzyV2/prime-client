@@ -3,6 +3,7 @@ package dev.primeclient.v1_21_11;
 import dev.primeclient.core.PrimeClient;
 import dev.primeclient.core.hook.PrimeHooks;
 import dev.primeclient.v1_21_11.render.GuiRenderContext;
+import dev.primeclient.v1_21_11.network.PresenceNetworking;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -25,6 +26,7 @@ public final class PrimeClientEntrypoint implements ClientModInitializer {
     public void onInitializeClient() {
         adapter = new VersionAdapter();
         PrimeClient.bootstrap(adapter);
+        PresenceNetworking.register();
 
         ClientLifecycleEvents.CLIENT_STARTED.register(client ->
                 client.getTextureManager().getTexture(

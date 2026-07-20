@@ -25,6 +25,29 @@ class StreamRedactorTest {
     }
 
     @Test
+    void redactsWorldEditParentheses() {
+        String result = StreamRedactor.redact(
+                "First position set to (-583, 211, 2477) (minecraft:overworld).");
+        assertFalse(result.contains("-583"));
+        assertFalse(result.contains("2477"));
+        assertTrue(result.contains("[hidden]"));
+    }
+
+    @Test
+    void redactsCommaSeparatedTriplets() {
+        String result = StreamRedactor.redact("Block at -583, 211, 2477");
+        assertFalse(result.contains("-583"));
+        assertTrue(result.contains("[hidden]"));
+    }
+
+    @Test
+    void redactsCompactXyzEquals() {
+        String result = StreamRedactor.redact("x=-583,y=211,z=2477");
+        assertFalse(result.contains("-583"));
+        assertFalse(result.contains("2477"));
+    }
+
+    @Test
     void redactsLabeledCoordinates() {
         String result = StreamRedactor.redact("Position X: 120 Y: 64 Z: -340");
         assertFalse(result.contains("120"));

@@ -1,6 +1,6 @@
 {
   "name": "prime-launcher",
-  "version": "0.9.11",
+  "version": "0.9.12",
   "description": "Official launcher for Prime Client — premium Minecraft platform",
   "main": "./out/main/index.js",
   "author": "Prime Client",
@@ -8,13 +8,22 @@
   "private": true,
   "scripts": {
     "dev": "electron-vite dev",
+    "dev:ui": "vite --config vite.config.ts",
+    "dev:tauri": "tauri dev",
     "build": "electron-vite build",
+    "build:ui": "vite build --config vite.config.ts",
+    "build:tauri": "tauri build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
     "dist": "npm run build && electron-builder --win",
-    "dist:dir": "npm run build && electron-builder --win --dir"
+    "dist:dir": "npm run build && electron-builder --win --dir",
+    "dist:tauri": "npm run build:tauri"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.5.0",
+    "@tauri-apps/plugin-dialog": "^2.2.1",
+    "@tauri-apps/plugin-opener": "^2.2.6",
+    "@tauri-apps/plugin-shell": "^2.2.1",
     "adm-zip": "^0.5.16",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.525.0",
@@ -25,6 +34,7 @@
     "react-router-dom": "^7.6.3"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0",
     "@types/node": "^24.0.13",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",

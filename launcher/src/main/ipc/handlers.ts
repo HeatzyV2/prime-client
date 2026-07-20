@@ -1,4 +1,4 @@
-import { ipcMain, shell } from 'electron'
+import { ipcMain, shell, BrowserWindow } from 'electron'
 import { IPC } from '../../shared/ipc'
 import { accountService } from '../services/AccountService'
 import { profileService } from '../services/ProfileService'
@@ -12,6 +12,7 @@ import { launchLogService } from '../services/LaunchLogService'
 import { launcherBridgeService } from '../services/LauncherBridgeService'
 import { storeService } from '../services/StoreService'
 import { friendsService } from '../services/FriendsService'
+import { socialService } from '../services/SocialService'
 import { newsService } from '../services/NewsService'
 import { mediaService } from '../services/MediaService'
 import { performanceService } from '../services/PerformanceService'
@@ -177,12 +178,26 @@ export function registerServiceHandlers(): void {
 
   ipcMain.handle(IPC.FRIENDS_LIST, () => friendsService.list())
   ipcMain.handle(IPC.FRIENDS_ADD, (_e, username: string, note?: string) => friendsService.add(username, note))
+  ipcMain.handle(IPC.FRIENDS_ACCEPT, (_e, friendId: string) => friendsService.accept(friendId))
   ipcMain.handle(IPC.FRIENDS_REMOVE, (_e, friendId: string) => friendsService.remove(friendId))
   ipcMain.handle(IPC.FRIENDS_UPDATE_NOTE, (_e, friendId: string, note: string) =>
     friendsService.updateNote(friendId, note)
   )
   ipcMain.handle(IPC.FRIENDS_REFRESH_ALL, () => friendsService.refreshAllStatuses())
   ipcMain.handle(IPC.FRIENDS_REFRESH, (_e, friendId: string) => friendsService.refreshStatus(friendId))
+
+  ipcMain.handle(IPC.SOCIAL_CONNECT, () => socialService.ensureSession())
+  ipcMain.handle(IPC.CHAT_CONVERSATIONS, () => socialService.listConversations())
+  ipcMain.handle(IPC.CHAT_OPEN_DM, (_e, uuid: string) => socialService.openDm(uuid))
+  ipcMain.handle(IPC.CHAT_MESSAGES, (_e, conversationId: string) => socialService.listMessages(conversationId))
+  ipcMain.handle(IPC.CHAT_SEND, (_e, conversationId: string, text: string, imageUrl?: string | null) =>
+    socialService.sendMessage(conversationId, text, imageUrl)
+  )
+  ipcMain.handle(IPC.CHAT_UPLOAD, (_e, filePath: string) => socialService.uploadImage(filePath))
+  ipcMain.handle(IPC.PARTY_GET, () => socialService.getParty())
+  ipcMain.handle(IPC.PARTY_CREATE, () => socialService.createParty())
+  ipcMain.handle(IPC.PARTY_INVITE, (_e, uuid: string) => socialService.inviteToParty(uuid))
+  ipcMain.handle(IPC.PARTY_LEAVE, () => socialService.leaveParty())
 
   ipcMain.handle(IPC.BOOT_INITIALIZE, () => bootService.initialize())
   ipcMain.handle(IPC.SETTINGS_JAVA_LIST, async () => {
@@ -217,4 +232,13 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.UPDATE_INSTALL_MOD, (_e, instanceId?: string) => updateService.installMod(instanceId))
   ipcMain.handle(IPC.UPDATE_DISMISS, () => updateService.dismissBanner())
   ipcMain.handle(IPC.UPDATE_OPEN_RELEASE, (_e, url?: string) => updateService.openReleasePage(url))
+}
+
+/** Forwards live social WebSocket payloads to all renderer windows. */
+export function registerSocialEventBridge(): void {
+  socialService.onEvent((event) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send(IPC.SOCIAL_EVENT, event)
+    }
+  })
 }

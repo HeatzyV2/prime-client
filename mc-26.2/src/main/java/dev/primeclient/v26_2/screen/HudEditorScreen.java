@@ -1,7 +1,6 @@
 package dev.primeclient.v26_2.screen;
 
 import dev.primeclient.core.PrimeClient;
-import dev.primeclient.core.hud.editor.HudEditorHints;
 import dev.primeclient.core.hud.editor.HudEditorState;
 import dev.primeclient.v26_2.render.GuiRenderContext;
 import net.minecraft.client.Minecraft;
@@ -13,12 +12,12 @@ import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * HUD editor screen for 26.2. Defers in-game HUD to this screen so the world
- * can blur while Prime + vanilla HUD elements stay sharp.
+ * HUD editor screen for 26.2. Flat dim backdrop — no live world/blur/vanilla GUI pass.
  */
 public final class HudEditorScreen extends Screen {
 
-    private static final int DIM_COLOR = 0x28000000;
+    private static final int WORLD_DIM = 0xB0101010;
+    private static final int MENU_DIM = 0xE0101010;
 
     private final GuiRenderContext renderContext = new GuiRenderContext();
 
@@ -38,36 +37,17 @@ public final class HudEditorScreen extends Screen {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float delta) {
-        if (minecraft.level != null) {
-            extractBlurredBackground(extractor);
-        }
+        // Skip blurred world pass — HUD editor only needs a flat backdrop.
     }
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float delta) {
         PrimeClient client = PrimeClient.get();
-        Minecraft minecraft = Minecraft.getInstance();
         renderContext.prepare(extractor);
-        client.hud().layout(renderContext);
-
-        if (minecraft.level != null && minecraft.player != null) {
-            HudEditorState.runVanillaHudRender(
-                    () -> minecraft.gui.hud.extractRenderState(extractor, minecraft.getDeltaTracker()));
-            client.hud().layout(renderContext);
-        }
-
-        renderContext.fillRect(0, 0, width, height, DIM_COLOR);
+        int dim = minecraft.level != null ? WORLD_DIM : MENU_DIM;
+        renderContext.fillRect(0, 0, width, height, dim);
         client.hud().render(renderContext);
         client.hudEditor().renderOverlay(renderContext, mouseX, mouseY);
-
-        int color = client.themes().active().foreground();
-        int muted = client.themes().active().foregroundMuted();
-        drawCenteredHint(HudEditorHints.LINE_1, height - 26, color);
-        drawCenteredHint(HudEditorHints.LINE_2, height - 14, muted);
-    }
-
-    private void drawCenteredHint(String text, int y, int color) {
-        renderContext.drawText(text, (width - renderContext.textWidth(text)) / 2, y, color, true);
     }
 
     @Override
@@ -104,7 +84,7 @@ public final class HudEditorScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (PrimeClient.get().hudEditor().keyPressed(event.key())) {
+        if (PrimeClient.get().hudEditor().keyPressed(event.key(), event.hasShiftDown(), event.hasControlDown())) {
             return true;
         }
         return super.keyPressed(event);

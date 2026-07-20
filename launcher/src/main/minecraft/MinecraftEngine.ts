@@ -266,6 +266,10 @@ export class MinecraftEngine {
     return gameRunning
   }
 
+  getActiveInstanceId(): string | null {
+    return activeInstanceId
+  }
+
   getActiveProcess(): ChildProcess | null {
     return activeGameProcess
   }

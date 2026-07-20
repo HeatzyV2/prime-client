@@ -311,7 +311,7 @@ final class Panel {
 
     void mouseDragged(double mouseX, double mouseY, int screenWidth, int screenHeight) {
         if (draggingHeader) {
-            x = Math.clamp((float) mouseX - grabOffsetX, 0, screenWidth - WIDTH);
+            x = Math.clamp((float) mouseX - grabOffsetX, 0, Math.max(0, screenWidth - WIDTH));
             y = Math.clamp((float) mouseY - grabOffsetY, 0, Math.max(0, screenHeight - height()));
         }
     }

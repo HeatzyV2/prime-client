@@ -3,6 +3,7 @@ package dev.primeclient.core.gui.menu;
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.discord.DiscordRpcService;
+import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.util.ColorUtil;
 
@@ -28,9 +29,9 @@ public final class TitleMenuTopBar {
         return "https://discord.com/application-directory/" + DiscordRpcService.APPLICATION_ID;
     }
 
-    public static void render(RenderContext ctx, Theme theme, String playerName,
+    public static void render(RenderContext ctx, Theme theme, String playerName, String accountType,
                               double mouseX, double mouseY, float fade) {
-        Layout layout = layout(ctx, playerName);
+        Layout layout = layout(ctx, playerName, accountType);
         ctx.setDrawOpacity(fade);
 
         drawIconButton(ctx, theme, layout.discordX(), layout.y(), "D", mouseX, mouseY);
@@ -44,6 +45,10 @@ public final class TitleMenuTopBar {
                     : ColorUtil.withAlpha(theme.surfaceElevated(), 0.44f);
             ctx.fillRoundedRect(layout.profileX(), layout.y(), layout.profileW(), BTN,
                     PrimeDesign.RADIUS_SM, fill);
+            if (hover) {
+                ctx.fillRoundedBorder(layout.profileX(), layout.y(), layout.profileW(), BTN,
+                        PrimeDesign.RADIUS_SM, 1, ColorUtil.withAlpha(theme.accent(), 0.55f), fill);
+            }
             ctx.drawSmoothText(layout.profileLabel(), layout.profileX() + 8,
                     layout.y() + (BTN - ctx.fontHeight()) / 2 + 1, theme.foreground(), 0.88f);
         }
@@ -51,8 +56,9 @@ public final class TitleMenuTopBar {
         ctx.setDrawOpacity(1f);
     }
 
-    public static Action hitAction(double mouseX, double mouseY, int screenWidth, String playerName) {
-        Layout layout = layout(screenWidth, playerName);
+    public static Action hitAction(double mouseX, double mouseY, int screenWidth,
+                                   String playerName, String accountType) {
+        Layout layout = layout(screenWidth, playerName, accountType);
         if (layout.profileW() > 0 && hit(mouseX, mouseY, layout.profileX(), layout.y(), layout.profileW(), BTN)) {
             return Action.PROFILE;
         }
@@ -84,14 +90,14 @@ public final class TitleMenuTopBar {
                 hover ? theme.foreground() : theme.foregroundMuted(), ICON_SCALE);
     }
 
-    private static Layout layout(RenderContext ctx, String playerName) {
-        String label = profileLabel(playerName);
+    private static Layout layout(RenderContext ctx, String playerName, String accountType) {
+        String label = profileLabel(playerName, accountType);
         int profileW = label.isEmpty() ? 0 : ctx.smoothTextWidth(label, 0.88f) + 16;
         return layout(ctx.screenWidth(), profileW, label);
     }
 
-    private static Layout layout(int screenWidth, String playerName) {
-        String label = profileLabel(playerName);
+    private static Layout layout(int screenWidth, String playerName, String accountType) {
+        String label = profileLabel(playerName, accountType);
         int profileW = label.isEmpty() ? 0 : label.length() * 6 + 16;
         return layout(screenWidth, profileW, label);
     }
@@ -104,15 +110,28 @@ public final class TitleMenuTopBar {
         return new Layout(discordX, vanillaX, settingsX, profileX, profileW, PAD, label);
     }
 
-    private static String profileLabel(String playerName) {
+    private static String profileLabel(String playerName, String accountType) {
+        String suffix = accountTypeSuffix(accountType);
         if (playerName == null || playerName.isBlank()) {
-            return "";
+            String base = PrimeLang.get("prime.gui.account.chip", "⇄ Account");
+            return suffix.isEmpty() ? base : base + suffix;
         }
         String trimmed = playerName.trim();
         if (trimmed.length() > 12) {
-            return trimmed.substring(0, 11) + "…";
+            return "⇄ " + trimmed.substring(0, 11) + "…" + suffix;
         }
-        return trimmed;
+        return "⇄ " + trimmed + suffix;
+    }
+
+    private static String accountTypeSuffix(String accountType) {
+        if (accountType == null || accountType.isBlank()) {
+            return "";
+        }
+        return switch (accountType.toLowerCase(java.util.Locale.ROOT)) {
+            case "microsoft" -> " · MS";
+            case "offline" -> " · OFF";
+            default -> "";
+        };
     }
 
     private static boolean hit(double mx, double my, int x, int y, int w, int h) {

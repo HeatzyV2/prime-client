@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { IPC } from '../shared/ipc'
-import { registerServiceHandlers } from './ipc/handlers'
+import { registerServiceHandlers, registerSocialEventBridge } from './ipc/handlers'
 import { registerMediaScheme, registerMediaProtocol } from './protocol/mediaProtocol'
 import { readSettingsSync } from './utils/readSettingsSync'
 
@@ -73,6 +73,7 @@ import { settingsStore } from './storage/SettingsStore'
 import { downloadStore } from './storage/DownloadStore'
 import { launcherDiscordService } from './services/LauncherDiscordService'
 import { minecraftEngine } from './minecraft/MinecraftEngine'
+import { socialService } from './services/SocialService'
 
 app.whenReady().then(async () => {
   registerMediaProtocol()
@@ -82,8 +83,13 @@ app.whenReady().then(async () => {
   await settingsStore.load()
   await downloadStore.load()
   registerServiceHandlers()
+  registerSocialEventBridge()
   registerWindowHandlers()
   createWindow()
+
+  void socialService.ensureSession().catch(() => {
+    // offline — social features degrade gracefully
+  })
 
   await launcherDiscordService.start()
 

@@ -9,8 +9,11 @@ import dev.primeclient.core.state.CinematicCameraState;
 import dev.primeclient.core.state.ChatFilterState;
 import dev.primeclient.core.state.ChatOverlayState;
 import dev.primeclient.core.state.ZoomState;
+import dev.primeclient.core.state.ClientBadgeState;
 import dev.primeclient.core.stream.StreamRedactor;
 import dev.primeclient.core.stream.StreamerPrivacyState;
+
+import java.util.UUID;
 
 /**
  * Bridge from version-layer Fabric hooks and mixins into the common core.
@@ -130,6 +133,25 @@ public final class PrimeHooks {
 
     public static float lowFireHeightOffset() {
         return dev.primeclient.core.state.LowFireState.heightOffset();
+    }
+
+    /** Called by tab-list mixins to decorate Prime player names. */
+    public static boolean clientBadgeActive() {
+        return ClientBadgeState.active();
+    }
+
+    /** Whether the given player was discovered as a Prime Client user. */
+    public static boolean isPrimePlayer(UUID uuid) {
+        PrimeClient client = tryGet();
+        return client != null && client.presence().isPrime(uuid);
+    }
+
+    /** Called by version-layer networking when a presence payload is received. */
+    public static void onPresencePayload(UUID playerId) {
+        PrimeClient client = tryGet();
+        if (client != null) {
+            client.presence().markPrime(playerId);
+        }
     }
 
     private static PrimeClient tryGet() {
