@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { StoreItem } from '@shared/content-types'
-
-type ThemeId = 'prime-dark' | 'prime-crimson'
+import type { PrimeThemeId } from '@shared/ipc'
+import { normalizePrimeTheme } from '@shared/theme'
 
 interface ThemeContextValue {
   refreshTheme: () => Promise<void>
@@ -15,14 +15,9 @@ async function applyThemeFromSettings(): Promise<void> {
     window.primeLauncher.store.catalog()
   ])
 
-  const ownsCrimson = catalog.some((item: StoreItem) => item.id === 'theme-crimson' && item.owned)
   const ownsNebula = catalog.some((item: StoreItem) => item.id === 'bg-nebula' && item.owned)
 
-  let theme: ThemeId = settings.theme
-  if (theme === 'prime-crimson' && !ownsCrimson) {
-    theme = 'prime-dark'
-  }
-
+  const theme: PrimeThemeId = normalizePrimeTheme(settings.theme)
   document.documentElement.dataset.theme = theme
   document.documentElement.dataset.background =
     ownsNebula && settings.backgroundNebula ? 'nebula' : 'default'

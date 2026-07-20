@@ -4,7 +4,7 @@ import type { NewsItem } from './types'
 /** Static store catalog — purchases unlock locally (Prime Coins, no payment server). */
 export const STORE_CATALOG: StoreItem[] = [
   { id: 'cape-prime', name: 'Prime Cape', description: 'Official Prime Client cape.', price: 0, category: 'cosmetic', owned: false },
-  { id: 'theme-crimson', name: 'Crimson Theme', description: 'Deep red launcher theme.', price: 250, category: 'theme', owned: false },
+  { id: 'theme-crimson', name: 'Crimson Theme', description: 'Signature red Prime theme (included in settings).', price: 0, category: 'theme', owned: true },
   { id: 'bg-nebula', name: 'Nebula Background', description: 'Animated space background.', price: 150, category: 'background', owned: false },
   { id: 'badge-founder', name: 'Founder Badge', description: 'Limited edition profile badge.', price: 500, category: 'badge', owned: false },
   { id: 'wings-ember', name: 'Ember Wings', description: 'Fiery cosmetic wings.', price: 400, category: 'cosmetic', owned: false },

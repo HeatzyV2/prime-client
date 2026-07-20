@@ -46,6 +46,11 @@ public final class PrimeTitleScreen extends Screen {
     }
 
     @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+        // Skip default menu backdrop — panorama is drawn in render() like AccountSwitcher.
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
         renderPanorama(graphics, delta);
         renderContext.prepare(graphics);

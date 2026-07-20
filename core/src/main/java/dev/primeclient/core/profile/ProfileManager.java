@@ -70,6 +70,8 @@ public final class ProfileManager {
         }
         lastProfileMtime = mtime;
         configManager.reloadSection(file, "cosmetics");
+        configManager.reloadSection(file, "theme");
+        configManager.reloadSection(file, "modules");
     }
 
     /** Saves the active profile to disk. */

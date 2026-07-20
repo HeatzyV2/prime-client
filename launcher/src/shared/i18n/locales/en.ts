@@ -105,8 +105,10 @@ export const en = {
     },
     theme: {
       label: 'Theme',
-      dark: 'Prime Dark',
-      crimson: 'Crimson (Store unlock)'
+      dark: 'Crimson',
+      crimson: 'Crimson',
+      midnight: 'Midnight',
+      aurora: 'Aurora'
     },
     hardwareAccel: {
       label: 'Hardware acceleration',
@@ -249,7 +251,7 @@ export const en = {
     },
     chat: {
       title: 'Chat',
-      subtitle: 'Private messages synced with the game. Images supported here.'
+      subtitle: 'Private messages with friends — live, synced with the game.'
     },
     news: {
       title: 'News',
@@ -384,12 +386,20 @@ export const en = {
   chat: {
     refresh: 'Refresh',
     conversations: 'Conversations',
-    empty: 'No conversations. Open a DM from Friends.',
-    selectConversation: 'Select a conversation',
+    empty: 'No conversations yet. Open a DM from Friends to start chatting.',
+    selectConversation: 'Pick a conversation',
+    selectHint: 'Choose someone on the left to open your private thread.',
     messagePlaceholder: 'Write a message…',
     send: 'Send',
     image: 'Image',
-    imagePathPrompt: 'Image file path'
+    imagePathPrompt: 'Image file path',
+    live: 'Live',
+    directMessage: 'Direct message',
+    startTitle: 'Say hello',
+    startBody: 'This is the beginning of your conversation with {name}.',
+    composerHint: 'Enter to send · images supported',
+    today: 'Today',
+    yesterday: 'Yesterday'
   },
   actions: {
     import: 'Import',

@@ -22,6 +22,9 @@ export class SettingsService {
 
     if (partial.discordRpc !== undefined) {
       await launcherDiscordService.setEnabled(partial.discordRpc)
+    }
+
+    if (partial.discordRpc !== undefined || partial.theme !== undefined) {
       const instances = await instanceService.list()
       await Promise.all(
         instances.filter((inst) => inst.includePrimeMod).map((inst) => launcherBridgeService.syncToInstance(inst.id))

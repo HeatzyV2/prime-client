@@ -11,7 +11,7 @@ public final class OnboardingFlow {
 
     public static void applyChoices(PrimeClient client) {
         OnboardingManager onboarding = client.onboarding();
-        client.themes().setActive(onboarding.chosenTheme());
+        client.themes().trySetActive(onboarding.chosenTheme());
         String profile = onboarding.chosenProfile();
         if (!profile.equals(client.profiles().activeProfile())) {
             client.profiles().switchTo(profile);

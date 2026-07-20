@@ -41,6 +41,11 @@ public final class PrimeTitleScreen extends Screen {
     }
 
     @Override
+    public void extractBackground(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float delta) {
+        // Skip default backdrop — panorama is drawn in extractRenderState.
+    }
+
+    @Override
     public void extractRenderState(GuiGraphicsExtractor extractor, int mouseX, int mouseY, float delta) {
         extractPanorama(extractor, delta);
         renderContext.prepare(extractor);

@@ -47,7 +47,7 @@ impl Default for LauncherSettings {
             language: "en".into(),
             close_on_launch: false,
             auto_update: true,
-            theme: "prime-dark".into(),
+            theme: "prime-crimson".into(),
             background_nebula: true,
             hardware_accel: true,
             default_ram_mb: 4096,
@@ -80,8 +80,17 @@ pub fn load() -> Result<LauncherSettings, AppError> {
     }
     let raw = fs::read_to_string(&path)?;
     // Accept Electron camelCase JSON via serde rename
-    let settings: LauncherSettings = serde_json::from_str(&raw).unwrap_or_default();
+    let mut settings: LauncherSettings = serde_json::from_str(&raw).unwrap_or_default();
+    settings.theme = normalize_theme_id(&settings.theme);
     Ok(settings)
+}
+
+pub fn normalize_theme_id(id: &str) -> String {
+    match id {
+        "prime-midnight" | "prime-aurora" | "prime-crimson" => id.into(),
+        "prime-light" => "prime-midnight".into(),
+        _ => "prime-crimson".into(),
+    }
 }
 
 pub fn save(settings: &LauncherSettings) -> Result<(), AppError> {
@@ -101,7 +110,8 @@ pub fn update_merge(patch: Value) -> Result<LauncherSettings, AppError> {
             base.insert(k, v);
         }
     }
-    let settings: LauncherSettings = serde_json::from_value(current)?;
+    let mut settings: LauncherSettings = serde_json::from_value(current)?;
+    settings.theme = normalize_theme_id(&settings.theme);
     save(&settings)?;
     Ok(settings)
 }

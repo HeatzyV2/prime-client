@@ -8,7 +8,13 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import { LOCALES } from '@shared/i18n'
 import type { PerformancePreset } from '@shared/content-types'
 import type { StoreItem } from '@shared/content-types'
-import type { UpdateProgressDto, UpdateStatusDto, JavaInstallationDto, SettingsUpdateDto } from '@shared/ipc'
+import type {
+  UpdateProgressDto,
+  UpdateStatusDto,
+  JavaInstallationDto,
+  SettingsUpdateDto,
+  PrimeThemeId
+} from '@shared/ipc'
 import './SettingsPage.css'
 
 const SECTION_IDS = [
@@ -27,7 +33,7 @@ interface SettingsState {
   language: 'en' | 'fr'
   closeOnLaunch: boolean
   autoUpdate: boolean
-  theme: 'prime-dark' | 'prime-crimson'
+  theme: PrimeThemeId
   backgroundNebula: boolean
   hardwareAccel: boolean
   defaultRamMb: number
@@ -54,7 +60,6 @@ export function SettingsPage() {
   const [updateProgress, setUpdateProgress] = useState<UpdateProgressDto | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-  const [ownsCrimson, setOwnsCrimson] = useState(false)
   const [ownsNebula, setOwnsNebula] = useState(false)
   const [javaInstalls, setJavaInstalls] = useState<JavaInstallationDto[]>([])
   const [restartRequired, setRestartRequired] = useState(false)
@@ -81,7 +86,6 @@ export function SettingsPage() {
       gameDisplayMode: s.gameDisplayMode
     })
     const catalog = await window.primeLauncher.store.catalog()
-    setOwnsCrimson(catalog.some((item: StoreItem) => item.id === 'theme-crimson' && item.owned))
     setOwnsNebula(catalog.some((item: StoreItem) => item.id === 'bg-nebula' && item.owned))
     setJavaInstalls(await window.primeLauncher.settings.listJava())
   }, [])
@@ -261,10 +265,11 @@ export function SettingsPage() {
                 <select
                   className="settings__select"
                   value={settings.theme}
-                  onChange={(e) => void patch({ theme: e.target.value as 'prime-dark' | 'prime-crimson' })}
+                  onChange={(e) => void patch({ theme: e.target.value as PrimeThemeId })}
                 >
-                  <option value="prime-dark">{t('settings.theme.dark')}</option>
-                  {ownsCrimson && <option value="prime-crimson">{t('settings.theme.crimson')}</option>}
+                  <option value="prime-crimson">{t('settings.theme.crimson')}</option>
+                  <option value="prime-midnight">{t('settings.theme.midnight')}</option>
+                  <option value="prime-aurora">{t('settings.theme.aurora')}</option>
                 </select>
               </div>
               {ownsNebula && (

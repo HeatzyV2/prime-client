@@ -107,8 +107,10 @@ export const fr: LocaleCatalog = {
     },
     theme: {
       label: 'Thème',
-      dark: 'Prime Sombre',
-      crimson: 'Crimson (débloqué dans la boutique)'
+      dark: 'Crimson',
+      crimson: 'Crimson',
+      midnight: 'Midnight',
+      aurora: 'Aurora'
     },
     hardwareAccel: {
       label: 'Accélération matérielle',
@@ -251,7 +253,7 @@ export const fr: LocaleCatalog = {
     },
     chat: {
       title: 'Chat',
-      subtitle: 'Messages privés sync avec le jeu. Images supportées ici.'
+      subtitle: 'Messages privés avec tes amis — en direct, sync avec le jeu.'
     },
     news: {
       title: 'Actualités',
@@ -386,12 +388,20 @@ export const fr: LocaleCatalog = {
   chat: {
     refresh: 'Actualiser',
     conversations: 'Conversations',
-    empty: 'Aucune conversation. Ouvre un DM depuis Amis.',
-    selectConversation: 'Sélectionne une conversation',
+    empty: 'Aucune conversation pour l’instant. Ouvre un DM depuis Amis.',
+    selectConversation: 'Choisis une conversation',
+    selectHint: 'Sélectionne quelqu’un à gauche pour ouvrir le fil privé.',
     messagePlaceholder: 'Écrire un message…',
     send: 'Envoyer',
     image: 'Image',
-    imagePathPrompt: 'Chemin du fichier image'
+    imagePathPrompt: 'Chemin du fichier image',
+    live: 'En direct',
+    directMessage: 'Message privé',
+    startTitle: 'Dis bonjour',
+    startBody: 'Début de ta conversation avec {name}.',
+    composerHint: 'Entrée pour envoyer · images supportées',
+    today: 'Aujourd’hui',
+    yesterday: 'Hier'
   },
   actions: {
     import: 'Importer',

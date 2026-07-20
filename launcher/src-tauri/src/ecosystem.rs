@@ -63,7 +63,7 @@ pub fn save(db: &EcosystemDb) -> Result<(), AppError> {
 
 const STORE: &[(&str, &str, &str, i64, &str)] = &[
     ("cape-prime", "Prime Cape", "Official Prime Client cape.", 0, "cosmetic"),
-    ("theme-crimson", "Crimson Theme", "Deep red launcher theme.", 250, "theme"),
+    ("theme-crimson", "Crimson Theme", "Signature red Prime theme.", 0, "theme"),
     ("bg-nebula", "Nebula Background", "Animated space background.", 150, "background"),
     ("badge-founder", "Founder Badge", "Limited edition profile badge.", 500, "badge"),
     ("wings-ember", "Ember Wings", "Fiery cosmetic wings.", 400, "cosmetic"),

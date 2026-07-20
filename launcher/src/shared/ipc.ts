@@ -271,11 +271,14 @@ export interface JavaInstallationDto {
   label: string
 }
 
+export type { PrimeThemeId } from './theme'
+export { normalizePrimeTheme, PRIME_THEMES } from './theme'
+
 export interface LauncherSettingsDto {
   language: 'en' | 'fr'
   closeOnLaunch: boolean
   autoUpdate: boolean
-  theme: 'prime-dark' | 'prime-crimson'
+  theme: import('./theme').PrimeThemeId
   backgroundNebula: boolean
   hardwareAccel: boolean
   defaultRamMb: number

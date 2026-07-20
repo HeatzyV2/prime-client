@@ -3,13 +3,14 @@ package dev.primeclient.core.gui.menu;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.primeclient.core.config.ConfigBinding;
+import dev.primeclient.core.theme.ThemeManager;
 
 /** First-run onboarding wizard state. */
 public final class OnboardingManager implements ConfigBinding {
 
     private boolean completed;
     private int step;
-    private String chosenTheme = "prime-dark";
+    private String chosenTheme = "prime-crimson";
     private String chosenProfile = "default";
 
     public boolean completed() {
@@ -36,7 +37,7 @@ public final class OnboardingManager implements ConfigBinding {
     }
 
     public void setChosenTheme(String themeId) {
-        this.chosenTheme = themeId;
+        this.chosenTheme = ThemeManager.normalizeId(themeId);
     }
 
     public void setChosenProfile(String profile) {
@@ -70,7 +71,9 @@ public final class OnboardingManager implements ConfigBinding {
         JsonObject json = element.getAsJsonObject();
         if (json.has("completed")) completed = json.get("completed").getAsBoolean();
         if (json.has("step")) step = json.get("step").getAsInt();
-        if (json.has("theme")) chosenTheme = json.get("theme").getAsString();
+        if (json.has("theme")) {
+            chosenTheme = ThemeManager.normalizeId(json.get("theme").getAsString());
+        }
         if (json.has("profile")) chosenProfile = json.get("profile").getAsString();
     }
 }

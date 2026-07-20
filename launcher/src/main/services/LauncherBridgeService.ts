@@ -3,6 +3,7 @@ import { join, dirname } from 'path'
 import { getInstanceGameDir } from '../minecraft/paths'
 import { ecosystemStore } from '../storage/EcosystemStore'
 import { settingsStore } from '../storage/SettingsStore'
+import { normalizePrimeTheme } from '../../shared/theme'
 
 /** Maps launcher cosmetic IDs to Prime Client mod slot + catalog ID. */
 const MOD_COSMETIC_MAP: Record<string, { slot: string; modId: string }> = {
@@ -38,6 +39,7 @@ export class LauncherBridgeService {
       }
 
       root.cosmetics = cosmetics
+      root.theme = { active: normalizePrimeTheme(settings.theme) }
 
       const modules = (root.modules as Record<string, Record<string, unknown>> | undefined) ?? {}
       modules['discord-rpc'] = { ...(modules['discord-rpc'] ?? {}), enabled: settings.discordRpc }

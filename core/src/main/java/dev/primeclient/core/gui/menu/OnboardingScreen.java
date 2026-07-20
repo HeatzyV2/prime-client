@@ -68,12 +68,15 @@ public final class OnboardingScreen {
                                         int x, int y, double mouseX, double mouseY) {
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.theme.title", "Choose your theme"),
                 x + 12, y + 36, theme.accent(), true);
-        drawChoice(ctx, theme, x + 12, y + 56, 128,
-                PrimeLang.get("prime.gui.settings.theme.dark", "Prime Dark"),
-                "prime-dark".equals(onboarding.chosenTheme()), mouseX, mouseY);
-        drawChoice(ctx, theme, x + 148, y + 56, 128,
-                PrimeLang.get("prime.gui.settings.theme.light", "Prime Light"),
-                "prime-light".equals(onboarding.chosenTheme()), mouseX, mouseY);
+        drawChoice(ctx, theme, x + 12, y + 56, 88,
+                PrimeLang.get("prime.gui.settings.theme.crimson", "Crimson"),
+                "prime-crimson".equals(onboarding.chosenTheme()), mouseX, mouseY);
+        drawChoice(ctx, theme, x + 106, y + 56, 88,
+                PrimeLang.get("prime.gui.settings.theme.midnight", "Midnight"),
+                "prime-midnight".equals(onboarding.chosenTheme()), mouseX, mouseY);
+        drawChoice(ctx, theme, x + 200, y + 56, 88,
+                PrimeLang.get("prime.gui.settings.theme.aurora", "Aurora"),
+                "prime-aurora".equals(onboarding.chosenTheme()), mouseX, mouseY);
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.theme.hint", "Click an option then continue"),
                 x + 12, y + 88, theme.foregroundMuted(), true);
         drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24,
@@ -127,12 +130,16 @@ public final class OnboardingScreen {
     }
 
     private static boolean handleThemeClick(OnboardingManager onboarding, double mx, double my, int x, int y) {
-        if (hit(mx, my, x + 12, y + 56, 128, 22)) {
-            onboarding.setChosenTheme("prime-dark");
+        if (hit(mx, my, x + 12, y + 56, 88, 22)) {
+            onboarding.setChosenTheme("prime-crimson");
             return true;
         }
-        if (hit(mx, my, x + 148, y + 56, 128, 22)) {
-            onboarding.setChosenTheme("prime-light");
+        if (hit(mx, my, x + 106, y + 56, 88, 22)) {
+            onboarding.setChosenTheme("prime-midnight");
+            return true;
+        }
+        if (hit(mx, my, x + 200, y + 56, 88, 22)) {
+            onboarding.setChosenTheme("prime-aurora");
             return true;
         }
         if (hit(mx, my, x + 12, y + 108, PANEL_W - 24, 22)) {

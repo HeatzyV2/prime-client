@@ -30,7 +30,9 @@ pub fn sync_instance(instance_id: &str) -> Result<(), AppError> {
             _ => {}
         }
     }
-    let discord = settings::load()?.discord_rpc;
+    let settings = settings::load()?;
+    let discord = settings.discord_rpc;
+    let theme = normalize_theme(&settings.theme);
 
     let mut existing = if profile.exists() {
         serde_json::from_str(&fs::read_to_string(&profile)?).unwrap_or(json!({}))
@@ -46,9 +48,14 @@ pub fn sync_instance(instance_id: &str) -> Result<(), AppError> {
             "modules".into(),
             json!({ "discord-rpc": { "enabled": discord } }),
         );
+        obj.insert("theme".into(), json!({ "active": theme }));
     }
     fs::write(profile, serde_json::to_string_pretty(&existing)?)?;
     Ok(())
+}
+
+fn normalize_theme(id: &str) -> String {
+    settings::normalize_theme_id(id)
 }
 
 pub fn sync_all_prime_instances() -> Result<(), AppError> {

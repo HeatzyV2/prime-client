@@ -13,12 +13,15 @@ import java.util.Map;
  * Registry of {@link Theme}s and holder of the active one.
  *
  * <p>{@link #active()} is a plain field read — safe to call every frame.</p>
+ *
+ * <p>Shared IDs with the launcher: {@code prime-crimson}, {@code prime-midnight},
+ * {@code prime-aurora}.</p>
  */
 public final class ThemeManager implements ConfigBinding {
 
-    /** Prime signature look: black surfaces, red accent (Feather-inspired). */
-    public static final Theme PRIME_DARK = new Theme(
-            "prime-dark", "Prime Dark",
+    /** Brand red — signature Prime look (default). */
+    public static final Theme PRIME_CRIMSON = new Theme(
+            "prime-crimson", "Prime Crimson",
             0xFFE11D2E, // accent
             0xFF991B1B, // accentSecondary
             0xFF060608, // background
@@ -35,31 +38,52 @@ public final class ThemeManager implements ConfigBinding {
             0xFFEF4444  // error
     );
 
-    public static final Theme PRIME_LIGHT = new Theme(
-            "prime-light", "Prime Light",
-            0xFFE11D2E,
-            0xFF991B1B,
-            0xE6FAFAFA,
-            0xF0FFFFFF,
-            0xFFF4F4F5,
-            0xFF18181B,
-            0xFF52525B,
-            0x30000000,
-            0x66000000,
-            0xFFE2E8F0,
-            0xFFF8FAFC,
-            0xFF16A34A,
-            0xFFD97706,
-            0xFFDC2626
+    /** Deep navy with cool cyan accents. */
+    public static final Theme PRIME_MIDNIGHT = new Theme(
+            "prime-midnight", "Prime Midnight",
+            0xFF38BDF8, // accent
+            0xFF0284C7, // accentSecondary
+            0xFF070B14, // background
+            0xF00E1624, // backgroundLight
+            0xF0141E2E, // surfaceElevated
+            0xFFE8EEF8, // foreground
+            0xFF7B8BA3, // foregroundMuted
+            0x35A5C4E8, // border
+            0xCC000000, // overlay
+            0xFF070B14, // gradientTop
+            0xFF0E1624, // gradientBottom
+            0xFF34D399, // success
+            0xFFFBBF24, // warning
+            0xFFF87171  // error
+    );
+
+    /** Teal / violet aurora palette. */
+    public static final Theme PRIME_AURORA = new Theme(
+            "prime-aurora", "Prime Aurora",
+            0xFF34D399, // accent
+            0xFFA78BFA, // accentSecondary
+            0xFF06120F, // background
+            0xF00C1C18, // backgroundLight
+            0xF0122820, // surfaceElevated
+            0xFFF0FDF8, // foreground
+            0xFF86A89A, // foregroundMuted
+            0x3590E0C0, // border
+            0xCC000000, // overlay
+            0xFF06120F, // gradientTop
+            0xFF0C1C18, // gradientBottom
+            0xFF4ADE80, // success
+            0xFFFBBF24, // warning
+            0xFFFB7185  // error
     );
 
     private final Map<String, Theme> themes = new LinkedHashMap<>();
     private Theme active;
 
     public ThemeManager() {
-        register(PRIME_DARK);
-        register(PRIME_LIGHT);
-        this.active = PRIME_DARK;
+        register(PRIME_CRIMSON);
+        register(PRIME_MIDNIGHT);
+        register(PRIME_AURORA);
+        this.active = PRIME_CRIMSON;
     }
 
     public void register(Theme theme) {
@@ -76,15 +100,39 @@ public final class ThemeManager implements ConfigBinding {
 
     /** @throws IllegalArgumentException if no theme has this id */
     public void setActive(String id) {
-        Theme theme = themes.get(id);
+        Theme theme = themes.get(normalizeId(id));
         if (theme == null) {
             throw new IllegalArgumentException("Unknown theme: " + id);
         }
         this.active = theme;
     }
 
+    /** Sets the theme if known; otherwise leaves the current theme unchanged. */
+    public boolean trySetActive(String id) {
+        Theme theme = themes.get(normalizeId(id));
+        if (theme == null) {
+            return false;
+        }
+        this.active = theme;
+        return true;
+    }
+
     public Collection<Theme> all() {
         return Collections.unmodifiableCollection(themes.values());
+    }
+
+    /**
+     * Maps legacy IDs ({@code prime-dark}, {@code prime-light}) to the current trio.
+     */
+    public static String normalizeId(String id) {
+        if (id == null || id.isBlank()) {
+            return PRIME_CRIMSON.id();
+        }
+        return switch (id) {
+            case "prime-dark" -> PRIME_CRIMSON.id();
+            case "prime-light" -> PRIME_MIDNIGHT.id();
+            default -> id;
+        };
     }
 
     @Override
@@ -102,8 +150,9 @@ public final class ThemeManager implements ConfigBinding {
     @Override
     public void loadConfig(JsonElement element) {
         JsonElement stored = element.getAsJsonObject().get("active");
-        if (stored != null && themes.containsKey(stored.getAsString())) {
-            this.active = themes.get(stored.getAsString());
+        if (stored == null) {
+            return;
         }
+        trySetActive(stored.getAsString());
     }
 }

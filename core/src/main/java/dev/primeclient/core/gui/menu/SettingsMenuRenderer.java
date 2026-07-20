@@ -140,12 +140,15 @@ public final class SettingsMenuRenderer {
                 row(ctx, theme, x + 12, rowY,
                         PrimeLang.get("prime.gui.settings.row.active_theme", "Active theme"), themes.active().name());
                 rowY += 18;
-                ctx.fillRoundedRect(x + 12, rowY, 100, 16, PrimeDesign.RADIUS_SM, theme.backgroundLight());
-                GuiLayout.label(ctx, PrimeLang.get("prime.gui.settings.theme.dark", "Prime Dark"),
-                        x + 18, rowY + 4, theme.foreground());
-                ctx.fillRoundedRect(x + 120, rowY, 100, 16, PrimeDesign.RADIUS_SM, theme.backgroundLight());
-                GuiLayout.label(ctx, PrimeLang.get("prime.gui.settings.theme.light", "Prime Light"),
-                        x + 126, rowY + 4, theme.foreground());
+                drawThemeChip(ctx, theme, themes, "prime-crimson",
+                        PrimeLang.get("prime.gui.settings.theme.crimson", "Crimson"),
+                        x + 12, rowY, 100);
+                drawThemeChip(ctx, theme, themes, "prime-midnight",
+                        PrimeLang.get("prime.gui.settings.theme.midnight", "Midnight"),
+                        x + 118, rowY, 100);
+                drawThemeChip(ctx, theme, themes, "prime-aurora",
+                        PrimeLang.get("prime.gui.settings.theme.aurora", "Aurora"),
+                        x + 224, rowY, 100);
             }
             case PERFORMANCE -> row(ctx, theme, x + 12, rowY,
                     PrimeLang.get("prime.gui.settings.row.tip", "Tip"),
@@ -247,11 +250,15 @@ public final class SettingsMenuRenderer {
         if (active == Category.APPEARANCE) {
             int rowY = y + 92;
             if (mx >= x + 12 && mx < x + 112 && my >= rowY && my < rowY + 16) {
-                themes.setActive("prime-dark");
+                themes.setActive("prime-crimson");
                 return true;
             }
-            if (mx >= x + 120 && mx < x + 220 && my >= rowY && my < rowY + 16) {
-                themes.setActive("prime-light");
+            if (mx >= x + 118 && mx < x + 218 && my >= rowY && my < rowY + 16) {
+                themes.setActive("prime-midnight");
+                return true;
+            }
+            if (mx >= x + 224 && mx < x + 324 && my >= rowY && my < rowY + 16) {
+                themes.setActive("prime-aurora");
                 return true;
             }
         }
@@ -331,5 +338,14 @@ public final class SettingsMenuRenderer {
     private static void row(RenderContext ctx, Theme theme, int x, int y, String k, String v) {
         GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, k, 110), x, y, theme.foreground());
         GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, v, 180), x + 120, y, theme.foregroundMuted());
+    }
+
+    private static void drawThemeChip(RenderContext ctx, Theme theme, ThemeManager themes,
+                                      String themeId, String label, int x, int y, int w) {
+        boolean selected = themeId.equals(themes.active().id());
+        ctx.fillRoundedRect(x, y, w, 16, PrimeDesign.RADIUS_SM,
+                selected ? theme.accent() : theme.backgroundLight());
+        GuiLayout.label(ctx, label, x + 6, y + 4,
+                selected ? theme.foreground() : theme.foregroundMuted());
     }
 }
