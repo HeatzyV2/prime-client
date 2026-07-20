@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RefreshCw, ImagePlus, Send } from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Button } from '@renderer/design-system/components'
@@ -12,11 +12,26 @@ interface Conversation {
 
 interface ChatMessage {
   id: string
+  conversationId?: string
   senderUuid: string
-  senderUsername?: string
+  senderUsername?: string | null
   text: string
   imageUrl: string | null
   createdAt: string
+}
+
+function displayName(
+  message: ChatMessage,
+  participants: { uuid: string; username: string }[] | undefined
+): string {
+  if (message.senderUsername && message.senderUsername.trim()) {
+    return message.senderUsername.trim()
+  }
+  const fromParticipants = participants?.find((p) => p.uuid === message.senderUuid)?.username
+  if (fromParticipants && fromParticipants.trim()) {
+    return fromParticipants.trim()
+  }
+  return message.senderUuid.slice(0, 8)
 }
 
 export function ChatPage() {
@@ -27,10 +42,16 @@ export function ChatPage() {
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const activeIdRef = useRef<string | null>(null)
+  const bottomRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    activeIdRef.current = activeId
+  }, [activeId])
 
   const reload = useCallback(async () => {
     try {
-      await window.primeLauncher.chat.connect()
+      await window.primeLauncher.social.connect()
       const list = (await window.primeLauncher.chat.conversations()) as Conversation[]
       setConversations(list)
       setError(null)
@@ -53,13 +74,54 @@ export function ChatPage() {
     })
   }, [activeId])
 
+  // Live messages via social WebSocket
+  useEffect(() => {
+    const unsub = window.primeLauncher.social.onEvent((event) => {
+      if (event.t !== 'message' || !event.message || typeof event.message !== 'object') {
+        return
+      }
+      const incoming = event.message as ChatMessage
+      if (!incoming.id || !incoming.conversationId) {
+        return
+      }
+      // Refresh conversation list ordering when any DM arrives
+      void window.primeLauncher.chat.conversations().then((list) => {
+        setConversations(list as Conversation[])
+      })
+      if (incoming.conversationId !== activeIdRef.current) {
+        return
+      }
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === incoming.id)) {
+          return prev
+        }
+        return [...prev, incoming]
+      })
+    })
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages.length])
+
+  const active = useMemo(
+    () => conversations.find((c) => c.id === activeId) ?? null,
+    [conversations, activeId]
+  )
+
   async function send(): Promise<void> {
     if (!activeId || !text.trim()) return
     setBusy(true)
     try {
-      await window.primeLauncher.chat.send(activeId, text.trim())
+      const sent = (await window.primeLauncher.chat.send(activeId, text.trim())) as ChatMessage
       setText('')
-      setMessages((await window.primeLauncher.chat.messages(activeId)) as ChatMessage[])
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === sent.id)) {
+          return prev
+        }
+        return [...prev, sent]
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Send failed')
     } finally {
@@ -76,36 +138,34 @@ export function ChatPage() {
       typeof result === 'string'
         ? result
         : (result as { filePaths?: string[] } | null)?.filePaths?.[0]
-    if (!filePath) {
-      const manual = window.prompt(t('chat.imagePathPrompt'))
-      if (!manual) return
-      setBusy(true)
-      try {
-        const url = await window.primeLauncher.chat.upload(manual)
-        await window.primeLauncher.chat.send(activeId, text.trim() || '', url)
-        setText('')
-        setMessages((await window.primeLauncher.chat.messages(activeId)) as ChatMessage[])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Upload failed')
-      } finally {
-        setBusy(false)
-      }
-      return
-    }
+    const path =
+      filePath ||
+      (() => {
+        const manual = window.prompt(t('chat.imagePathPrompt'))
+        return manual || null
+      })()
+    if (!path) return
     setBusy(true)
     try {
-      const url = await window.primeLauncher.chat.upload(filePath)
-      await window.primeLauncher.chat.send(activeId, text.trim() || '', url)
+      const url = await window.primeLauncher.chat.upload(path)
+      const sent = (await window.primeLauncher.chat.send(
+        activeId,
+        text.trim() || '',
+        url
+      )) as ChatMessage
       setText('')
-      setMessages((await window.primeLauncher.chat.messages(activeId)) as ChatMessage[])
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === sent.id)) {
+          return prev
+        }
+        return [...prev, sent]
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setBusy(false)
     }
   }
-
-  const active = conversations.find((c) => c.id === activeId)
 
   return (
     <PageShell
@@ -164,7 +224,7 @@ export function ChatPage() {
             {messages.map((m) => (
               <div key={m.id} style={{ maxWidth: '80%' }}>
                 <div className="text-caption">
-                  {m.senderUsername || m.senderUuid.slice(0, 8)} ·{' '}
+                  {displayName(m, active?.participants)} ·{' '}
                   {new Date(m.createdAt).toLocaleString()}
                 </div>
                 {m.text ? <div>{m.text}</div> : null}
@@ -177,6 +237,7 @@ export function ChatPage() {
                 ) : null}
               </div>
             ))}
+            <div ref={bottomRef} />
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <input

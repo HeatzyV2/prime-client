@@ -327,7 +327,11 @@ async function handleHttp(req, res, ctx) {
       }
       const limit = Math.min(100, parseInt(url.searchParams.get('limit') || '50', 10));
       const before = url.searchParams.get('before') || undefined;
-      json(res, 200, { messages: db.listMessages(conversationId, limit, before) });
+      const messages = db.listMessages(conversationId, limit, before).map((m) => ({
+        ...m,
+        senderUsername: db.getUser(m.senderUuid)?.username || null,
+      }));
+      json(res, 200, { messages });
       return true;
     }
 
@@ -349,17 +353,16 @@ async function handleHttp(req, res, ctx) {
         return true;
       }
       const message = db.addMessage(conversationId, session.uuid, text, imageUrl);
+      const senderUsername = db.getUser(session.uuid)?.username || null;
+      const enriched = { ...message, senderUsername };
       const event = {
         t: 'message',
-        message: {
-          ...message,
-          senderUsername: db.getUser(session.uuid)?.username,
-        },
+        message: enriched,
       };
       for (const u of conversation.participantUuids) {
         ctx.social.sendToUser(u, event);
       }
-      json(res, 200, { message });
+      json(res, 200, { message: enriched });
       return true;
     }
 
