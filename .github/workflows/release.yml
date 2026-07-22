@@ -19,7 +19,9 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: |
+            21
+            25
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,9 +30,10 @@ jobs:
           cache: npm
           cache-dependency-path: launcher/package-lock.json
 
-      - name: Build Prime Client mod (1.21.11)
+      - name: Build Prime Client mods
         shell: pwsh
-        run: .\gradlew :mc-1.21.11:build --no-daemon
+        run: |
+          .\gradlew :mc-1.21.11:build :mc-26.2:build --no-daemon
 
       - name: Install launcher dependencies
         working-directory: launcher
@@ -47,9 +50,11 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path release-bundle | Out-Null
           Copy-Item launcher/release/*.exe release-bundle/ -ErrorAction SilentlyContinue
-          Get-ChildItem mc-1.21.11/build/libs/prime-client-*.jar |
-            Where-Object { $_.Name -notmatch 'sources|dev' } |
-            Copy-Item -Destination release-bundle/
+          foreach ($dir in @('mc-1.21.11', 'mc-26.2')) {
+            Get-ChildItem "$dir/build/libs/prime-client-*.jar" |
+              Where-Object { $_.Name -notmatch 'sources|dev' } |
+              Copy-Item -Destination release-bundle/
+          }
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
