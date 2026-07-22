@@ -1,5 +1,6 @@
 package dev.primeclient.v26_2.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import dev.primeclient.core.hook.PrimeHooks;
 import net.minecraft.client.Camera;
 import org.spongepowered.asm.mixin.Mixin;
@@ -8,14 +9,24 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+/**
+ * In Minecraft 26.2, FOV lives on {@link Camera} ({@code calculateFov}/{@code getFov}),
+ * not on {@code GameRenderer.getFov} (removed).
+ */
 @Mixin(Camera.class)
 public abstract class CameraMixin {
 
     @Shadow
     protected abstract void setRotation(float yaw, float pitch);
 
-    @Inject(method = "setup", at = @At("RETURN"))
-    private void primeclient$cinematicCamera(CallbackInfo ci) {
+    @ModifyReturnValue(method = "calculateFov", at = @At("RETURN"))
+    private float primeclient$applyZoomFov(float fov) {
+        float multiplier = PrimeHooks.fovMultiplier();
+        return multiplier == 1.0f ? fov : fov * multiplier;
+    }
+
+    @Inject(method = "update", at = @At("RETURN"))
+    private void primeclient$cinematicCamera(net.minecraft.client.DeltaTracker deltaTracker, CallbackInfo ci) {
         if (PrimeHooks.cinematicCameraActive()) {
             setRotation(PrimeHooks.cinematicYaw(), PrimeHooks.cinematicPitch());
         }

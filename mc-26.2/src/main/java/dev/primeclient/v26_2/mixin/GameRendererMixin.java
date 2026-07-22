@@ -1,21 +1,20 @@
 package dev.primeclient.v26_2.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import dev.primeclient.core.hook.PrimeHooks;
 import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
+/**
+ * FOV zoom is handled by {@link CameraMixin} on 26.2 ({@code GameRenderer.getFov} was removed).
+ * This mixin only suppresses boss-bar world darkening when fullbright is active.
+ */
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
 
-    @ModifyVariable(
-            method = "getFov",
-            at = @At("STORE"),
-            ordinal = 0
-    )
-    private float primeclient$applyZoomFov(float fov) {
-        float multiplier = PrimeHooks.fovMultiplier();
-        return multiplier == 1.0f ? fov : fov * multiplier;
+    @ModifyReturnValue(method = "bossOverlayWorldDarkening", at = @At("RETURN"))
+    private float primeclient$noWorldDarkening(float amount) {
+        return PrimeHooks.fullbrightActive() ? 0.0F : amount;
     }
 }
