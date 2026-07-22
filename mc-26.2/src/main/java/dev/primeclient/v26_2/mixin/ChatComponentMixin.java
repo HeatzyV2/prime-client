@@ -2,8 +2,8 @@ package dev.primeclient.v26_2.mixin;
 
 import dev.primeclient.core.hook.PrimeHooks;
 import dev.primeclient.core.stream.StreamRedactor;
-import net.minecraft.client.GuiMessage;
 import net.minecraft.client.gui.components.ChatComponent;
+import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -13,39 +13,31 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 public abstract class ChatComponentMixin {
 
     @ModifyVariable(
-            method = "addMessage(Lnet/minecraft/network/chat/Component;)V",
+            method = "addMessage(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;Lnet/minecraft/client/multiplayer/chat/GuiMessageSource;Lnet/minecraft/client/multiplayer/chat/GuiMessageTag;)V",
             at = @At("HEAD"),
             argsOnly = true)
-    private Component primeclient$redactSimpleMessage(Component message) {
-        return redact(message);
+    private Component primeclient$redactMessageContents(Component contents) {
+        return redactComponent(contents);
     }
 
     @ModifyVariable(
-            method = "addMessage(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;Lnet/minecraft/client/GuiMessageTag;)V",
-            at = @At("HEAD"),
-            argsOnly = true)
-    private Component primeclient$redactSignedMessage(Component message) {
-        return redact(message);
-    }
-
-    @ModifyVariable(
-            method = "addMessageToQueue(Lnet/minecraft/client/GuiMessage;)V",
+            method = "addMessageToQueue(Lnet/minecraft/client/multiplayer/chat/GuiMessage;)V",
             at = @At("HEAD"),
             argsOnly = true)
     private GuiMessage primeclient$redactQueuedMessage(GuiMessage message) {
-        return redact(message);
+        return redactMessage(message);
     }
 
     @ModifyVariable(
-            method = "addMessageToDisplayQueue(Lnet/minecraft/client/GuiMessage;)V",
+            method = "addMessageToDisplayQueue(Lnet/minecraft/client/multiplayer/chat/GuiMessage;)V",
             at = @At("HEAD"),
             argsOnly = true)
     private GuiMessage primeclient$redactDisplayMessage(GuiMessage message) {
-        return redact(message);
+        return redactMessage(message);
     }
 
-    private static Component redact(Component message) {
-        if (!PrimeHooks.streamChatRedact() || message == null) {
+    private static Component redactComponent(Component message) {
+        if (message == null || !PrimeHooks.streamChatRedact()) {
             return message;
         }
         String plain = message.getString();
@@ -56,15 +48,15 @@ public abstract class ChatComponentMixin {
         return Component.literal(redacted).withStyle(message.getStyle());
     }
 
-    private static GuiMessage redact(GuiMessage message) {
+    private static GuiMessage redactMessage(GuiMessage message) {
         if (!PrimeHooks.streamChatRedact() || message == null) {
             return message;
         }
         Component content = message.content();
-        Component redacted = redact(content);
+        Component redacted = redactComponent(content);
         if (redacted == content) {
             return message;
         }
-        return new GuiMessage(message.addedTime(), redacted, message.signature(), message.tag());
+        return new GuiMessage(message.addedTime(), redacted, message.signature(), message.source(), message.tag());
     }
 }

@@ -70,14 +70,6 @@ final class ScoreboardAccess {
             return null;
         }
         Scoreboard scoreboard = mc.level.getScoreboard();
-        Objective objective = null;
-        PlayerTeam playerTeam = scoreboard.getPlayersTeam(mc.player.getScoreboardName());
-        if (playerTeam != null) {
-            DisplaySlot displaySlot = DisplaySlot.teamColorToSlot(playerTeam.getColor());
-            if (displaySlot != null) {
-                objective = scoreboard.getDisplayObjective(displaySlot);
-            }
-        }
-        return objective != null ? objective : scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
+        return scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
     }
 }

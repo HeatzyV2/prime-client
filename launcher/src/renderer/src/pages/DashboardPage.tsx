@@ -195,6 +195,22 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
         </div>
       </section>
 
+      <Card title={t('dashboard.whatsNew.title')}>
+        <ul className="dashboard__whats-new">
+          <li>{t('dashboard.whatsNew.themes')}</li>
+          <li>{t('dashboard.whatsNew.fps')}</li>
+          <li>{t('dashboard.whatsNew.chat')}</li>
+        </ul>
+        <a
+          className="dashboard__whats-new-link"
+          href="https://github.com/HeatzyV2/prime-client/releases/latest"
+          target="_blank"
+          rel="noreferrer"
+        >
+          {t('dashboard.whatsNew.release')}
+        </a>
+      </Card>
+
       <div className="dashboard__grid">
         <Card title={t('dashboard.primeAccount')} glow className="dashboard__grid-span-2">
           <div className="dashboard__profile">

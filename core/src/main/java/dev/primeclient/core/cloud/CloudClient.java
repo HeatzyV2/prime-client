@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Remote config sync contract. v1.1 ships a local stub; swap implementation for real API later.
+ * Config backup contract. v1 ships a local on-disk store under {@code cloud/};
+ * swap the implementation for a remote API later without changing callers.
  */
 public interface CloudClient {
 

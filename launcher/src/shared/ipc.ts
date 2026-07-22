@@ -85,6 +85,7 @@ export const IPC = {
   PARTY_CREATE: 'party:create',
   PARTY_INVITE: 'party:invite',
   PARTY_LEAVE: 'party:leave',
+  PARTY_SET_SERVER: 'party:set-server',
   SOCIAL_CONNECT: 'social:connect',
   /** Main → renderer live social WebSocket events (party, presence, chat). */
   SOCIAL_EVENT: 'social:event',

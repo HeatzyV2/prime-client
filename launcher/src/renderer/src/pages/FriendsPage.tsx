@@ -32,6 +32,8 @@ export function FriendsPage() {
     serverAddress?: string | null
     members?: { uuid: string; username: string; leader?: boolean }[]
   } | null>(null)
+  const [shareAddress, setShareAddress] = useState('')
+  const [joinPrompt, setJoinPrompt] = useState<string | null>(null)
 
   const [busy, setBusy] = useState(false)
 
@@ -71,6 +73,11 @@ export function FriendsPage() {
         return
       }
       if (event.t === 'party_join_server') {
+        const addr = typeof event.serverAddress === 'string' ? event.serverAddress : null
+        if (addr) {
+          setJoinPrompt(addr)
+          setParty((prev) => (prev ? { ...prev, serverAddress: addr } : { serverAddress: addr }))
+        }
         void refresh()
       }
     })
@@ -144,6 +151,33 @@ export function FriendsPage() {
         </p>
       )}
 
+      {joinPrompt ? (
+        <div className="list-row" style={{ marginBottom: 16, borderColor: 'var(--prime-red)' }}>
+          <div className="list-row__body">
+            <div className="list-row__title">{t('friends.partyJoinPrompt')}</div>
+            <div className="list-row__desc">{joinPrompt}</div>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() =>
+              void (async () => {
+                const inst = await window.primeLauncher.instance.getDefault()
+                if (!inst?.id) return
+                await window.primeLauncher.settings.update({ lastServerAddress: joinPrompt })
+                await launch(inst.id, joinPrompt)
+                setJoinPrompt(null)
+              })()
+            }
+          >
+            {t('friends.joinPartyServer')}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setJoinPrompt(null)}>
+            {t('friends.dismiss')}
+          </Button>
+        </div>
+      ) : null}
+
       {party?.serverAddress ? (
         <div className="list-row" style={{ marginBottom: 16 }}>
           <div className="list-row__body">
@@ -166,6 +200,40 @@ export function FriendsPage() {
           </Button>
         </div>
       ) : null}
+
+      <div className="page-grid page-grid--2" style={{ marginBottom: 12 }}>
+        <input
+          className="modal__field"
+          placeholder={t('friends.shareServerPrompt')}
+          value={shareAddress}
+          onChange={(e) => setShareAddress(e.target.value)}
+        />
+        <Button
+          variant="secondary"
+          disabled={shareAddress.trim().length < 3}
+          onClick={() =>
+            void (async () => {
+              try {
+                const result = (await window.primeLauncher.party.setServer(shareAddress.trim())) as {
+                  ok?: boolean
+                  error?: string
+                }
+                if (result && result.ok === false) {
+                  setError(result.error ?? t('friends.shareServerFailed'))
+                  return
+                }
+                setError(null)
+                setShareAddress('')
+                await refresh()
+              } catch (err) {
+                setError(err instanceof Error ? err.message : t('friends.shareServerFailed'))
+              }
+            })()
+          }
+        >
+          {t('friends.shareServer')}
+        </Button>
+      </div>
 
       {friends.length === 0 ? (
         <p className="text-caption">{t('friends.empty')}</p>

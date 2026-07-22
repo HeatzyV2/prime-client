@@ -77,6 +77,14 @@ public final class ProfileManager {
     /** Saves the active profile to disk. */
     public void saveActive() {
         Path file = profileFile(activeProfile);
+        // Absorb launcher bridge writes (theme / cosmetics / modules) before we overwrite.
+        long mtime = readMtime(file);
+        if (mtime > lastProfileMtime) {
+            lastProfileMtime = mtime;
+            configManager.reloadSection(file, "cosmetics");
+            configManager.reloadSection(file, "theme");
+            configManager.reloadSection(file, "modules");
+        }
         configManager.saveTo(file);
         lastProfileMtime = readMtime(file);
     }

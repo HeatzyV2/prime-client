@@ -3,29 +3,36 @@ import type { NewsItem } from './types'
 
 /** Static store catalog — purchases unlock locally (Prime Coins, no payment server). */
 export const STORE_CATALOG: StoreItem[] = [
-  { id: 'cape-prime', name: 'Prime Cape', description: 'Official Prime Client cape.', price: 0, category: 'cosmetic', owned: false },
-  { id: 'theme-crimson', name: 'Crimson Theme', description: 'Signature red Prime theme (included in settings).', price: 0, category: 'theme', owned: true },
+  { id: 'cape-prime', name: 'Prime Cape', description: 'Official Prime Client cape — visible to Prime peers.', price: 0, category: 'cosmetic', owned: true },
+  { id: 'cape-star', name: 'Star Cape', description: 'Gold star cape for Prime peers.', price: 200, category: 'cosmetic', owned: false },
+  { id: 'cape-crimson', name: 'Crimson Cape', description: 'Signature crimson cape.', price: 250, category: 'cosmetic', owned: false },
+  { id: 'cape-midnight', name: 'Midnight Cape', description: 'Indigo midnight cape.', price: 200, category: 'cosmetic', owned: false },
+  { id: 'wings-aurora', name: 'Aurora Wings', description: 'Animated aurora wings — visible to Prime peers.', price: 0, category: 'cosmetic', owned: true },
+  { id: 'wings-ember', name: 'Ember Wings', description: 'Animated fiery wings.', price: 400, category: 'cosmetic', owned: false },
+  { id: 'theme-crimson', name: 'Crimson Theme', description: 'Signature red Prime theme (free in settings).', price: 0, category: 'theme', owned: true },
+  { id: 'theme-midnight', name: 'Midnight Theme', description: 'Cool indigo theme (free in settings).', price: 0, category: 'theme', owned: true },
+  { id: 'theme-aurora', name: 'Aurora Theme', description: 'Cyan aurora theme (free in settings).', price: 0, category: 'theme', owned: true },
   { id: 'bg-nebula', name: 'Nebula Background', description: 'Animated space background.', price: 150, category: 'background', owned: false },
-  { id: 'badge-founder', name: 'Founder Badge', description: 'Limited edition profile badge.', price: 500, category: 'badge', owned: false },
-  { id: 'wings-ember', name: 'Ember Wings', description: 'Fiery cosmetic wings.', price: 400, category: 'cosmetic', owned: false },
-  { id: 'pet-fox', name: 'Arctic Fox', description: 'Companion pet cosmetic.', price: 300, category: 'cosmetic', owned: false },
-  { id: 'emote-wave', name: 'Prime Wave', description: 'Signature emote.', price: 100, category: 'cosmetic', owned: false }
+  { id: 'badge-founder', name: 'Founder Badge', description: 'Limited edition launcher profile badge.', price: 500, category: 'badge', owned: false }
 ]
 
 export const COSMETIC_CATALOG: Omit<CosmeticItem, 'equipped'>[] = [
   { id: 'cape-prime', name: 'Prime Cape', type: 'cape', rarity: 'legendary' },
-  { id: 'wings-ember', name: 'Ember Wings', type: 'wings', rarity: 'epic' },
-  { id: 'pet-fox', name: 'Arctic Fox', type: 'pet', rarity: 'rare' },
-  { id: 'emote-wave', name: 'Prime Wave', type: 'emote', rarity: 'common' },
-  { id: 'badge-founder', name: 'Founder', type: 'badge', rarity: 'legendary' },
-  { id: 'badge-veteran', name: 'Veteran', type: 'badge', rarity: 'rare' }
+  { id: 'cape-star', name: 'Star Cape', type: 'cape', rarity: 'epic' },
+  { id: 'cape-crimson', name: 'Crimson Cape', type: 'cape', rarity: 'epic' },
+  { id: 'cape-midnight', name: 'Midnight Cape', type: 'cape', rarity: 'rare' },
+  { id: 'wings-aurora', name: 'Aurora Wings', type: 'wings', rarity: 'epic' },
+  { id: 'wings-ember', name: 'Ember Wings', type: 'wings', rarity: 'legendary' },
+  { id: 'badge-founder', name: 'Founder', type: 'badge', rarity: 'legendary' }
 ]
 
 export const STORE_TO_COSMETIC: Record<string, string> = {
   'cape-prime': 'cape-prime',
+  'cape-star': 'cape-star',
+  'cape-crimson': 'cape-crimson',
+  'cape-midnight': 'cape-midnight',
+  'wings-aurora': 'wings-aurora',
   'wings-ember': 'wings-ember',
-  'pet-fox': 'pet-fox',
-  'emote-wave': 'emote-wave',
   'badge-founder': 'badge-founder'
 }
 
@@ -67,5 +74,5 @@ export const PERFORMANCE_PRESETS: PerformancePresetInfo[] = [
   { id: 'ultra', label: 'Ultra', ramMb: 8192, renderDistance: 24, description: 'Maximum quality for powerful PCs.' }
 ]
 
-export const DEFAULT_OWNED_STORE = ['cape-prime']
-export const DEFAULT_EQUIPPED_COSMETICS = ['cape-prime', 'badge-veteran']
+export const DEFAULT_OWNED_STORE = ['cape-prime', 'wings-aurora', 'theme-crimson', 'theme-midnight', 'theme-aurora']
+export const DEFAULT_EQUIPPED_COSMETICS = ['cape-prime', 'wings-aurora']

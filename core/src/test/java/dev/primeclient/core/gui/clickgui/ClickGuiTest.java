@@ -128,8 +128,8 @@ class ClickGuiTest {
     private ClickGui gui;
     private TestModule module;
 
-    // Legacy category panel for QoL at x = 8 + 2 * (160 + 8) = 344
-    private static final double LEGACY_PANEL_X = 344;
+    // Legacy category panel for QoL: PvP, Survival, Performance, then QoL → index 3
+    private static final double LEGACY_PANEL_X = 8 + 3 * (Panel.WIDTH + 8);
     private static final double PANEL_X = SCREEN_W - Panel.WIDTH - 12;
     private static final double HEADER_Y = 8;
     private static final double FIRST_ROW_Y = HEADER_Y + 18;

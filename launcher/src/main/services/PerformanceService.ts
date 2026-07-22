@@ -5,6 +5,7 @@ import type { HardwareProfile, PerformancePreset } from '../../shared/content-ty
 import { PERFORMANCE_PRESETS } from '../../shared/ecosystem-catalog'
 import { readOptionsLines, setOptionValue, writeOptionsLines } from '../content/options'
 import { instanceService } from './InstanceService'
+import { launcherBridgeService } from './LauncherBridgeService'
 import { profileService } from './ProfileService'
 import { settingsStore } from '../storage/SettingsStore'
 
@@ -93,6 +94,11 @@ export class PerformanceService {
       s.performancePreset = presetId
       s.defaultRamMb = preset.ramMb
     })
+
+    const bridge = await launcherBridgeService.syncToInstance(targetId)
+    if (!bridge.ok) {
+      return { ok: false, error: bridge.error ?? 'Bridge sync failed.' }
+    }
 
     return { ok: true }
   }

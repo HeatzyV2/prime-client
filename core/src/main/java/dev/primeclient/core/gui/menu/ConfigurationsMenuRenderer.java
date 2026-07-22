@@ -3,58 +3,180 @@ package dev.primeclient.core.gui.menu;
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.cloud.CloudClient;
 import dev.primeclient.core.cloud.CloudSyncManager;
+import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.theme.Theme;
+import dev.primeclient.core.util.ColorUtil;
 
-/** Cloud config versions and sync controls. */
+import java.util.List;
+
+/**
+ * Local configuration backups — upload / download / restore.
+ * Storage is on-disk under the game dir (not a remote cloud).
+ */
 public final class ConfigurationsMenuRenderer {
 
+    private static final int PANEL_W = 320;
+    private static final int PANEL_H = 210;
+    private static final int BTN_H = 18;
+    private static final int BTN_GAP = 6;
+
+    private int selectedVersion;
+    private String statusMessage = "";
+
     public void render(RenderContext ctx, Theme theme, CloudSyncManager cloud, ProfileManager profiles,
-                       int screenW, int screenH) {
-        int w = 300;
-        int h = 180;
-        int x = (screenW - w) / 2;
-        int y = (screenH - h) / 2;
-        ctx.fillRect(x, y, w, h, theme.background());
-        ctx.fillRect(x, y, w, 2, theme.accent());
+                       int screenW, int screenH, double mouseX, double mouseY) {
+        int x = (screenW - PANEL_W) / 2;
+        int y = (screenH - PANEL_H) / 2;
+        ctx.fillRect(x, y, PANEL_W, PANEL_H, theme.background());
+        ctx.fillRect(x, y, PANEL_W, 2, theme.accent());
+
         ctx.drawText(PrimeLang.get("prime.gui.configurations.title", "Configurations"),
                 x + 12, y + 10, theme.accent(), true);
+        ctx.drawText(PrimeLang.get("prime.gui.configurations.local_only", "Local backups only — stored on this PC"),
+                x + 12, y + 26, theme.foregroundMuted(), true);
         ctx.drawText(PrimeLang.get("prime.gui.configurations.profile", "Profile: %s", profiles.activeProfile()),
-                x + 12, y + 30, theme.foreground(), true);
-        String syncState = cloud.autoSync()
-                ? PrimeLang.get("prime.gui.configurations.on", "ON")
-                : PrimeLang.get("prime.gui.configurations.off", "OFF");
-        ctx.drawText(PrimeLang.get("prime.gui.configurations.auto_sync", "Auto sync: %s", syncState),
-                x + 12, y + 46, theme.foregroundMuted(), true);
+                x + 12, y + 42, theme.foreground(), true);
 
-        int rowY = y + 66;
-        var versions = cloud.listVersions(profiles.activeProfile());
+        int btnY = y + 60;
+        int btnW = (PANEL_W - 24 - BTN_GAP * 2) / 3;
+        drawButton(ctx, theme, x + 12, btnY, btnW, BTN_H,
+                PrimeLang.get("prime.gui.configurations.upload", "Upload"), mouseX, mouseY);
+        drawButton(ctx, theme, x + 12 + btnW + BTN_GAP, btnY, btnW, BTN_H,
+                PrimeLang.get("prime.gui.configurations.download", "Download"), mouseX, mouseY);
+        drawButton(ctx, theme, x + 12 + (btnW + BTN_GAP) * 2, btnY, btnW, BTN_H,
+                PrimeLang.get("prime.gui.configurations.restore", "Restore"), mouseX, mouseY);
+
+        List<CloudClient.VersionEntry> versions = cloud.listVersions(profiles.activeProfile());
+        if (selectedVersion >= versions.size()) {
+            selectedVersion = Math.max(0, versions.size() - 1);
+        }
+
+        int rowY = btnY + BTN_H + 12;
         ctx.drawText(PrimeLang.get("prime.gui.configurations.versions", "Versions (%d):", versions.size()),
                 x + 12, rowY, theme.foreground(), true);
         rowY += 14;
         int shown = 0;
-        for (CloudClient.VersionEntry entry : versions) {
-            if (shown++ >= 5) {
-                break;
+        for (int i = 0; i < versions.size() && shown < 5; i++) {
+            CloudClient.VersionEntry entry = versions.get(i);
+            boolean sel = i == selectedVersion;
+            int rowH = 12;
+            if (sel) {
+                ctx.fillRect(x + 12, rowY - 1, PANEL_W - 24, rowH + 2,
+                        ColorUtil.withAlpha(theme.accent(), 0.25f));
             }
-            ctx.drawText("• " + entry.label(), x + 16, rowY, theme.foregroundMuted(), true);
-            rowY += 12;
+            ctx.drawText((sel ? "› " : "  ") + trimLabel(entry.label(), 36),
+                    x + 14, rowY, sel ? theme.accent() : theme.foregroundMuted(), true);
+            rowY += rowH + 2;
+            shown++;
         }
-        ctx.drawText(PrimeLang.get("prime.gui.configurations.footer",
-                        "U=upload  D=download  Modules → Prime Config Cloud"),
-                x + 12, y + h - 16, theme.foregroundMuted(), true);
+        if (versions.isEmpty()) {
+            ctx.drawText(PrimeLang.get("prime.gui.configurations.empty", "No backups yet — tap Upload"),
+                    x + 16, rowY, theme.foregroundMuted(), true);
+        }
+
+        if (!statusMessage.isBlank()) {
+            ctx.drawText(statusMessage, x + 12, y + PANEL_H - 28, theme.foregroundMuted(), true);
+        }
+        ctx.drawText(PrimeLang.get("prime.gui.configurations.hint", "Click a version, then Restore"),
+                x + 12, y + PANEL_H - 14, theme.foregroundMuted(), true);
+    }
+
+    public boolean mousePressed(double mx, double my, int button,
+                                CloudSyncManager cloud, ProfileManager profiles,
+                                int screenW, int screenH) {
+        if (button != 0) {
+            return false;
+        }
+        int x = (screenW - PANEL_W) / 2;
+        int y = (screenH - PANEL_H) / 2;
+        if (mx < x || mx >= x + PANEL_W || my < y || my >= y + PANEL_H) {
+            return false;
+        }
+
+        int btnY = y + 60;
+        int btnW = (PANEL_W - 24 - BTN_GAP * 2) / 3;
+        if (hit(mx, my, x + 12, btnY, btnW, BTN_H)) {
+            profiles.saveActive();
+            cloud.uploadNow(profiles.activeProfile());
+            statusMessage = PrimeLang.get("prime.gui.configurations.status.uploaded", "Backup saved locally");
+            return true;
+        }
+        if (hit(mx, my, x + 12 + btnW + BTN_GAP, btnY, btnW, BTN_H)) {
+            if (cloud.downloadNow(profiles.activeProfile())) {
+                profiles.saveActive();
+                statusMessage = PrimeLang.get("prime.gui.configurations.status.downloaded", "Backup restored");
+            } else {
+                statusMessage = PrimeLang.get("prime.gui.configurations.status.none", "No backup found");
+            }
+            return true;
+        }
+        if (hit(mx, my, x + 12 + (btnW + BTN_GAP) * 2, btnY, btnW, BTN_H)) {
+            List<CloudClient.VersionEntry> versions = cloud.listVersions(profiles.activeProfile());
+            if (selectedVersion >= 0 && selectedVersion < versions.size()) {
+                String id = versions.get(selectedVersion).id();
+                if (cloud.restoreVersion(profiles.activeProfile(), id)) {
+                    profiles.saveActive();
+                    statusMessage = PrimeLang.get("prime.gui.configurations.status.restored", "Version restored");
+                } else {
+                    statusMessage = PrimeLang.get("prime.gui.configurations.status.failed", "Restore failed");
+                }
+            } else {
+                statusMessage = PrimeLang.get("prime.gui.configurations.status.pick", "Select a version first");
+            }
+            return true;
+        }
+
+        List<CloudClient.VersionEntry> versions = cloud.listVersions(profiles.activeProfile());
+        int rowY = btnY + BTN_H + 12 + 14;
+        for (int i = 0; i < versions.size() && i < 5; i++) {
+            if (hit(mx, my, x + 12, rowY - 1, PANEL_W - 24, 14)) {
+                selectedVersion = i;
+                return true;
+            }
+            rowY += 14;
+        }
+        return true;
     }
 
     public boolean keyPressed(int key, CloudSyncManager cloud, ProfileManager profiles) {
         if (key == 85) { // U
+            profiles.saveActive();
             cloud.uploadNow(profiles.activeProfile());
+            statusMessage = PrimeLang.get("prime.gui.configurations.status.uploaded", "Backup saved locally");
             return true;
         }
         if (key == 68) { // D
-            cloud.downloadNow(profiles.activeProfile());
+            if (cloud.downloadNow(profiles.activeProfile())) {
+                profiles.saveActive();
+                statusMessage = PrimeLang.get("prime.gui.configurations.status.downloaded", "Backup restored");
+            } else {
+                statusMessage = PrimeLang.get("prime.gui.configurations.status.none", "No backup found");
+            }
             return true;
         }
         return false;
+    }
+
+    private static void drawButton(RenderContext ctx, Theme theme, int x, int y, int w, int h,
+                                   String label, double mouseX, double mouseY) {
+        boolean hover = hit(mouseX, mouseY, x, y, w, h);
+        ctx.fillRoundedRect(x, y, w, h, PrimeDesign.RADIUS_SM,
+                hover ? theme.accent() : theme.backgroundLight());
+        int tw = ctx.textWidth(label);
+        ctx.drawText(label, x + (w - tw) / 2, y + (h - ctx.fontHeight()) / 2 + 1,
+                hover ? theme.foreground() : theme.foregroundMuted(), false);
+    }
+
+    private static String trimLabel(String label, int max) {
+        if (label.length() <= max) {
+            return label;
+        }
+        return label.substring(0, Math.max(0, max - 1)) + "…";
+    }
+
+    private static boolean hit(double mx, double my, int x, int y, int w, int h) {
+        return mx >= x && mx < x + w && my >= y && my < y + h;
     }
 }

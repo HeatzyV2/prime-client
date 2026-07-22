@@ -3,6 +3,7 @@ package dev.primeclient.v1_21_11.network;
 import dev.primeclient.core.PrimeClient;
 import dev.primeclient.core.hook.PrimeHooks;
 import dev.primeclient.core.state.ClientBadgeState;
+import dev.primeclient.core.state.CosmeticsState;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -24,7 +25,8 @@ public final class PresenceNetworking {
         PayloadTypeRegistry.playS2C().register(PresencePayload.TYPE, PresencePayload.CODEC);
 
         ClientPlayNetworking.registerGlobalReceiver(PresencePayload.TYPE, (payload, context) ->
-                context.client().execute(() -> PrimeHooks.onPresencePayload(payload.playerId())));
+                context.client().execute(() -> PrimeHooks.onPresencePayload(
+                        payload.playerId(), payload.capeId(), payload.wingsId())));
 
         PrimeClient.get().presence().setNetworkAnnouncer(PresenceNetworking::sendLocalPresence);
 
@@ -38,12 +40,12 @@ public final class PresenceNetworking {
                 ServerPlayNetworking.registerGlobalReceiver(PresencePayload.TYPE, (payload, context) -> {
                     ServerPlayer sender = context.player();
                     UUID senderId = sender.getUUID();
+                    PresencePayload forward = new PresencePayload(senderId, payload.capeId(), payload.wingsId());
                     for (ServerPlayer target : server.getPlayerList().getPlayers()) {
                         if (target == sender) {
                             continue;
                         }
-                        ServerPlayNetworking.send(target, new PresencePayload(senderId));
-                        ServerPlayNetworking.send(sender, new PresencePayload(target.getUUID()));
+                        ServerPlayNetworking.send(target, forward);
                     }
                 }));
     }
@@ -53,6 +55,9 @@ public final class PresenceNetworking {
         if (client.player == null || !ClientPlayNetworking.canSend(PresencePayload.TYPE)) {
             return;
         }
-        ClientPlayNetworking.send(new PresencePayload(client.player.getUUID()));
+        ClientPlayNetworking.send(new PresencePayload(
+                client.player.getUUID(),
+                CosmeticsState.localCapeId(),
+                CosmeticsState.localWingsId()));
     }
 }

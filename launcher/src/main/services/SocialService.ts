@@ -52,10 +52,42 @@ export class SocialService {
   private ws: WebSocket | null = null
   private listeners = new Set<Listener>()
   private connecting: Promise<void> | null = null
+  private reconnectFailures = 0
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
   onEvent(listener: Listener): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  /** Clears cached session so the next call re-authenticates. */
+  clearSession(): void {
+    this.token = null
+    this.uuid = null
+    this.reconnectFailures = 0
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+    try {
+      this.ws?.close()
+    } catch {
+      // ignore
+    }
+    this.ws = null
+    this.connecting = null
+  }
+
+  private scheduleReconnect(): void {
+    if (!this.token) return
+    if (this.reconnectTimer) return
+    // Exponential backoff: 3s → 6s → 12s → 24s → 30s cap.
+    const delayMs = Math.min(30_000, 3_000 * 2 ** Math.min(this.reconnectFailures, 3))
+    this.reconnectFailures++
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null
+      if (this.token) void this.connectWs()
+    }, delayMs)
   }
 
   private emit(event: Record<string, unknown>): void {
@@ -111,6 +143,7 @@ export class SocialService {
       this.ws = ws
       ws.on('open', () => {
         this.connecting = null
+        this.reconnectFailures = 0
         this.setPresence('online', 'In launcher')
         resolve()
       })
@@ -123,14 +156,22 @@ export class SocialService {
         }
       })
       ws.on('close', () => {
-        this.ws = null
+        if (this.ws === ws) {
+          this.ws = null
+        }
         this.connecting = null
-        setTimeout(() => {
-          if (this.token) void this.connectWs()
-        }, 3000)
+        this.scheduleReconnect()
       })
       ws.on('error', () => {
         this.connecting = null
+        try {
+          ws.close()
+        } catch {
+          // ignore — close handler schedules reconnect
+        }
+        if (this.ws === ws) {
+          this.ws = null
+        }
         resolve()
       })
     })
@@ -146,9 +187,26 @@ export class SocialService {
     }
   }
 
-  async listFriends(): Promise<FriendEntry[]> {
+  /** On 401, drop the session so the next request re-logs in. */
+  private async fetchAuthed(path: string, init?: RequestInit): Promise<Response> {
     const headers = await this.authHeaders()
-    const res = await fetch(`${apiBase()}/v1/friends`, { headers })
+    const res = await fetch(`${apiBase()}${path}`, {
+      ...init,
+      headers: { ...headers, ...(init?.headers as Record<string, string> | undefined) }
+    })
+    if (res.status === 401) {
+      this.clearSession()
+      const headers2 = await this.authHeaders()
+      return fetch(`${apiBase()}${path}`, {
+        ...init,
+        headers: { ...headers2, ...(init?.headers as Record<string, string> | undefined) }
+      })
+    }
+    return res
+  }
+
+  async listFriends(): Promise<FriendEntry[]> {
+    const res = await this.fetchAuthed('/v1/friends')
     if (!res.ok) throw new Error('Failed to load friends')
     const data = (await res.json()) as { friends: SocialFriend[] }
     const notes = await this.localNotes()
@@ -169,10 +227,8 @@ export class SocialService {
 
   async requestFriend(username: string, note?: string): Promise<{ ok: boolean; error?: string }> {
     try {
-      const headers = await this.authHeaders()
-      const res = await fetch(`${apiBase()}/v1/friends/request`, {
+      const res = await this.fetchAuthed('/v1/friends/request', {
         method: 'POST',
-        headers,
         body: JSON.stringify({ username: username.trim() })
       })
       const data = (await res.json().catch(() => ({}))) as { error?: string; friendship?: { toUuid?: string } }
@@ -188,10 +244,8 @@ export class SocialService {
 
   async acceptFriend(uuid: string): Promise<{ ok: boolean; error?: string }> {
     try {
-      const headers = await this.authHeaders()
-      const res = await fetch(`${apiBase()}/v1/friends/accept`, {
+      const res = await this.fetchAuthed('/v1/friends/accept', {
         method: 'POST',
-        headers,
         body: JSON.stringify({ uuid })
       })
       if (!res.ok) {
@@ -206,10 +260,8 @@ export class SocialService {
 
   async removeFriend(uuid: string): Promise<{ ok: boolean; error?: string }> {
     try {
-      const headers = await this.authHeaders()
-      const res = await fetch(`${apiBase()}/v1/friends/${encodeURIComponent(uuid)}`, {
-        method: 'DELETE',
-        headers
+      const res = await this.fetchAuthed(`/v1/friends/${encodeURIComponent(uuid)}`, {
+        method: 'DELETE'
       })
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string }
@@ -222,18 +274,15 @@ export class SocialService {
   }
 
   async listConversations(): Promise<Conversation[]> {
-    const headers = await this.authHeaders()
-    const res = await fetch(`${apiBase()}/v1/conversations`, { headers })
+    const res = await this.fetchAuthed('/v1/conversations')
     if (!res.ok) throw new Error('Failed to load conversations')
     const data = (await res.json()) as { conversations: Conversation[] }
     return data.conversations
   }
 
   async openDm(uuid: string): Promise<Conversation> {
-    const headers = await this.authHeaders()
-    const res = await fetch(`${apiBase()}/v1/conversations/dm`, {
+    const res = await this.fetchAuthed('/v1/conversations/dm', {
       method: 'POST',
-      headers,
       body: JSON.stringify({ uuid })
     })
     if (!res.ok) {
@@ -245,10 +294,8 @@ export class SocialService {
   }
 
   async listMessages(conversationId: string): Promise<ChatMessage[]> {
-    const headers = await this.authHeaders()
-    const res = await fetch(
-      `${apiBase()}/v1/conversations/${encodeURIComponent(conversationId)}/messages`,
-      { headers }
+    const res = await this.fetchAuthed(
+      `/v1/conversations/${encodeURIComponent(conversationId)}/messages`
     )
     if (!res.ok) throw new Error('Failed to load messages')
     const data = (await res.json()) as { messages: ChatMessage[] }
@@ -263,12 +310,10 @@ export class SocialService {
     text: string,
     imageUrl?: string | null
   ): Promise<ChatMessage> {
-    const headers = await this.authHeaders()
-    const res = await fetch(
-      `${apiBase()}/v1/conversations/${encodeURIComponent(conversationId)}/messages`,
+    const res = await this.fetchAuthed(
+      `/v1/conversations/${encodeURIComponent(conversationId)}/messages`,
       {
         method: 'POST',
-        headers,
         body: JSON.stringify({ text, imageUrl: imageUrl || null })
       }
     )
@@ -320,17 +365,14 @@ export class SocialService {
   }
 
   async createParty(): Promise<unknown> {
-    const headers = await this.authHeaders()
-    const res = await fetch(`${apiBase()}/v1/party`, { method: 'POST', headers })
+    const res = await this.fetchAuthed('/v1/party', { method: 'POST' })
     if (!res.ok) throw new Error('Failed to create party')
     return res.json()
   }
 
   async inviteToParty(uuid: string): Promise<unknown> {
-    const headers = await this.authHeaders()
-    const res = await fetch(`${apiBase()}/v1/party/invite`, {
+    const res = await this.fetchAuthed('/v1/party/invite', {
       method: 'POST',
-      headers,
       body: JSON.stringify({ uuid })
     })
     if (!res.ok) {
@@ -341,15 +383,29 @@ export class SocialService {
   }
 
   async leaveParty(): Promise<void> {
-    const headers = await this.authHeaders()
-    await fetch(`${apiBase()}/v1/party/leave`, { method: 'POST', headers })
+    await this.fetchAuthed('/v1/party/leave', { method: 'POST' })
   }
 
   async getParty(): Promise<unknown> {
-    const headers = await this.authHeaders()
-    const res = await fetch(`${apiBase()}/v1/party`, { headers })
+    const res = await this.fetchAuthed('/v1/party')
     if (!res.ok) throw new Error('Failed to load party')
     return res.json()
+  }
+
+  async setPartyServer(serverAddress: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await this.fetchAuthed('/v1/party/server', {
+        method: 'POST',
+        body: JSON.stringify({ serverAddress: serverAddress.trim() })
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        return { ok: false, error: data.error || 'Only the party leader can share a server.' }
+      }
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Failed to share server' }
+    }
   }
 
   /** Push presence to the social WebSocket (`{ t: 'presence', status, activity, serverAddress }`). */

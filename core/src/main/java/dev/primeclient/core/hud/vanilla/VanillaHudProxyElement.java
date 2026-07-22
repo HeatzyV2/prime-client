@@ -31,7 +31,7 @@ public final class VanillaHudProxyElement extends HudElement {
         return VanillaHudTransformHelper.localHeight(component);
     }
 
-    static boolean hasDefaultLayout(HudElement element, VanillaHudComponent component) {
+    public static boolean hasDefaultLayout(HudElement element, VanillaHudComponent component) {
         return element.anchor() == component.defaultAnchor()
                 && Math.abs(element.offsetX() - component.defaultOffsetX()) < 0.01f
                 && Math.abs(element.offsetY() - component.defaultOffsetY()) < 0.01f;

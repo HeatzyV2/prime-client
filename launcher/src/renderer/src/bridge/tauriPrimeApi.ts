@@ -240,7 +240,8 @@ export function createTauriPrimeApi() {
       get: () => invoke('party_get'),
       create: () => invoke('party_create'),
       invite: (uuid: string) => invoke('party_invite', { uuid }),
-      leave: () => invoke('party_leave')
+      leave: () => invoke('party_leave'),
+      setServer: (serverAddress: string) => invoke('party_set_server', { serverAddress })
     },
     news: {
       list: () => invoke('news_list')

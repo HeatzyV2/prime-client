@@ -8,24 +8,28 @@ import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 import dev.primeclient.core.state.CosmeticsState;
 
-/** Equip Prime cosmetics (capes, wings, hats, badges). */
+/** Equip Prime cosmetics (capes and wings — world-rendered). */
 public final class PrimeCosmeticsModule extends Module {
 
     private final EnumSetting<CosmeticType> slot =
             addSetting(new EnumSetting<>("slot", "Slot", "Cosmetic slot to edit", CosmeticType.CAPE));
 
     private final CosmeticManager cosmetics;
-    private CosmeticType lastSlot = CosmeticType.CAPE;
 
     public PrimeCosmeticsModule(CosmeticManager cosmetics) {
-        super("prime-cosmetics", "Prime Cosmetics", "Customize your client appearance", ModuleCategory.PRIME);
+        super("prime-cosmetics", "Prime Cosmetics",
+                "Capes and wings visible to you and Prime peers", ModuleCategory.PRIME);
         this.cosmetics = cosmetics;
-        listen(ClientTickEvent.class, event -> sync());
+        listen(ClientTickEvent.class, event -> {
+            if (isEnabled()) {
+                pushState();
+            }
+        });
     }
 
     @Override
     protected void onEnable() {
-        sync();
+        pushState();
     }
 
     @Override
@@ -36,8 +40,12 @@ public final class PrimeCosmeticsModule extends Module {
     /** Cycles equipped item in the selected slot. */
     public void cycleEquipped() {
         CosmeticType type = slot.get();
+        if (type != CosmeticType.CAPE && type != CosmeticType.WINGS) {
+            type = CosmeticType.CAPE;
+        }
+        final CosmeticType cycleType = type;
         var items = cosmetics.catalog().values().stream()
-                .filter(i -> i.type() == type).toList();
+                .filter(i -> i.type() == cycleType).toList();
         if (items.isEmpty()) {
             return;
         }
@@ -54,12 +62,11 @@ public final class PrimeCosmeticsModule extends Module {
         cosmetics.equip(type, items.get(idx).id());
     }
 
-    private void sync() {
-        if (!isEnabled()) {
-            return;
-        }
-        if (slot.get() != lastSlot) {
-            lastSlot = slot.get();
-        }
+    private void pushState() {
+        var cape = cosmetics.equipped(CosmeticType.CAPE);
+        var wings = cosmetics.equipped(CosmeticType.WINGS);
+        CosmeticsState.setLocalLoadout(
+                cape != null ? cape.id() : "",
+                wings != null ? wings.id() : "");
     }
 }

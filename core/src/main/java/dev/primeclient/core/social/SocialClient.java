@@ -71,6 +71,7 @@ public final class SocialClient implements WebSocket.Listener {
     private volatile String pendingPresenceStatus;
     private volatile String pendingPresenceActivity;
     private volatile String pendingPresenceServer;
+    private volatile String pendingPartyServerPublish;
     private final StringBuilder textBuffer = new StringBuilder();
 
     public SocialClient(SocialSettings settings) {
@@ -353,6 +354,59 @@ public final class SocialClient implements WebSocket.Listener {
         return postJson("/v1/party/server", obj -> obj.addProperty("serverAddress", serverAddress));
     }
 
+    /** Queues a party-server publish until the socket is connected (and party exists). */
+    public void queuePartyServerPublish(String serverAddress) {
+        if (serverAddress == null || serverAddress.isBlank()) {
+            return;
+        }
+        pendingPartyServerPublish = serverAddress.trim();
+        flushPendingPartyServer();
+    }
+
+    public void clearPendingPartyServerPublish() {
+        pendingPartyServerPublish = null;
+    }
+
+    private void flushPendingPartyServer() {
+        String server = pendingPartyServerPublish;
+        if (server == null || !connected() || party == null) {
+            return;
+        }
+        // Leader-only on the backend — non-leaders fail silently and keep the queue.
+        if (setPartyServer(server)) {
+            pendingPartyServerPublish = null;
+        }
+    }
+
+    public boolean refreshParty() {
+        if (token == null) {
+            return false;
+        }
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(settings.apiBase() + "/v1/party"))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Authorization", "Bearer " + token)
+                    .header("User-Agent", "PrimeClient-Game")
+                    .GET()
+                    .build();
+            HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (res.statusCode() / 100 != 2) {
+                return false;
+            }
+            JsonObject json = JsonParser.parseString(res.body()).getAsJsonObject();
+            if (json.has("party") && !json.get("party").isJsonNull()) {
+                party = parseParty(json.getAsJsonObject("party"));
+            } else {
+                party = null;
+            }
+            flushPendingPartyServer();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private boolean postJson(String path, Consumer<JsonObject> bodyBuilder) {
         if (token == null) {
             return false;
@@ -395,6 +449,10 @@ public final class SocialClient implements WebSocket.Listener {
                         pendingPresenceActivity = "In game";
                     }
                     flushPresence();
+                    CompletableFuture.runAsync(() -> {
+                        refreshParty();
+                        flushPendingPartyServer();
+                    });
                 });
     }
 
@@ -528,6 +586,9 @@ public final class SocialClient implements WebSocket.Listener {
 
     @Override
     public void onError(WebSocket webSocket, Throwable error) {
+        if (socket == webSocket) {
+            socket = null;
+        }
         state = ConnState.ERROR;
         statusMessage = "WS error: " + shortMsg(error);
         LOGGER.warn("Social WS error: {}", error.toString());

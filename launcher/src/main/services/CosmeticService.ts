@@ -2,22 +2,18 @@ import type { CosmeticItem } from '../../shared/content-types'
 import { COSMETIC_CATALOG, STORE_TO_COSMETIC } from '../../shared/ecosystem-catalog'
 import { ecosystemStore } from '../storage/EcosystemStore'
 
+const FREE_COSMETICS = new Set(['cape-prime', 'wings-aurora'])
+
 export class CosmeticService {
   async list(): Promise<CosmeticItem[]> {
     const db = await ecosystemStore.load()
-    const ownedCosmeticIds = new Set<string>()
-
-    ownedCosmeticIds.add('badge-veteran')
+    const ownedCosmeticIds = new Set<string>(FREE_COSMETICS)
 
     for (const storeId of db.ownedStoreItems) {
       const cosmeticId = STORE_TO_COSMETIC[storeId]
       if (cosmeticId) {
         ownedCosmeticIds.add(cosmeticId)
       }
-    }
-
-    if (db.ownedStoreItems.includes('cape-prime')) {
-      ownedCosmeticIds.add('cape-prime')
     }
 
     return COSMETIC_CATALOG.filter((c) => ownedCosmeticIds.has(c.id)).map((c) => ({

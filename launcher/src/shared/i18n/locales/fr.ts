@@ -69,7 +69,14 @@ export const fr: LocaleCatalog = {
     timePlayed: 'Temps de jeu',
     mods: 'Mods',
     ram: 'RAM',
-    version: 'Version'
+    version: 'Version',
+    whatsNew: {
+      title: 'Nouveautés',
+      themes: 'Trois thèmes synchronisés launcher et jeu (Crimson, Midnight, Aurora)',
+      fps: 'Optimisation HUD — moins de perte FPS avec les modules désactivés',
+      chat: 'Chat social en direct avec vrais pseudos',
+      release: 'Voir la dernière release GitHub'
+    }
   },
   settings: {
     title: 'Paramètres',
@@ -107,6 +114,7 @@ export const fr: LocaleCatalog = {
     },
     theme: {
       label: 'Thème',
+      hint: 'S’applique au launcher et se synchronise dans le profil du jeu',
       dark: 'Crimson',
       crimson: 'Crimson',
       midnight: 'Midnight',
@@ -241,7 +249,7 @@ export const fr: LocaleCatalog = {
     },
     cosmetics: {
       title: 'Cosmétiques',
-      subtitle: 'Objets possédés — équipez localement (sync profil Prime).'
+      subtitle: 'Vraies capes et ailes — visibles pour toi et les autres joueurs Prime Client.'
     },
     servers: {
       title: 'Hub Serveurs',
@@ -349,7 +357,7 @@ export const fr: LocaleCatalog = {
     addOne: 'Ajoutez-en un',
     toPlay: 'pour jouer.',
     level: 'Niveau {level}',
-    syncDescription: 'Sync configs, HUD, cosmétiques et stats en local.',
+    syncDescription: 'Sauvegarde locale des configs, HUD, cosmétiques et stats sur ce PC — pas de cloud distant.',
     syncButton: 'Sync profil Prime',
     refreshMicrosoft: 'Rafraîchir le token',
     refreshSuccess: 'Token Microsoft rafraîchi.',
@@ -383,7 +391,12 @@ export const fr: LocaleCatalog = {
     inviteParty: 'Inviter party',
     accept: 'Accepter',
     partyServer: 'Serveur de party',
-    joinPartyServer: 'Rejoindre le serveur'
+    joinPartyServer: 'Rejoindre le serveur',
+    partyJoinPrompt: 'Ta party veut que tu rejoignes',
+    dismiss: 'Ignorer',
+    shareServer: 'Partager un serveur avec la party',
+    shareServerPrompt: 'hôte:port ou adresse…',
+    shareServerFailed: 'Impossible de partager (réservé au leader)'
   },
   chat: {
     refresh: 'Actualiser',
@@ -487,12 +500,11 @@ export const fr: LocaleCatalog = {
   },
   cosmetics: {
     characterPreview: 'Aperçu personnage',
-    previewHint: 'Aperçu tête 2D — viewer complet dans le mod Prime Client',
+    previewHint: 'Le loadout équipé se sync dans le jeu. Capes et ailes visibles pour les peers Prime.',
+    peersNote: 'Visible pour les peers Prime (LAN / intégré)',
     all: 'Tout',
     capes: 'Capes',
     wings: 'Ailes',
-    pets: 'Animaux',
-    emotes: 'Emotes',
     badges: 'Badges',
     emptyOwned: 'Aucun cosmétique — visitez la Boutique.'
   },

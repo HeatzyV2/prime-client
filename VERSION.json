@@ -1,6 +1,6 @@
 {
-  "mod": "1.2.62",
-  "launcher": "0.9.13",
+  "mod": "1.2.63",
+  "launcher": "0.9.14",
   "backend": "1.1.1",
   "apiBase": "http://194.9.172.102:26005",
   "notes": "Single source of truth — bump here then sync gradle.properties / package.json / Cargo.toml / backend package.json"

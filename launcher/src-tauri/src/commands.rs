@@ -448,6 +448,20 @@ pub async fn party_leave(state: State<'_, AppState>) -> Result<Value, AppError> 
 }
 
 #[tauri::command]
+pub async fn party_set_server(
+    state: State<'_, AppState>,
+    server_address: String,
+) -> Result<Value, AppError> {
+    let session = social_session(&state).await?;
+    social::post_json(
+        &session,
+        "/v1/party/server",
+        json!({ "serverAddress": server_address }),
+    )
+    .await
+}
+
+#[tauri::command]
 pub async fn chat_upload(state: State<'_, AppState>, file_path: String) -> Result<String, AppError> {
     let session = social_session(&state).await?;
     social::upload_image(&session, file_path).await

@@ -109,6 +109,7 @@ pub fn run() {
             commands::party_create,
             commands::party_invite,
             commands::party_leave,
+            commands::party_set_server,
             commands::media_list,
             commands::media_open_folder,
             commands::media_open_file,

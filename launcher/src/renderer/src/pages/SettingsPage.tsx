@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Toggle } from '@renderer/design-system/components'
@@ -261,16 +261,29 @@ export function SettingsPage() {
               <div className="settings__row">
                 <div>
                   <div className="settings__label">{t('settings.theme.label')}</div>
+                  <div className="settings__hint">{t('settings.theme.hint')}</div>
                 </div>
-                <select
-                  className="settings__select"
-                  value={settings.theme}
-                  onChange={(e) => void patch({ theme: e.target.value as PrimeThemeId })}
-                >
-                  <option value="prime-crimson">{t('settings.theme.crimson')}</option>
-                  <option value="prime-midnight">{t('settings.theme.midnight')}</option>
-                  <option value="prime-aurora">{t('settings.theme.aurora')}</option>
-                </select>
+                <div className="settings__theme-picker">
+                  {(
+                    [
+                      { id: 'prime-crimson' as const, swatch: '#e11d2e' },
+                      { id: 'prime-midnight' as const, swatch: '#38bdf8' },
+                      { id: 'prime-aurora' as const, swatch: '#34d399' }
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className={`settings__theme-swatch${settings.theme === opt.id ? ' settings__theme-swatch--active' : ''}`}
+                      style={{ '--swatch': opt.swatch } as CSSProperties}
+                      onClick={() => void patch({ theme: opt.id })}
+                      title={t(`settings.theme.${opt.id.replace('prime-', '')}`)}
+                    >
+                      <span className="settings__theme-swatch-dot" />
+                      <span>{t(`settings.theme.${opt.id.replace('prime-', '')}`)}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
               {ownsNebula && (
                 <div className="settings__row">

@@ -206,7 +206,8 @@ const api = {
     get: () => ipcRenderer.invoke(IPC.PARTY_GET),
     create: () => ipcRenderer.invoke(IPC.PARTY_CREATE),
     invite: (uuid: string) => ipcRenderer.invoke(IPC.PARTY_INVITE, uuid),
-    leave: () => ipcRenderer.invoke(IPC.PARTY_LEAVE)
+    leave: () => ipcRenderer.invoke(IPC.PARTY_LEAVE),
+    setServer: (serverAddress: string) => ipcRenderer.invoke(IPC.PARTY_SET_SERVER, serverAddress)
   },
   news: {
     list: () => ipcRenderer.invoke(IPC.NEWS_LIST)

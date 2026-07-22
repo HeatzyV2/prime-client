@@ -15,6 +15,7 @@ public abstract class GameRendererMixin {
             ordinal = 0
     )
     private float primeclient$applyZoomFov(float fov) {
-        return fov * PrimeHooks.fovMultiplier();
+        float multiplier = PrimeHooks.fovMultiplier();
+        return multiplier == 1.0f ? fov : fov * multiplier;
     }
 }

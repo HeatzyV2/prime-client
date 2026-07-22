@@ -3,7 +3,7 @@ package dev.primeclient.v26_2.mixin;
 import dev.primeclient.core.hook.PrimeHooks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.DebugScreenOverlay;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,22 +18,22 @@ public abstract class DebugScreenOverlayMixin {
     @Shadow @Final private Font font;
     @Shadow @Final private Minecraft minecraft;
 
-    @Inject(method = "render", at = @At("HEAD"), cancellable = true)
-    private void primeclient$streamSafeDebug(GuiGraphics guiGraphics, CallbackInfo ci) {
+    @Inject(method = "extractRenderState", at = @At("HEAD"), cancellable = true)
+    private void primeclient$streamSafeDebug(GuiGraphicsExtractor graphics, CallbackInfo ci) {
         if (!PrimeHooks.streamDebugShield()) {
             return;
         }
         ci.cancel();
 
         int y = 2;
-        guiGraphics.drawString(font, "FPS: " + minecraft.getFps(), 2, y, 0xE0E0E0, false);
+        graphics.text(font, "FPS: " + minecraft.getFps(), 2, y, 0xFFE0E0E0, false);
         y += font.lineHeight;
 
         Runtime runtime = Runtime.getRuntime();
         long usedMb = (runtime.totalMemory() - runtime.freeMemory()) / (1024L * 1024L);
         long maxMb = runtime.maxMemory() / (1024L * 1024L);
-        guiGraphics.drawString(font, "Mem: " + usedMb + "/" + maxMb + " MB", 2, y, 0xE0E0E0, false);
+        graphics.text(font, "Mem: " + usedMb + "/" + maxMb + " MB", 2, y, 0xFFE0E0E0, false);
         y += font.lineHeight;
-        guiGraphics.drawString(font, "§7Stream Safe — coords hidden", 2, y, 0xE0E0E0, false);
+        graphics.text(font, "Stream Safe — coords hidden", 2, y, 0xFFE0E0E0, false);
     }
 }

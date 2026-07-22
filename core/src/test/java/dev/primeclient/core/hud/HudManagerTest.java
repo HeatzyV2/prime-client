@@ -82,12 +82,15 @@ class HudManagerTest {
     }
 
     @Test
-    void layoutAndConfigRoundTripVisibility() {
+    void layoutSkipsHiddenElementsUnlessRequested() {
         HudManager manager = new HudManager();
         BoxElement box = manager.register(new BoxElement("box"));
         box.setVisible(false);
 
         manager.layout(new FakeRenderContext(200, 100));
+        assertEquals(0f, box.lastWidth());
+
+        manager.layout(new FakeRenderContext(200, 100), true);
         assertEquals(20f, box.lastWidth());
 
         JsonObject saved = manager.saveConfig().getAsJsonObject();

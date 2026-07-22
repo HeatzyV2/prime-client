@@ -18,6 +18,7 @@ public final class SocialService {
 
     private volatile String pendingPartyServer;
     private int reconnectCooldown;
+    private int reconnectFailures;
     private boolean wantConnected;
 
     public SocialService(MinecraftAdapter adapter, NotificationManager notifications) {
@@ -53,6 +54,9 @@ public final class SocialService {
                         pendingPartyServer = addr;
                     }
                 }
+            } else if ("snapshot".equals(t) || "ready".equals(t)) {
+                // After reconnect, publish any queued party server.
+                client.refreshParty();
             }
         });
     }
@@ -95,14 +99,17 @@ public final class SocialService {
     public void onWorldJoin() {
         wantConnected = true;
         reconnectCooldown = 0;
+        reconnectFailures = 0;
         ensureConnected();
         String server = adapter.serverAddress();
         if (server != null && !server.isBlank() && !"Singleplayer".equalsIgnoreCase(server)) {
             client.setPresence("in-game", "Playing " + server, server);
+            // Only auto-share when already in a party — launcher can also share via setPartyServer.
+            client.queuePartyServerPublish(server);
             CompletableFuture.runAsync(() -> {
-                for (int i = 0; i < 20; i++) {
+                for (int i = 0; i < 40; i++) {
                     if (client.connected()) {
-                        client.setPartyServer(server);
+                        client.refreshParty();
                         return;
                     }
                     try {
@@ -115,15 +122,18 @@ public final class SocialService {
             });
         } else {
             client.setPresence("in-game", "In game", null);
+            client.clearPendingPartyServerPublish();
         }
     }
 
     public void onWorldLeave() {
         wantConnected = false;
+        client.clearPendingPartyServerPublish();
         client.setPresence("online", "In launcher", null);
         client.disconnect();
         pendingPartyServer = null;
         reconnectCooldown = 0;
+        reconnectFailures = 0;
     }
 
     public void tick() {
@@ -132,16 +142,22 @@ public final class SocialService {
         }
         if (client.connected()) {
             reconnectCooldown = 0;
+            reconnectFailures = 0;
+            // UUID may appear after title → world; presence already set on join.
             return;
         }
         if (client.state() == SocialClient.ConnState.CONNECTING) {
             return;
         }
+        // Retry when ERROR or DISCONNECTED (uuid may now be available).
         if (reconnectCooldown > 0) {
             reconnectCooldown--;
             return;
         }
-        reconnectCooldown = 100; // ~5s at 20 TPS
+        // Exponential backoff: 5s → 10s → 20s → 30s cap.
+        int delayTicks = Math.min(600, 100 * (1 << Math.min(reconnectFailures, 3)));
+        reconnectCooldown = delayTicks;
+        reconnectFailures++;
         ensureConnected();
     }
 

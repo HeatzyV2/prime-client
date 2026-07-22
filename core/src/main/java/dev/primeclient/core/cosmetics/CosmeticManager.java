@@ -9,19 +9,21 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Equipment manager for client-side cosmetics. */
+/** Equipment manager for client-side cosmetics (capes + wings only). */
 public final class CosmeticManager implements ConfigBinding {
 
     private final Map<String, CosmeticItem> catalog = new LinkedHashMap<>();
     private final EnumMap<CosmeticType, String> equipped = new EnumMap<>(CosmeticType.class);
 
     public CosmeticManager() {
-        register(new CosmeticItem("cape-prime", "Prime Cape", CosmeticType.CAPE, CosmeticItem.Rarity.EPIC, 0xFF3B82F6));
-        register(new CosmeticItem("cape-star", "Star Cape", CosmeticType.CAPE, CosmeticItem.Rarity.RARE, 0xFFFFD700));
-        register(new CosmeticItem("wings-light", "Light Wings", CosmeticType.WINGS, CosmeticItem.Rarity.LEGENDARY, 0xFFAAEEFF));
-        register(new CosmeticItem("hat-crown", "Prime Crown", CosmeticType.HAT, CosmeticItem.Rarity.EPIC, 0xFFFFAA00));
-        register(new CosmeticItem("badge-founder", "Founder Badge", CosmeticType.BADGE, CosmeticItem.Rarity.LEGENDARY, 0xFF22C55E));
+        register(new CosmeticItem("cape-prime", "Prime Cape", CosmeticType.CAPE, CosmeticItem.Rarity.LEGENDARY, 0xFF3B82F6));
+        register(new CosmeticItem("cape-star", "Star Cape", CosmeticType.CAPE, CosmeticItem.Rarity.EPIC, 0xFFFFD700));
+        register(new CosmeticItem("cape-crimson", "Crimson Cape", CosmeticType.CAPE, CosmeticItem.Rarity.EPIC, 0xFFE11D48));
+        register(new CosmeticItem("cape-midnight", "Midnight Cape", CosmeticType.CAPE, CosmeticItem.Rarity.RARE, 0xFF6366F1));
+        register(new CosmeticItem("wings-ember", "Ember Wings", CosmeticType.WINGS, CosmeticItem.Rarity.LEGENDARY, 0xFFFF6B35));
+        register(new CosmeticItem("wings-aurora", "Aurora Wings", CosmeticType.WINGS, CosmeticItem.Rarity.EPIC, 0xFF22D3EE));
         equip(CosmeticType.CAPE, "cape-prime");
+        equip(CosmeticType.WINGS, "wings-aurora");
     }
 
     public void register(CosmeticItem item) {
@@ -33,8 +35,14 @@ public final class CosmeticManager implements ConfigBinding {
     }
 
     public void equip(CosmeticType type, String itemId) {
+        if (type != CosmeticType.CAPE && type != CosmeticType.WINGS) {
+            return;
+        }
         if (itemId == null || itemId.isBlank()) {
             equipped.remove(type);
+        } else if ("wings-light".equals(itemId)) {
+            // Legacy bridge / profile alias
+            equipped.put(type, "wings-aurora");
         } else if (catalog.containsKey(itemId)) {
             equipped.put(type, itemId);
         }
@@ -46,16 +54,22 @@ public final class CosmeticManager implements ConfigBinding {
         return id == null ? null : catalog.get(id);
     }
 
+    public void unequip(CosmeticType type) {
+        equipped.remove(type);
+        syncState();
+    }
+
     private void syncState() {
         CosmeticItem cape = equipped(CosmeticType.CAPE);
-        if (cape == null) {
-            CosmeticsState.setCapeStyle(CosmeticsState.CapeStyle.NONE);
-        } else if ("cape-star".equals(cape.id())) {
-            CosmeticsState.setCapeStyle(CosmeticsState.CapeStyle.STAR);
+        CosmeticItem wings = equipped(CosmeticType.WINGS);
+        CosmeticsState.setLocalLoadout(
+                cape != null ? cape.id() : "",
+                wings != null ? wings.id() : "");
+        if (cape != null) {
+            CosmeticsState.setAccentTint(cape.tintArgb());
         } else {
-            CosmeticsState.setCapeStyle(CosmeticsState.CapeStyle.PRIME);
+            CosmeticsState.setAccentTint(0);
         }
-        CosmeticsState.setAccentTint(cape != null ? cape.tintArgb() : 0);
     }
 
     @Override
@@ -67,7 +81,9 @@ public final class CosmeticManager implements ConfigBinding {
     public JsonElement saveConfig() {
         JsonObject json = new JsonObject();
         for (Map.Entry<CosmeticType, String> entry : equipped.entrySet()) {
-            json.addProperty(entry.getKey().name(), entry.getValue());
+            if (entry.getKey() == CosmeticType.CAPE || entry.getKey() == CosmeticType.WINGS) {
+                json.addProperty(entry.getKey().name(), entry.getValue());
+            }
         }
         return json;
     }
@@ -78,10 +94,12 @@ public final class CosmeticManager implements ConfigBinding {
             return;
         }
         JsonObject json = element.getAsJsonObject();
-        for (CosmeticType type : CosmeticType.values()) {
+        equipped.clear();
+        for (CosmeticType type : new CosmeticType[]{CosmeticType.CAPE, CosmeticType.WINGS}) {
             if (json.has(type.name())) {
                 equip(type, json.get(type.name()).getAsString());
             }
         }
+        syncState();
     }
 }

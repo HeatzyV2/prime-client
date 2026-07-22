@@ -67,7 +67,14 @@ export const en = {
     timePlayed: 'Time played',
     mods: 'Mods',
     ram: 'RAM',
-    version: 'Version'
+    version: 'Version',
+    whatsNew: {
+      title: "What's new",
+      themes: 'Three themes synced across launcher and game (Crimson, Midnight, Aurora)',
+      fps: 'HUD performance pass — less frame tax with modules off',
+      chat: 'Live social chat with real usernames',
+      release: 'View latest GitHub release'
+    }
   },
   settings: {
     title: 'Settings',
@@ -105,6 +112,7 @@ export const en = {
     },
     theme: {
       label: 'Theme',
+      hint: 'Applies to the launcher and syncs into the game profile',
       dark: 'Crimson',
       crimson: 'Crimson',
       midnight: 'Midnight',
@@ -239,7 +247,7 @@ export const en = {
     },
     cosmetics: {
       title: 'Cosmetics',
-      subtitle: 'Owned items from the Store — equip locally (syncs to Prime profile file).'
+      subtitle: 'Real capes & wings — visible to you and other Prime Client players.'
     },
     servers: {
       title: 'Server Hub',
@@ -347,7 +355,7 @@ export const en = {
     addOne: 'Add one',
     toPlay: 'to play.',
     level: 'Level {level}',
-    syncDescription: 'Sync configs, HUD, cosmetics, and stats locally.',
+    syncDescription: 'Local backup of configs, HUD, cosmetics, and stats on this PC — no remote cloud.',
     syncButton: 'Sync Prime Profile',
     refreshMicrosoft: 'Refresh token',
     refreshSuccess: 'Microsoft token refreshed.',
@@ -381,7 +389,12 @@ export const en = {
     inviteParty: 'Invite to party',
     accept: 'Accept',
     partyServer: 'Party server',
-    joinPartyServer: 'Join party server'
+    joinPartyServer: 'Join party server',
+    partyJoinPrompt: 'Your party wants you to join',
+    dismiss: 'Dismiss',
+    shareServer: 'Share server with party',
+    shareServerPrompt: 'host:port or address…',
+    shareServerFailed: 'Could not share server (party leader only)'
   },
   chat: {
     refresh: 'Refresh',
@@ -485,12 +498,11 @@ export const en = {
   },
   cosmetics: {
     characterPreview: 'Character Preview',
-    previewHint: '2D head preview — full viewer in Prime Client mod',
+    previewHint: 'Equipped loadout syncs into the game. Capes & wings render for Prime peers.',
+    peersNote: 'Visible on Prime peers (LAN / integrated)',
     all: 'All',
     capes: 'Capes',
     wings: 'Wings',
-    pets: 'Pets',
-    emotes: 'Emotes',
     badges: 'Badges',
     emptyOwned: 'No cosmetics owned yet — visit the Store.'
   },

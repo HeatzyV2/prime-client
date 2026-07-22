@@ -11,7 +11,8 @@ public abstract class GameRendererMixin {
 
     @ModifyReturnValue(method = "getFov", at = @At("RETURN"))
     private float primeclient$applyZoomFov(float fov) {
-        return fov * PrimeHooks.fovMultiplier();
+        float multiplier = PrimeHooks.fovMultiplier();
+        return multiplier == 1.0f ? fov : fov * multiplier;
     }
 
     @ModifyReturnValue(method = "getDarkenWorldAmount", at = @At("RETURN"))

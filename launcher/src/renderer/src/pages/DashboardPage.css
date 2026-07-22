@@ -73,6 +73,28 @@
   border-bottom: 1px solid var(--prime-border);
 }
 
+.dashboard__whats-new {
+  margin: 0 0 var(--space-3);
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--prime-muted);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.dashboard__whats-new-link {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--prime-red-bright);
+  text-decoration: none;
+}
+
+.dashboard__whats-new-link:hover {
+  text-decoration: underline;
+}
+
 .dashboard__news-item:last-child {
   border-bottom: none;
   padding-bottom: 0;

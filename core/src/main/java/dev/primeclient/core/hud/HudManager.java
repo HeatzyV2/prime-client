@@ -45,7 +45,7 @@ public final class HudManager implements ConfigBinding {
     }
 
     public void render(RenderContext ctx) {
-        layout(ctx);
+        layout(ctx, false);
         long now = System.currentTimeMillis();
         HudElement[] elements = this.renderList;
         for (int i = 0; i < elements.length; i++) {
@@ -57,13 +57,25 @@ public final class HudManager implements ConfigBinding {
         }
     }
 
-    /** Computes element bounds without drawing — used before vanilla HUD transforms in the editor. */
+    /** Computes visible element bounds without drawing. */
     public void layout(RenderContext ctx) {
+        layout(ctx, false);
+    }
+
+    /**
+     * Computes element bounds without drawing.
+     *
+     * @param includeHidden when {@code true}, also measures hidden elements (HUD editor hit-testing)
+     */
+    public void layout(RenderContext ctx, boolean includeHidden) {
         int screenWidth = ctx.screenWidth();
         int screenHeight = ctx.screenHeight();
         HudElement[] elements = this.renderList;
         for (int i = 0; i < elements.length; i++) {
             HudElement element = elements[i];
+            if (!includeHidden && !element.isVisible()) {
+                continue;
+            }
             float scale = element.scale();
             int localWidth = element.measureWidth(ctx);
             int localHeight = element.measureHeight(ctx);
@@ -91,10 +103,10 @@ public final class HudManager implements ConfigBinding {
 
     private static void drawElement(RenderContext ctx, HudElement element, long now) {
         float scale = element.scale();
-        int localWidth = element.measureWidth(ctx);
-        int localHeight = element.measureHeight(ctx);
-        float width = localWidth * scale;
-        float height = localHeight * scale;
+        float width = element.lastWidth();
+        float height = element.lastHeight();
+        float localWidth = width / scale;
+        float localHeight = height / scale;
         float x = element.lastX();
         float y = element.lastY();
 

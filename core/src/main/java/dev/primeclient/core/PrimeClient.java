@@ -4,7 +4,6 @@ import dev.primeclient.core.account.PrimeAccountService;
 import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.cloud.CloudSyncManager;
 import dev.primeclient.core.cloud.LocalCloudClient;
-import dev.primeclient.core.cloud.RemoteCloudClient;
 import dev.primeclient.core.config.ConfigManager;
 import dev.primeclient.core.cosmetics.CosmeticManager;
 import dev.primeclient.core.crosshair.CrosshairConfig;
@@ -120,8 +119,7 @@ public final class PrimeClient {
 
         Path modRoot = adapter.configDirectory().resolve(MOD_ID);
         LocalCloudClient localCloud = new LocalCloudClient(modRoot.resolve("cloud"));
-        RemoteCloudClient remoteCloud = new RemoteCloudClient(localCloud, account);
-        this.cloudSync = new CloudSyncManager(remoteCloud, configManager, notifications);
+        this.cloudSync = new CloudSyncManager(localCloud, configManager, notifications);
         this.replayStorage = new ReplayStorage(modRoot);
         this.clipStorage = new ClipStorage(modRoot);
         this.clipRecorder = new ClipRecorder(clipStorage, notifications);

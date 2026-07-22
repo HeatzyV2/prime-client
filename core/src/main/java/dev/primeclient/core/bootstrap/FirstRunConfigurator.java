@@ -16,8 +16,7 @@ import java.util.Set;
 public final class FirstRunConfigurator {
 
     private static final List<String> CORE = List.of(
-            "fps", "coordinates", "keystrokes", "cps", "ping",
-            "discord-rpc", "crosshair-editor", "prime-cosmetics", "social-hub"
+            "fps-counter", "discord-rpc", "prime-cosmetics", "social-hub"
     );
 
     private static final List<String> PVP_EXTRA = List.of(
@@ -96,7 +95,7 @@ public final class FirstRunConfigurator {
         favorites.clear();
         favorites.add("crosshair-editor");
         favorites.add("discord-rpc");
-        favorites.add("fps");
+        favorites.add("fps-counter");
         favorites.add("keystrokes");
         favorites.add("module-bundles");
         if ("pvp".equals(preset)) {

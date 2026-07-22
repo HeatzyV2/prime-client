@@ -23,6 +23,12 @@ public final class VanillaHudTransforms {
         if (!(element instanceof VanillaHudProxyElement) || !element.isVisible()) {
             return;
         }
+        // Default layout + identity transform: skip matrix work entirely.
+        if (VanillaHudProxyElement.hasDefaultLayout(element, component)
+                && Math.abs(element.scale() - 1f) < 0.01f
+                && Math.abs(element.rotation()) < 0.01f) {
+            return;
+        }
 
         Minecraft minecraft = Minecraft.getInstance();
         int screenWidth = minecraft.getWindow().getGuiScaledWidth();

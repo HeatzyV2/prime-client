@@ -6,7 +6,10 @@ import dev.primeclient.core.account.PrimeAccountService;
 import java.util.List;
 import java.util.Optional;
 
-/** Cloud client that requires Prime Account login for sync operations. */
+/**
+ * Unused remote cloud adapter — product currently uses {@link LocalCloudClient} only.
+ * Kept for a future optional remote sync backend.
+ */
 public final class RemoteCloudClient implements CloudClient {
 
     private final LocalCloudClient local;

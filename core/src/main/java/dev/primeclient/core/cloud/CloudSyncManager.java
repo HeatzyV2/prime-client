@@ -31,14 +31,14 @@ public final class CloudSyncManager {
         JsonElement snapshot = configManager.exportAll();
         cloud.uploadConfig(profileName, snapshot);
         lastSyncMillis = System.currentTimeMillis();
-        notifications.success("Cloud Sync", "Configuration uploaded");
+        notifications.success("Local backup", "Configuration saved on this PC");
     }
 
     public boolean downloadNow(String profileName) {
         return cloud.downloadConfig(profileName).map(json -> {
             configManager.importAll(json);
             lastSyncMillis = System.currentTimeMillis();
-            notifications.success("Cloud Sync", "Configuration downloaded");
+            notifications.success("Local backup", "Configuration restored from this PC");
             return true;
         }).orElse(false);
     }
@@ -46,7 +46,7 @@ public final class CloudSyncManager {
     public boolean restoreVersion(String profileName, String versionId) {
         return cloud.restoreVersion(profileName, versionId).map(json -> {
             configManager.importAll(json);
-            notifications.success("Cloud Sync", "Configuration restored");
+            notifications.success("Local backup", "Configuration version restored");
             return true;
         }).orElse(false);
     }

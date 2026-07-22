@@ -134,7 +134,7 @@ public final class SettingsMenuRenderer {
                         ? PrimeLang.get("prime.gui.settings.cloud_sync.enabled", "Enabled")
                         : PrimeLang.get("prime.gui.settings.cloud_sync.disabled", "Disabled");
                 row(ctx, theme, x + 12, rowY,
-                        PrimeLang.get("prime.gui.settings.row.cloud_sync", "Cloud sync"), sync);
+                        PrimeLang.get("prime.gui.settings.row.cloud_sync", "Local backup"), sync);
             }
             case APPEARANCE -> {
                 row(ctx, theme, x + 12, rowY,

@@ -15,16 +15,18 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
- * In-game social overlay — friends, party join, connection status.
- * Opened from the pause menu.
+ * In-game social overlay — friends, party invite/accept, join banner.
+ * Opened from the pause menu. Same backend as the launcher.
  */
 public final class SocialHubUi {
 
-    private static final int PANEL_W = 380;
-    private static final int ROW_H = 34;
+    private static final int PANEL_W = 400;
+    private static final int ROW_H = 38;
     private static final int PAD = 16;
+    private static final int ACTION_W = 52;
 
     private final SocialService social;
     private final MinecraftAdapter adapter;
@@ -52,6 +54,7 @@ public final class SocialHubUi {
         }
         if (social.client().connected()) {
             social.client().refreshFriends();
+            CompletableFuture.runAsync(() -> social.client().refreshParty());
         }
     }
 
@@ -69,7 +72,6 @@ public final class SocialHubUi {
         ctx.fillRect(0, 0, sw, sh, 0x88000000);
         UiChrome.glassPanel(ctx, theme, x, y, PANEL_W, panelH);
 
-        // Header
         ctx.drawSmoothText("Social", x + PAD, y + 14, theme.foreground(), 1.15f);
         drawStatusPill(ctx, theme, x, y);
 
@@ -81,7 +83,6 @@ public final class SocialHubUi {
         int contentBottom = y + panelH - 28;
         int cursorY = contentTop;
 
-        // Party banner
         String joinAddr = resolveJoinAddress();
         if (joinAddr != null && !joinAddr.isBlank()) {
             boolean hover = hit(mouseX, mouseY, x + PAD, cursorY, PANEL_W - PAD * 2, 40);
@@ -95,7 +96,16 @@ public final class SocialHubUi {
             cursorY += 48;
         }
 
-        // Section title
+        SocialClient.Party party = social.client().party();
+        if (party != null) {
+            boolean leaveHover = hit(mouseX, mouseY, x + PAD, cursorY, 88, 18);
+            UiChrome.button(ctx, theme, x + PAD, cursorY, 88, 18, leaveHover, false);
+            ctx.drawSmoothText("Leave party", x + PAD + 10, cursorY + 4, theme.foreground(), 0.78f);
+            ctx.drawSmoothText(party.members().size() + " members",
+                    x + PAD + 100, cursorY + 4, theme.foregroundMuted(), 0.78f);
+            cursorY += 26;
+        }
+
         ctx.drawSmoothText("FRIENDS", x + PAD, cursorY, theme.foregroundMuted(), 0.72f);
         cursorY += 14;
 
@@ -132,29 +142,28 @@ public final class SocialHubUi {
                 UiChrome.cardLite(ctx, theme, x + PAD, rowY, PANEL_W - PAD * 2, ROW_H, hover);
 
                 int dot = statusColor(theme, f.status());
-                ctx.fillRoundedRect(x + PAD + 10, rowY + 13, 8, 8, 4, dot);
+                ctx.fillRoundedRect(x + PAD + 10, rowY + 15, 8, 8, 4, dot);
 
-                String name = GuiLayout.trimToWidth(ctx, f.username(), 140);
-                ctx.drawSmoothText(name, x + PAD + 26, rowY + 7, theme.foreground(), 0.88f);
+                String name = GuiLayout.trimToWidth(ctx, f.username(), 120);
+                ctx.drawSmoothText(name, x + PAD + 26, rowY + 8, theme.foreground(), 0.88f);
 
                 String meta = formatMeta(f);
-                ctx.drawSmoothText(GuiLayout.trimToWidth(ctx, meta, PANEL_W - 100),
-                        x + PAD + 26, rowY + 19, theme.foregroundMuted(), 0.72f);
+                ctx.drawSmoothText(GuiLayout.trimToWidth(ctx, meta, PANEL_W - 160),
+                        x + PAD + 26, rowY + 21, theme.foregroundMuted(), 0.72f);
 
-                String badge = statusLabel(f.status());
-                int bw = ctx.smoothTextWidth(badge, 0.7f) + 10;
-                ctx.fillRoundedRect(x + PANEL_W - PAD - 10 - bw, rowY + 10, bw, 14, PrimeDesign.RADIUS_SM,
-                        ColorUtil.withAlpha(dot, 0.22f));
-                ctx.drawSmoothText(badge, x + PANEL_W - PAD - 5 - bw + 5, rowY + 13,
-                        ColorUtil.withAlpha(dot, 0.95f), 0.7f);
+                int btnX = x + PANEL_W - PAD - 10 - ACTION_W;
+                if (f.pending() && f.incoming()) {
+                    drawAction(ctx, theme, btnX, rowY + 10, ACTION_W, "Accept", mouseX, mouseY);
+                } else if (!f.pending()) {
+                    drawAction(ctx, theme, btnX, rowY + 10, ACTION_W, "Invite", mouseX, mouseY);
+                }
             }
         }
         ctx.popClip();
 
-        // Footer
         String footer = !status.isBlank()
                 ? status
-                : "Esc close  ·  F5 refresh  ·  Same friends as the launcher";
+                : "Esc close  ·  Invite / Accept  ·  Same friends as the launcher";
         ctx.drawSmoothText(footer, x + PAD, y + panelH - 18,
                 statusError ? theme.accent() : theme.foregroundMuted(), 0.72f);
     }
@@ -184,6 +193,51 @@ public final class SocialHubUi {
                 statusError = false;
                 return true;
             }
+            cursorY += 48;
+        }
+
+        SocialClient.Party party = social.client().party();
+        if (party != null) {
+            if (hit(mouseX, mouseY, x + PAD, cursorY, 88, 18)) {
+                if (social.client().leaveParty()) {
+                    status = "Left party";
+                    statusError = false;
+                    refresh(false);
+                } else {
+                    status = "Leave failed";
+                    statusError = true;
+                }
+                return true;
+            }
+            cursorY += 26;
+        }
+
+        cursorY += 14; // FRIENDS label
+        int listTop = cursorY;
+        List<SocialClient.Friend> friends = sortedFriends();
+        int i = 0;
+        for (SocialClient.Friend f : friends) {
+            int rowY = listTop + (i - scroll) * (ROW_H + 4);
+            i++;
+            int btnX = x + PANEL_W - PAD - 10 - ACTION_W;
+            if (!hit(mouseX, mouseY, btnX, rowY + 10, ACTION_W, 16)) {
+                continue;
+            }
+            if (f.pending() && f.incoming()) {
+                boolean ok = social.client().acceptFriend(f.uuid());
+                status = ok ? "Accepted " + f.username() : "Accept failed";
+                statusError = !ok;
+                if (ok) {
+                    social.client().refreshFriends();
+                }
+                return true;
+            }
+            if (!f.pending()) {
+                boolean ok = social.client().inviteParty(f.uuid());
+                status = ok ? "Invited " + f.username() : "Invite failed (create a party in the launcher)";
+                statusError = !ok;
+                return true;
+            }
         }
         return true;
     }
@@ -206,6 +260,14 @@ public final class SocialHubUi {
         return true;
     }
 
+    private List<SocialClient.Friend> sortedFriends() {
+        List<SocialClient.Friend> friends = new ArrayList<>(social.client().friends().values());
+        friends.sort(Comparator
+                .comparingInt((SocialClient.Friend f) -> statusRank(f.status()))
+                .thenComparing(f -> f.username(), String.CASE_INSENSITIVE_ORDER));
+        return friends;
+    }
+
     private void drawStatusPill(RenderContext ctx, Theme theme, int panelX, int panelY) {
         SocialClient.ConnState state = social.client().state();
         String label = switch (state) {
@@ -226,6 +288,16 @@ public final class SocialHubUi {
                 ColorUtil.withAlpha(color, 0.18f));
         ctx.fillRoundedRect(pillX + 5, panelY + 18, 6, 6, 3, color);
         ctx.drawSmoothText(label, pillX + 14, panelY + 17, color, 0.72f);
+    }
+
+    private static void drawAction(RenderContext ctx, Theme theme, int x, int y, int w,
+                                   String label, double mouseX, double mouseY) {
+        boolean hover = hit(mouseX, mouseY, x, y, w, 16);
+        ctx.fillRoundedRect(x, y, w, 16, PrimeDesign.RADIUS_SM,
+                hover ? theme.accent() : theme.backgroundLight());
+        int tw = ctx.smoothTextWidth(label, 0.7f);
+        ctx.drawSmoothText(label, x + (w - tw) / 2, y + 4,
+                hover ? theme.foreground() : theme.foregroundMuted(), 0.7f);
     }
 
     private String resolveJoinAddress() {
@@ -254,15 +326,6 @@ public final class SocialHubUi {
         };
     }
 
-    private static String statusLabel(String status) {
-        return switch (normalize(status)) {
-            case "in-game", "ingame" -> "In game";
-            case "online" -> "Online";
-            case "away" -> "Away";
-            default -> "Offline";
-        };
-    }
-
     private static String formatMeta(SocialClient.Friend f) {
         if (f.pending()) {
             return f.incoming() ? "Incoming request" : "Pending request";
@@ -273,7 +336,12 @@ public final class SocialHubUi {
         if (f.activity() != null && !f.activity().isBlank()) {
             return f.activity();
         }
-        return statusLabel(f.status());
+        return switch (normalize(f.status())) {
+            case "in-game", "ingame" -> "In game";
+            case "online" -> "Online";
+            case "away" -> "Away";
+            default -> "Offline";
+        };
     }
 
     private static String normalize(String status) {

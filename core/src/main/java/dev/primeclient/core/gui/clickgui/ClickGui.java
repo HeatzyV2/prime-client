@@ -251,7 +251,7 @@ public final class ClickGui implements ConfigBinding {
             }
             case CONFIGURATIONS -> {
                 mainMenu.renderBackground(ctx, theme, openFade);
-                configurationsMenu.render(ctx, theme, cloudSync, profiles, screenWidth, screenHeight);
+                configurationsMenu.render(ctx, theme, cloudSync, profiles, screenWidth, screenHeight, mouseX, mouseY);
             }
             case FAVORITES -> {
                 renderSearchBar(ctx, theme);
@@ -360,7 +360,8 @@ public final class ClickGui implements ConfigBinding {
             return cosmeticsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, cosmetics);
         }
         if (view == ClickGuiView.CONFIGURATIONS) {
-            return mouseX >= 0;
+            return configurationsMenu.mousePressed(mouseX, mouseY, button, cloudSync, profiles,
+                    screenWidth, screenHeight);
         }
         if (isSearching()) {
             return dispatchPress(searchPanel, mouseX, mouseY, button);

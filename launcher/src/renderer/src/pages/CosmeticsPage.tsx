@@ -24,8 +24,6 @@ export function CosmeticsPage() {
       { id: 'all', label: t('cosmetics.all') },
       { id: 'cape', label: t('cosmetics.capes') },
       { id: 'wings', label: t('cosmetics.wings') },
-      { id: 'pet', label: t('cosmetics.pets') },
-      { id: 'emote', label: t('cosmetics.emotes') },
       { id: 'badge', label: t('cosmetics.badges') }
     ],
     [t]
@@ -56,6 +54,7 @@ export function CosmeticsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '24px 0' }}>
             <Avatar alt={activeAccount?.username ?? 'Steve'} uuid={activeAccount?.uuid} size="xl" glow />
             <p className="text-caption">{t('cosmetics.previewHint')}</p>
+            <p className="text-caption" style={{ opacity: 0.75 }}>{t('cosmetics.peersNote')}</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
               {cosmetics
                 .filter((c) => c.equipped)

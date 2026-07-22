@@ -148,9 +148,14 @@ public final class PrimeHooks {
 
     /** Called by version-layer networking when a presence payload is received. */
     public static void onPresencePayload(UUID playerId) {
+        onPresencePayload(playerId, "", "");
+    }
+
+    /** Presence + cosmetic loadout from another Prime Client peer. */
+    public static void onPresencePayload(UUID playerId, String capeId, String wingsId) {
         PrimeClient client = tryGet();
         if (client != null) {
-            client.presence().markPrime(playerId);
+            client.presence().markPrime(playerId, capeId, wingsId);
         }
     }
 

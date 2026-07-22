@@ -96,3 +96,45 @@
 .settings__java-browse {
   white-space: nowrap;
 }
+
+.settings__theme-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.settings__theme-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--prime-border);
+  background: var(--prime-surface-2);
+  color: var(--prime-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--duration-fast), color var(--duration-fast), background var(--duration-fast);
+}
+
+.settings__theme-swatch:hover {
+  color: var(--prime-white);
+  border-color: var(--prime-border-hover);
+}
+
+.settings__theme-swatch--active {
+  color: var(--prime-white);
+  border-color: var(--swatch, var(--prime-red));
+  background: color-mix(in srgb, var(--swatch, var(--prime-red)) 18%, var(--prime-surface-2));
+}
+
+.settings__theme-swatch-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--swatch, var(--prime-red));
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+}

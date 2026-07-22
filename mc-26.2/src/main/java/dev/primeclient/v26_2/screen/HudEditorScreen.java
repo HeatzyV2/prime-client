@@ -46,6 +46,7 @@ public final class HudEditorScreen extends Screen {
         renderContext.prepare(extractor);
         int dim = minecraft.level != null ? WORLD_DIM : MENU_DIM;
         renderContext.fillRect(0, 0, width, height, dim);
+        client.hud().layout(renderContext, true);
         client.hud().render(renderContext);
         client.hudEditor().renderOverlay(renderContext, mouseX, mouseY);
     }

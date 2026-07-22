@@ -9,8 +9,8 @@ import net.minecraft.resources.Identifier;
 
 import java.util.UUID;
 
-/** Fabric payload announcing a Prime Client player on LAN / integrated servers. */
-public record PresencePayload(UUID playerId) implements CustomPacketPayload {
+/** Fabric payload announcing a Prime Client player + cosmetic loadout on LAN / integrated servers. */
+public record PresencePayload(UUID playerId, String capeId, String wingsId) implements CustomPacketPayload {
 
     public static final Identifier ID =
             Identifier.fromNamespaceAndPath(PrimeClient.MOD_ID, "presence");
@@ -21,7 +21,15 @@ public record PresencePayload(UUID playerId) implements CustomPacketPayload {
                     payload -> payload.playerId().getMostSignificantBits(),
                     ByteBufCodecs.VAR_LONG,
                     payload -> payload.playerId().getLeastSignificantBits(),
-                    (msb, lsb) -> new PresencePayload(new UUID(msb, lsb)));
+                    ByteBufCodecs.STRING_UTF8,
+                    PresencePayload::capeId,
+                    ByteBufCodecs.STRING_UTF8,
+                    PresencePayload::wingsId,
+                    (msb, lsb, capeId, wingsId) -> new PresencePayload(new UUID(msb, lsb), capeId, wingsId));
+
+    public PresencePayload(UUID playerId) {
+        this(playerId, "", "");
+    }
 
     @Override
     public Type<? extends CustomPacketPayload> type() {

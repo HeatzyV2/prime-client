@@ -1,10 +1,11 @@
 package dev.primeclient.core.cosmetics;
 
-/** Cosmetic slot types for Prime Cosmetics v1.1. */
+/** Cosmetic slot types. Only CAPE and WINGS are equippable in-world. */
 public enum CosmeticType {
     CAPE,
     WINGS,
-    HAT,
-    PARTICLES,
+    @Deprecated HAT,
+    @Deprecated PARTICLES,
+    /** Launcher profile badges only — not world-rendered. */
     BADGE
 }

@@ -198,6 +198,7 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.PARTY_CREATE, () => socialService.createParty())
   ipcMain.handle(IPC.PARTY_INVITE, (_e, uuid: string) => socialService.inviteToParty(uuid))
   ipcMain.handle(IPC.PARTY_LEAVE, () => socialService.leaveParty())
+  ipcMain.handle(IPC.PARTY_SET_SERVER, (_e, serverAddress: string) => socialService.setPartyServer(serverAddress))
 
   ipcMain.handle(IPC.BOOT_INITIALIZE, () => bootService.initialize())
   ipcMain.handle(IPC.SETTINGS_JAVA_LIST, async () => {

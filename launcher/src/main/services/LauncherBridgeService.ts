@@ -4,13 +4,17 @@ import { getInstanceGameDir } from '../minecraft/paths'
 import { ecosystemStore } from '../storage/EcosystemStore'
 import { settingsStore } from '../storage/SettingsStore'
 import { normalizePrimeTheme } from '../../shared/theme'
+import { applyPerfPresetToModules } from '../../shared/perf-preset-modules'
+import type { PerformancePreset } from '../../shared/content-types'
 
-/** Maps launcher cosmetic IDs to Prime Client mod slot + catalog ID. */
+/** Maps launcher cosmetic IDs to Prime Client mod slot + catalog ID (1:1). */
 const MOD_COSMETIC_MAP: Record<string, { slot: string; modId: string }> = {
   'cape-prime': { slot: 'CAPE', modId: 'cape-prime' },
-  'wings-ember': { slot: 'WINGS', modId: 'wings-light' },
-  'badge-founder': { slot: 'BADGE', modId: 'badge-founder' },
-  'badge-veteran': { slot: 'BADGE', modId: 'badge-founder' }
+  'cape-star': { slot: 'CAPE', modId: 'cape-star' },
+  'cape-crimson': { slot: 'CAPE', modId: 'cape-crimson' },
+  'cape-midnight': { slot: 'CAPE', modId: 'cape-midnight' },
+  'wings-ember': { slot: 'WINGS', modId: 'wings-ember' },
+  'wings-aurora': { slot: 'WINGS', modId: 'wings-aurora' }
 }
 
 /**
@@ -39,10 +43,13 @@ export class LauncherBridgeService {
       }
 
       root.cosmetics = cosmetics
+      // Always write launcher theme — in-game poll reloads this section without wiping the rest.
       root.theme = { active: normalizePrimeTheme(settings.theme) }
 
-      const modules = (root.modules as Record<string, Record<string, unknown>> | undefined) ?? {}
+      let modules = (root.modules as Record<string, Record<string, unknown>> | undefined) ?? {}
+      modules = { ...modules }
       modules['discord-rpc'] = { ...(modules['discord-rpc'] ?? {}), enabled: settings.discordRpc }
+      modules = applyPerfPresetToModules(modules, settings.performancePreset as PerformancePreset)
       root.modules = modules
 
       await mkdir(dirname(profilePath), { recursive: true })

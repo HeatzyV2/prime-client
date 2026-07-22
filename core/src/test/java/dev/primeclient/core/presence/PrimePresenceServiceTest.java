@@ -11,14 +11,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PrimePresenceServiceTest {
 
-    @Test
-    void tracksMarkedPrimeUsers() {
-        PrimePresenceService service = new PrimePresenceService(new StubAdapter());
-        UUID uuid = UUID.randomUUID();
-        assertFalse(service.isPrime(uuid));
-        service.markPrime(uuid);
-        assertTrue(service.isPrime(uuid));
-    }
+  @Test
+  void tracksMarkedPrimeUsersWithLoadout() {
+      PrimePresenceService service = new PrimePresenceService(new StubAdapter());
+      UUID uuid = UUID.randomUUID();
+      assertFalse(service.isPrime(uuid));
+      service.markPrime(uuid, "cape-prime", "wings-aurora");
+      assertTrue(service.isPrime(uuid));
+  }
+
+  @Test
+  void tracksMarkedPrimeUsers() {
+      PrimePresenceService service = new PrimePresenceService(new StubAdapter());
+      UUID uuid = UUID.randomUUID();
+      assertFalse(service.isPrime(uuid));
+      service.markPrime(uuid);
+      assertTrue(service.isPrime(uuid));
+  }
 
     private static final class StubAdapter implements MinecraftAdapter {
         @Override public String minecraftVersion() { return "test"; }
