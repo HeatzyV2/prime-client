@@ -11,6 +11,7 @@ mod java;
 mod launch;
 mod logs;
 mod microsoft;
+mod minecraft_targets;
 mod modpack;
 mod options_txt;
 mod paths;

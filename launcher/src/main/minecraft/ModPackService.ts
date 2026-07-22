@@ -9,19 +9,24 @@ import {
   pickPrimeModAsset,
   type GitHubRelease
 } from '../../shared/githubRelease'
+import {
+  allPrimeJarPrefixes,
+  parsePrimeJarSemVer,
+  resolveTarget,
+  type MinecraftTarget
+} from '../../shared/minecraft-targets'
 import { getInstanceModsDir, getRepoRoot } from './paths'
 import { emitLaunchProgress } from './launchProgress'
 import type { InstanceLaunchConfig } from './constants'
 
 const FABRIC_API_PROJECT = 'P7dR8mSH'
-const PRIME_JAR_PREFIX = 'prime-client-1.21.11'
-const VERSION_PATTERN = /prime-client-1\.21\.11-(\d+)\.(\d+)\.(\d+)\.jar$/
 
 interface ModCacheManifest {
   tag: string
   fileName: string
   downloadedAt: string
   lastGitHubCheckAt?: string
+  jarPrefix?: string
 }
 
 /** Skip GitHub API + jar download if a local jar exists and we checked recently. */
@@ -51,18 +56,14 @@ function modCacheManifestPath(): string {
   return join(modCacheDir(), 'manifest.json')
 }
 
-function parseJarVersion(fileName: string): SemVer | null {
-  const match = fileName.match(VERSION_PATTERN)
-  if (!match) {
-    return null
-  }
-  return [Number(match[1]), Number(match[2]), Number(match[3])]
+function parseJarVersion(fileName: string, jarPrefix: string): SemVer | null {
+  return parsePrimeJarSemVer(fileName, jarPrefix)
 }
 
 function compareSemVer(a: SemVer, b: SemVer): number {
   for (let i = 0; i < 3; i++) {
     if (a[i] !== b[i]) {
-      return a[i] - b[i]
+      return a[i]! - b[i]!
     }
   }
   return 0
@@ -92,15 +93,18 @@ async function writeModCacheManifest(manifest: ModCacheManifest): Promise<void> 
   await writeFile(modCacheManifestPath(), JSON.stringify(manifest, null, 2), 'utf8')
 }
 
-function isGitHubCheckStale(manifest: ModCacheManifest | null): boolean {
+function isGitHubCheckStale(manifest: ModCacheManifest | null, jarPrefix: string): boolean {
   if (!manifest?.lastGitHubCheckAt) {
+    return true
+  }
+  if (manifest.jarPrefix && manifest.jarPrefix !== jarPrefix) {
     return true
   }
   const elapsed = Date.now() - new Date(manifest.lastGitHubCheckAt).getTime()
   return elapsed >= GITHUB_CHECK_INTERVAL_MS
 }
 
-async function touchGitHubCheck(manifest: ModCacheManifest | null): Promise<void> {
+async function touchGitHubCheck(manifest: ModCacheManifest | null, jarPrefix: string): Promise<void> {
   const base: ModCacheManifest = manifest ?? {
     tag: '',
     fileName: '',
@@ -108,17 +112,22 @@ async function touchGitHubCheck(manifest: ModCacheManifest | null): Promise<void
   }
   await writeModCacheManifest({
     ...base,
+    jarPrefix,
     lastGitHubCheckAt: new Date().toISOString()
   })
 }
 
-async function candidateFromPath(path: string, source: string): Promise<JarCandidate | null> {
+async function candidateFromPath(
+  path: string,
+  source: string,
+  jarPrefix: string
+): Promise<JarCandidate | null> {
   try {
     const info = await stat(path)
     if (!info.isFile() || info.size <= 0) {
       return null
     }
-    const version = parseJarVersion(basename(path))
+    const version = parseJarVersion(basename(path), jarPrefix)
     if (!version) {
       return null
     }
@@ -128,14 +137,14 @@ async function candidateFromPath(path: string, source: string): Promise<JarCandi
   }
 }
 
-async function findLocalBuildJar(): Promise<JarCandidate | null> {
-  const libsDir = join(getRepoRoot(), 'mc-1.21.11', 'build', 'libs')
+async function findLocalBuildJar(target: MinecraftTarget): Promise<JarCandidate | null> {
+  const libsDir = join(getRepoRoot(), target.localBuildDir, 'build', 'libs')
   try {
     const files = await readdir(libsDir)
-    const matches = files.filter((f) => isPrimeModJarAsset(f, PRIME_JAR_PREFIX))
+    const matches = files.filter((f) => isPrimeModJarAsset(f, target.jarPrefix))
     let best: JarCandidate | null = null
     for (const file of matches) {
-      const candidate = await candidateFromPath(join(libsDir, file), 'local-build')
+      const candidate = await candidateFromPath(join(libsDir, file), 'local-build', target.jarPrefix)
       if (candidate && (!best || compareSemVer(candidate.version, best.version) > 0)) {
         best = candidate
       }
@@ -146,27 +155,39 @@ async function findLocalBuildJar(): Promise<JarCandidate | null> {
   }
 }
 
-async function findEnvOverrideJar(): Promise<JarCandidate | null> {
+async function findEnvOverrideJar(jarPrefix: string): Promise<JarCandidate | null> {
   if (!process.env.PRIME_CLIENT_JAR) {
     return null
   }
-  return candidateFromPath(process.env.PRIME_CLIENT_JAR, 'env-override')
+  return candidateFromPath(process.env.PRIME_CLIENT_JAR, 'env-override', jarPrefix)
 }
 
-async function findCachedGitHubJar(manifest: ModCacheManifest): Promise<JarCandidate | null> {
-  return candidateFromPath(join(modCacheDir(), manifest.fileName), 'github-cache')
+async function findCachedGitHubJar(
+  manifest: ModCacheManifest,
+  jarPrefix: string
+): Promise<JarCandidate | null> {
+  if (manifest.jarPrefix && manifest.jarPrefix !== jarPrefix) {
+    return null
+  }
+  if (!isPrimeModJarAsset(manifest.fileName, jarPrefix)) {
+    return null
+  }
+  return candidateFromPath(join(modCacheDir(), manifest.fileName), 'github-cache', jarPrefix)
 }
 
-async function findInstalledInstanceJar(instanceId: string): Promise<JarCandidate | null> {
+async function findInstalledInstanceJar(
+  instanceId: string,
+  jarPrefix: string
+): Promise<JarCandidate | null> {
   const modsDir = getInstanceModsDir(instanceId)
   try {
     const files = await readdir(modsDir)
     let best: JarCandidate | null = null
     for (const file of files) {
-      if (!isPrimeModJarAsset(file, PRIME_JAR_PREFIX)) {
+      if (!isPrimeModJarAsset(file, jarPrefix)) {
         continue
       }
-      const candidate = await candidateFromPath(join(modsDir, file), 'instance-mods')
+      const candidate = await candidateFromPath(join(modsDir, file), 'instance-mods', jarPrefix)
       if (candidate && (!best || compareSemVer(candidate.version, best.version) > 0)) {
         best = candidate
       }
@@ -177,8 +198,11 @@ async function findInstalledInstanceJar(instanceId: string): Promise<JarCandidat
   }
 }
 
-async function downloadPrimeModFromRelease(release: GitHubRelease): Promise<JarCandidate | null> {
-  const asset = pickPrimeModAsset(release, PRIME_JAR_PREFIX)
+async function downloadPrimeModFromRelease(
+  release: GitHubRelease,
+  jarPrefix: string
+): Promise<JarCandidate | null> {
+  const asset = pickPrimeModAsset(release, jarPrefix)
   if (!asset?.browser_download_url) {
     return null
   }
@@ -196,33 +220,38 @@ async function downloadPrimeModFromRelease(release: GitHubRelease): Promise<JarC
   await writeModCacheManifest({
     tag: release.tag_name,
     fileName: asset.name,
+    jarPrefix,
     downloadedAt: new Date().toISOString()
   })
-  return candidateFromPath(dest, 'github-download')
+  return candidateFromPath(dest, 'github-download', jarPrefix)
 }
 
 /** Resolves the newest Prime Client jar across dev build, instance, cache and GitHub. */
-async function resolvePrimeClientSource(instanceId: string): Promise<JarCandidate | null> {
+async function resolvePrimeClientSource(
+  instanceId: string,
+  target: MinecraftTarget
+): Promise<JarCandidate | null> {
+  const { jarPrefix } = target
   const candidates: JarCandidate[] = []
 
-  const envJar = await findEnvOverrideJar()
+  const envJar = await findEnvOverrideJar(jarPrefix)
   if (envJar) {
     candidates.push(envJar)
   }
 
-  const localJar = await findLocalBuildJar()
+  const localJar = await findLocalBuildJar(target)
   if (localJar) {
     candidates.push(localJar)
   }
 
-  const installedJar = await findInstalledInstanceJar(instanceId)
+  const installedJar = await findInstalledInstanceJar(instanceId, jarPrefix)
   if (installedJar) {
     candidates.push(installedJar)
   }
 
   const manifest = await readModCacheManifest()
   if (manifest) {
-    const cached = await findCachedGitHubJar(manifest)
+    const cached = await findCachedGitHubJar(manifest, jarPrefix)
     if (cached) {
       candidates.push(cached)
     }
@@ -230,7 +259,7 @@ async function resolvePrimeClientSource(instanceId: string): Promise<JarCandidat
 
   let best = pickNewestCandidate(candidates)
 
-  const shouldCheckGitHub = !best || isGitHubCheckStale(manifest)
+  const shouldCheckGitHub = !best || isGitHubCheckStale(manifest, jarPrefix)
   if (shouldCheckGitHub) {
     emitLaunchProgress({
       phase: 'mods',
@@ -239,11 +268,11 @@ async function resolvePrimeClientSource(instanceId: string): Promise<JarCandidat
     })
 
     const release = await fetchLatestGitHubRelease()
-    await touchGitHubCheck(manifest)
+    await touchGitHubCheck(manifest, jarPrefix)
 
     if (release) {
-      const asset = pickPrimeModAsset(release, PRIME_JAR_PREFIX)
-      const remoteVersion = asset ? parseJarVersion(asset.name) : null
+      const asset = pickPrimeModAsset(release, jarPrefix)
+      const remoteVersion = asset ? parseJarVersion(asset.name, jarPrefix) : null
 
       const shouldDownload =
         asset?.browser_download_url &&
@@ -251,12 +280,12 @@ async function resolvePrimeClientSource(instanceId: string): Promise<JarCandidat
         (!best || compareSemVer(remoteVersion, best.version) > 0)
 
       if (shouldDownload) {
-        const downloaded = await downloadPrimeModFromRelease(release)
+        const downloaded = await downloadPrimeModFromRelease(release, jarPrefix)
         if (downloaded && (!best || compareSemVer(downloaded.version, best.version) > 0)) {
           best = downloaded
         }
       } else if (asset && remoteVersion && !best) {
-        const downloaded = await downloadPrimeModFromRelease(release)
+        const downloaded = await downloadPrimeModFromRelease(release, jarPrefix)
         if (downloaded) {
           best = downloaded
         }
@@ -281,6 +310,10 @@ async function resolvePrimeClientSource(instanceId: string): Promise<JarCandidat
   return best
 }
 
+function isAnyPrimeJar(fileName: string): boolean {
+  return allPrimeJarPrefixes().some((prefix) => isPrimeModJarAsset(fileName, prefix))
+}
+
 async function removeStalePrimeJars(modsDir: string, keepFileName: string): Promise<void> {
   let files: string[]
   try {
@@ -291,7 +324,7 @@ async function removeStalePrimeJars(modsDir: string, keepFileName: string): Prom
 
   await Promise.all(
     files
-      .filter((f) => isPrimeModJarAsset(f, PRIME_JAR_PREFIX) && f !== keepFileName)
+      .filter((f) => isAnyPrimeJar(f) && f !== keepFileName)
       .map((f) => unlink(join(modsDir, f)).catch(() => undefined))
   )
 }
@@ -354,18 +387,19 @@ export async function installInstanceMods(
     return { primeJar: null, fabricApiJar: null }
   }
 
+  const target = resolveTarget(config.minecraftVersion)
   const modsDir = getInstanceModsDir(instanceId)
   await mkdir(modsDir, { recursive: true })
 
   emitLaunchProgress({
     phase: 'mods',
-    detail: 'Preparing mods folder…',
+    detail: `Preparing mods for Minecraft ${target.mcVersion}…`,
     percent: 30
   })
 
   const fabricApiJar = await ensureFabricApi(config, modsDir)
 
-  const primeCandidate = await resolvePrimeClientSource(instanceId)
+  const primeCandidate = await resolvePrimeClientSource(instanceId, target)
   if (!primeCandidate) {
     return { primeJar: null, fabricApiJar }
   }
@@ -392,9 +426,10 @@ export async function installInstanceMods(
   return { primeJar: primeDest, fabricApiJar }
 }
 
-export function primeClientBuildHint(): string {
+export function primeClientBuildHint(minecraftVersion?: string): string {
+  const target = resolveTarget(minecraftVersion)
   return (
-    'Build the mod with `.\\gradlew :mc-1.21.11:build`, set PRIME_CLIENT_JAR, ' +
-    'or publish a GitHub Release with a prime-client-1.21.11*.jar asset.'
+    `Build the mod with \`.\\gradlew :${target.localBuildDir}:build\`, set PRIME_CLIENT_JAR, ` +
+    `or publish a GitHub Release with a ${target.jarPrefix}*.jar asset.`
   )
 }

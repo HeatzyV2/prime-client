@@ -1,15 +1,16 @@
 import { app } from 'electron'
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
+import { DEFAULT_MINECRAFT_TARGET } from '../../shared/minecraft-targets'
 import type { InstanceDatabase, StoredInstance } from './instance-types'
 
 const PRIME_DEFAULT: StoredInstance = {
   id: 'prime-fabric',
   name: 'Prime Client',
-  minecraftVersion: '1.21.11',
+  minecraftVersion: DEFAULT_MINECRAFT_TARGET.mcVersion,
   loader: 'fabric',
-  fabricLoaderVersion: '0.19.3',
-  fabricApiVersion: '0.141.4+1.21.11',
+  fabricLoaderVersion: DEFAULT_MINECRAFT_TARGET.fabricLoader,
+  fabricApiVersion: DEFAULT_MINECRAFT_TARGET.fabricApi,
   includePrimeMod: true,
   ramMb: 4096,
   jvmArgs: ['-XX:+UseG1GC'],

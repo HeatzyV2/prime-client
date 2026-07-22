@@ -1,88 +1,104 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@renderer/design-system/components'
 import { useI18n } from '@renderer/context/I18nProvider'
 import type { GameInstance } from '@shared/types'
-import type { CreateInstanceDto, JavaInstallationDto } from '@shared/ipc'
+import type { JavaInstallationDto } from '@shared/ipc'
+import {
+  DEFAULT_MINECRAFT_TARGET,
+  MINECRAFT_TARGETS,
+  resolveTarget,
+  type MinecraftTarget
+} from '@shared/minecraft-targets'
 import '@renderer/components/LoginModal.css'
+import '@renderer/components/InstanceModal.css'
 
 export type InstancePreset = 'prime' | 'fabric' | 'vanilla'
 
 interface InstanceModalProps {
   mode: 'create' | 'edit'
   preset?: InstancePreset
+  /** Pre-select MC version when opening create (e.g. "26.2"). */
+  initialMcVersion?: string
   instance?: GameInstance
   onClose: () => void
   onSaved: () => void
 }
 
-const PRESETS: Record<
-  InstancePreset,
-  Omit<CreateInstanceDto, 'name'> & { defaultName: string }
-> = {
-  prime: {
-    defaultName: 'Prime Client',
-    minecraftVersion: '1.21.11',
-    loader: 'fabric',
-    fabricLoaderVersion: '0.19.3',
-    fabricApiVersion: '0.141.4+1.21.11',
-    includePrimeMod: true,
-    ramMb: 4096,
-    jvmArgs: ['-XX:+UseG1GC']
-  },
-  fabric: {
-    defaultName: 'Fabric',
-    minecraftVersion: '1.21.11',
-    loader: 'fabric',
-    fabricLoaderVersion: '0.19.3',
-    includePrimeMod: false,
-    ramMb: 4096,
-    jvmArgs: ['-XX:+UseG1GC']
-  },
-  vanilla: {
-    defaultName: 'Vanilla',
-    minecraftVersion: '1.21.11',
-    loader: 'vanilla',
-    includePrimeMod: false,
-    ramMb: 2048,
-    jvmArgs: []
-  }
+type InstanceKind = 'prime' | 'fabric' | 'vanilla'
+
+function kindFromInstance(inst: GameInstance): InstanceKind {
+  if (inst.loader === 'vanilla') return 'vanilla'
+  if (inst.includePrimeMod) return 'prime'
+  return 'fabric'
 }
 
-export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSaved }: InstanceModalProps) {
+function defaultNameFor(kind: InstanceKind, target: MinecraftTarget): string {
+  if (kind === 'prime') return `Prime Client ${target.mcVersion}`
+  if (kind === 'fabric') return `Fabric ${target.mcVersion}`
+  return `Vanilla ${target.mcVersion}`
+}
+
+export function InstanceModal({
+  mode,
+  preset = 'prime',
+  initialMcVersion,
+  instance,
+  onClose,
+  onSaved
+}: InstanceModalProps) {
   const { t } = useI18n()
-  const base = mode === 'edit' && instance ? instance : PRESETS[preset]
-  const [name, setName] = useState(
-    mode === 'edit' && instance ? instance.name : PRESETS[preset].defaultName
+  const initialTarget = resolveTarget(
+    mode === 'edit' && instance ? instance.minecraftVersion : initialMcVersion ?? DEFAULT_MINECRAFT_TARGET.mcVersion
   )
-  const [minecraftVersion, setMinecraftVersion] = useState(base.minecraftVersion)
-  const [loader, setLoader] = useState<'vanilla' | 'fabric'>(base.loader === 'vanilla' ? 'vanilla' : 'fabric')
-  const [ramMb, setRamMb] = useState(base.ramMb)
-  const [fabricLoaderVersion, setFabricLoaderVersion] = useState(instance?.fabricLoaderVersion ?? '0.19.3')
-  const [includePrimeMod, setIncludePrimeMod] = useState(instance?.includePrimeMod ?? preset === 'prime')
-  const [jvmArgsText, setJvmArgsText] = useState((instance?.jvmArgs ?? PRESETS[preset].jvmArgs ?? []).join('\n'))
+  const [kind, setKind] = useState<InstanceKind>(
+    mode === 'edit' && instance ? kindFromInstance(instance) : preset
+  )
+  const [targetId, setTargetId] = useState(initialTarget.id)
+  const [name, setName] = useState(
+    mode === 'edit' && instance ? instance.name : defaultNameFor(preset, initialTarget)
+  )
+  const [ramMb, setRamMb] = useState(
+    mode === 'edit' && instance ? instance.ramMb : preset === 'vanilla' ? 2048 : 4096
+  )
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [jvmArgsText, setJvmArgsText] = useState(
+    (instance?.jvmArgs ?? (preset === 'vanilla' ? [] : ['-XX:+UseG1GC'])).join('\n')
+  )
   const [javaPath, setJavaPath] = useState(instance?.javaPath ?? '')
   const [javaInstalls, setJavaInstalls] = useState<JavaInstallationDto[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [nameTouched, setNameTouched] = useState(mode === 'edit')
+
+  const target = useMemo(
+    () => MINECRAFT_TARGETS.find((t) => t.id === targetId) ?? DEFAULT_MINECRAFT_TARGET,
+    [targetId]
+  )
 
   useEffect(() => {
     void window.primeLauncher.settings.listJava().then(setJavaInstalls)
   }, [])
 
   useEffect(() => {
-    if (mode === 'create') {
-      const p = PRESETS[preset]
-      setName(p.defaultName)
-      setMinecraftVersion(p.minecraftVersion)
-      setLoader(p.loader)
-      setRamMb(p.ramMb)
-      setFabricLoaderVersion(p.fabricLoaderVersion ?? '0.19.3')
-      setIncludePrimeMod(Boolean(p.includePrimeMod))
-      setJvmArgsText((p.jvmArgs ?? []).join('\n'))
-      setJavaPath('')
+    if (mode !== 'create') return
+    const tTarget = resolveTarget(initialMcVersion ?? DEFAULT_MINECRAFT_TARGET.mcVersion)
+    setKind(preset)
+    setTargetId(tTarget.id)
+    setName(defaultNameFor(preset, tTarget))
+    setNameTouched(false)
+    setRamMb(preset === 'vanilla' ? 2048 : 4096)
+    setJvmArgsText(preset === 'vanilla' ? '' : '-XX:+UseG1GC')
+    setJavaPath('')
+    setShowAdvanced(false)
+    setError(null)
+  }, [mode, preset, initialMcVersion])
+
+  useEffect(() => {
+    if (!nameTouched && mode === 'create') {
+      setName(defaultNameFor(kind, target))
     }
-  }, [mode, preset])
+  }, [kind, target, nameTouched, mode])
 
   async function handleSubmit() {
     setBusy(true)
@@ -93,17 +109,21 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
       .map((line) => line.trim())
       .filter(Boolean)
 
+    const loader = kind === 'vanilla' ? 'vanilla' : 'fabric'
+    const includePrimeMod = kind === 'prime'
+    const payload = {
+      name,
+      minecraftVersion: target.mcVersion,
+      loader: loader as 'vanilla' | 'fabric',
+      fabricLoaderVersion: loader === 'fabric' ? target.fabricLoader : undefined,
+      fabricApiVersion: includePrimeMod ? target.fabricApi : undefined,
+      includePrimeMod,
+      ramMb,
+      jvmArgs
+    }
+
     if (mode === 'create') {
-      const result = await window.primeLauncher.instance.create({
-        name,
-        minecraftVersion,
-        loader,
-        fabricLoaderVersion: loader === 'fabric' ? fabricLoaderVersion : undefined,
-        fabricApiVersion: loader === 'fabric' && includePrimeMod ? '0.141.4+1.21.11' : undefined,
-        includePrimeMod: loader === 'fabric' ? includePrimeMod : false,
-        ramMb,
-        jvmArgs
-      })
+      const result = await window.primeLauncher.instance.create(payload)
       setBusy(false)
       if (result.ok) {
         onSaved()
@@ -121,13 +141,7 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
 
     const result = await window.primeLauncher.instance.update({
       id: instance.id,
-      name,
-      minecraftVersion,
-      loader,
-      fabricLoaderVersion: loader === 'fabric' ? fabricLoaderVersion : undefined,
-      includePrimeMod: loader === 'fabric' ? includePrimeMod : false,
-      ramMb,
-      jvmArgs,
+      ...payload,
       javaPath: javaPath || undefined
     })
     setBusy(false)
@@ -148,8 +162,7 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
       onClick={onClose}
     >
       <motion.div
-        className="modal"
-        style={{ width: 'min(520px, 100%)' }}
+        className="modal instance-modal"
         initial={{ opacity: 0, scale: 0.95, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 12 }}
@@ -160,46 +173,70 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
         </h2>
         <p className="modal__subtitle">{t('modals.instance.subtitle')}</p>
 
-        <label className="text-caption">{t('modals.instance.name')}</label>
-        <input className="modal__field" value={name} onChange={(e) => setName(e.target.value)} />
+        <label className="text-caption">{t('modals.instance.kind')}</label>
+        <div className="instance-modal__cards">
+          {(
+            [
+              ['prime', t('instances.primeClient')],
+              ['fabric', t('instances.fabric')],
+              ['vanilla', t('instances.vanilla')]
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={`instance-modal__card${kind === id ? ' is-active' : ''}`}
+              onClick={() => setKind(id)}
+            >
+              <span className="instance-modal__card-title">{label}</span>
+              <span className="instance-modal__card-desc">
+                {id === 'prime'
+                  ? t('modals.instance.kindPrimeHint')
+                  : id === 'fabric'
+                    ? t('modals.instance.kindFabricHint')
+                    : t('modals.instance.kindVanillaHint')}
+              </span>
+            </button>
+          ))}
+        </div>
 
         <label className="text-caption">{t('modals.instance.minecraftVersion')}</label>
+        <div className="instance-modal__cards instance-modal__cards--versions">
+          {MINECRAFT_TARGETS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              className={`instance-modal__card${targetId === opt.id ? ' is-active' : ''}`}
+              onClick={() => setTargetId(opt.id)}
+            >
+              <span className="instance-modal__card-title">
+                {opt.mcVersion}
+                {opt.recommended ? (
+                  <span className="instance-modal__badge">{t('modals.instance.recommended')}</span>
+                ) : null}
+              </span>
+              <span className="instance-modal__card-desc">
+                {kind === 'prime'
+                  ? t('modals.instance.primeJarHint', { prefix: opt.jarPrefix })
+                  : t('modals.instance.javaHint', { major: opt.javaMajor })}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {kind === 'prime' && (
+          <p className="text-caption instance-modal__note">{t('modals.instance.primeAutoNote')}</p>
+        )}
+
+        <label className="text-caption">{t('modals.instance.name')}</label>
         <input
           className="modal__field"
-          value={minecraftVersion}
-          onChange={(e) => setMinecraftVersion(e.target.value)}
-          placeholder="1.21.11"
+          value={name}
+          onChange={(e) => {
+            setNameTouched(true)
+            setName(e.target.value)
+          }}
         />
-
-        <label className="text-caption">{t('modals.instance.loader')}</label>
-        <select
-          className="modal__field"
-          value={loader}
-          onChange={(e) => setLoader(e.target.value as 'vanilla' | 'fabric')}
-        >
-          <option value="fabric">{t('instances.fabric')}</option>
-          <option value="vanilla">{t('instances.vanilla')}</option>
-        </select>
-
-        {loader === 'fabric' && (
-          <>
-            <label className="text-caption">{t('modals.instance.fabricLoader')}</label>
-            <input
-              className="modal__field"
-              value={fabricLoaderVersion}
-              onChange={(e) => setFabricLoaderVersion(e.target.value)}
-              placeholder="0.19.3"
-            />
-            <label className="text-caption" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type="checkbox"
-                checked={includePrimeMod}
-                onChange={(e) => setIncludePrimeMod(e.target.checked)}
-              />
-              {t('modals.instance.includePrimeMod')}
-            </label>
-          </>
-        )}
 
         <label className="text-caption">{t('modals.instance.ram')}</label>
         <input
@@ -212,54 +249,66 @@ export function InstanceModal({ mode, preset = 'fabric', instance, onClose, onSa
           onChange={(e) => setRamMb(Number(e.target.value))}
         />
 
-        <label className="text-caption">{t('modals.instance.jvmArgs')}</label>
-        <textarea
-          className="modal__field"
-          style={{ height: 72, padding: '10px 12px', resize: 'vertical' }}
-          value={jvmArgsText}
-          onChange={(e) => setJvmArgsText(e.target.value)}
-        />
+        <button
+          type="button"
+          className="instance-modal__advanced-toggle"
+          onClick={() => setShowAdvanced((v) => !v)}
+        >
+          {showAdvanced ? t('modals.instance.hideAdvanced') : t('modals.instance.showAdvanced')}
+        </button>
 
-        {mode === 'edit' && (
+        {showAdvanced && (
           <>
-            <label className="text-caption">{t('modals.instance.javaPath')}</label>
-            <p className="text-caption" style={{ margin: '0 0 8px', color: 'var(--prime-muted)' }}>
-              {t('modals.instance.javaPathHint')}
-            </p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <select
-                className="modal__field"
-                style={{ flex: 1 }}
-                value={javaPath || 'auto'}
-                onChange={(e) => setJavaPath(e.target.value === 'auto' ? '' : e.target.value)}
-              >
-                <option value="auto">{t('common.automatic')}</option>
-                {javaInstalls.map((java) => (
-                  <option key={java.path} value={java.path}>
-                    {java.label}
-                  </option>
-                ))}
-              </select>
-              <Button
-                variant="ghost"
-                onClick={() =>
-                  void (async () => {
-                    const result = await window.primeLauncher.settings.browseJava()
-                    if (!result.ok || !result.install) {
-                      if (result.error && result.error !== 'Cancelled.') {
-                        setError(result.error)
-                      }
-                      return
+            <label className="text-caption">{t('modals.instance.jvmArgs')}</label>
+            <textarea
+              className="modal__field"
+              style={{ height: 72, padding: '10px 12px', resize: 'vertical' }}
+              value={jvmArgsText}
+              onChange={(e) => setJvmArgsText(e.target.value)}
+            />
+
+            {mode === 'edit' && (
+              <>
+                <label className="text-caption">{t('modals.instance.javaPath')}</label>
+                <p className="text-caption" style={{ margin: '0 0 8px', color: 'var(--prime-muted)' }}>
+                  {t('modals.instance.javaPathHint')}
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select
+                    className="modal__field"
+                    style={{ flex: 1 }}
+                    value={javaPath || 'auto'}
+                    onChange={(e) => setJavaPath(e.target.value === 'auto' ? '' : e.target.value)}
+                  >
+                    <option value="auto">{t('common.automatic')}</option>
+                    {javaInstalls.map((java) => (
+                      <option key={java.path} value={java.path}>
+                        {java.label}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    variant="ghost"
+                    onClick={() =>
+                      void (async () => {
+                        const result = await window.primeLauncher.settings.browseJava()
+                        if (!result.ok || !result.install) {
+                          if (result.error && result.error !== 'Cancelled.') {
+                            setError(result.error)
+                          }
+                          return
+                        }
+                        await window.primeLauncher.settings.addJavaPath(result.install.path)
+                        setJavaPath(result.install.path)
+                        setJavaInstalls(await window.primeLauncher.settings.listJava())
+                      })()
                     }
-                    await window.primeLauncher.settings.addJavaPath(result.install.path)
-                    setJavaPath(result.install.path)
-                    setJavaInstalls(await window.primeLauncher.settings.listJava())
-                  })()
-                }
-              >
-                {t('settings.javaPath.addPath')}
-              </Button>
-            </div>
+                  >
+                    {t('settings.javaPath.addPath')}
+                  </Button>
+                </div>
+              </>
+            )}
           </>
         )}
 

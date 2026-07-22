@@ -64,9 +64,14 @@ export function parseLauncherVersionFromAsset(name: string): string | null {
   return match?.[1] ?? null
 }
 
-/** Expected asset name: prime-client-1.21.11-1.2.31.jar */
-export function parseModVersionFromAsset(name: string): string | null {
-  const match = name.match(/prime-client-1\.21\.11-(\d+\.\d+\.\d+)\.jar$/)
+/** Expected asset name: prime-client-<target>-1.2.31.jar */
+export function parseModVersionFromAsset(name: string, prefix?: string): string | null {
+  if (prefix) {
+    const escaped = prefix.replace(/\./g, '\\.')
+    const match = name.match(new RegExp(`^${escaped}-(\\d+\\.\\d+\\.\\d+)\\.jar$`))
+    return match?.[1] ?? null
+  }
+  const match = name.match(/^prime-client-[^-]+(?:\.[^-]+)*-(\d+\.\d+\.\d+)\.jar$/)
   return match?.[1] ?? null
 }
 

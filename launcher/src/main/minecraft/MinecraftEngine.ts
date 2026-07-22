@@ -326,7 +326,7 @@ export class MinecraftEngine {
     if (config.loader === 'fabric' && config.includePrimeMod) {
       const { primeJar } = await installInstanceMods(instanceId, config)
       if (!primeJar) {
-        throw new Error(`Prime Client mod not found. ${primeClientBuildHint()}`)
+        throw new Error(`Prime Client mod not found. ${primeClientBuildHint(config.minecraftVersion)}`)
       }
       primeModInstalled = true
       emitLaunchProgress({ phase: 'mods', detail: `Prime Client mod installed: ${primeJar}`, percent: 15 })

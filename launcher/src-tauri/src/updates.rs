@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::minecraft_targets::{is_prime_jar_for_prefix, DEFAULT_TARGET};
 use crate::paths;
 use serde_json::{json, Value};
 use std::fs;
@@ -52,12 +53,24 @@ pub async fn check(current_launcher: &str) -> Result<Value, AppError> {
             .map(|n| n.starts_with("Prime-Launcher-Setup-") && n.ends_with(".exe"))
             .unwrap_or(false)
     });
-    let mod_asset = assets.iter().find(|a| {
-        a.get("name")
-            .and_then(|n| n.as_str())
-            .map(|n| n.starts_with("prime-client-1.21.11") && n.ends_with(".jar"))
-            .unwrap_or(false)
-    });
+    // Prefer recommended target jar; fall back to any known Prime jar.
+    let preferred_prefix = DEFAULT_TARGET.jar_prefix;
+    let mod_asset = assets
+        .iter()
+        .find(|a| {
+            a.get("name")
+                .and_then(|n| n.as_str())
+                .map(|n| is_prime_jar_for_prefix(n, preferred_prefix))
+                .unwrap_or(false)
+        })
+        .or_else(|| {
+            assets.iter().find(|a| {
+                a.get("name")
+                    .and_then(|n| n.as_str())
+                    .map(|n| n.starts_with("prime-client-") && n.ends_with(".jar"))
+                    .unwrap_or(false)
+            })
+        });
     let launcher_url = launcher_asset
         .and_then(|a| a.get("browser_download_url").and_then(|u| u.as_str()))
         .map(str::to_string);

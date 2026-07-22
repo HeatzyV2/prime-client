@@ -9,14 +9,25 @@ import { useAccounts } from '@renderer/context/AccountProvider'
 import { useI18n } from '@renderer/context/I18nProvider'
 import type { GameInstance } from '@shared/types'
 
+type CreateModalState = {
+  mode: 'create'
+  preset: InstancePreset
+  initialMcVersion?: string
+}
+
+type EditModalState = {
+  mode: 'edit'
+  instance: GameInstance
+}
+
+type ModalState = CreateModalState | EditModalState
+
 export function InstancesPage() {
   const { t, locale } = useI18n()
   const { launch, activeAccount } = useAccounts()
   const [instances, setInstances] = useState<GameInstance[]>([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState<{ mode: 'create' | 'edit'; preset?: InstancePreset; instance?: GameInstance } | null>(
-    null
-  )
+  const [modal, setModal] = useState<ModalState | null>(null)
   const [showLogin, setShowLogin] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
 
@@ -65,20 +76,46 @@ export function InstancesPage() {
     await refresh()
   }
 
+  function loaderLabel(inst: GameInstance): string {
+    if (inst.includePrimeMod) return t('instances.primeClient')
+    if (inst.loader === 'fabric') return t('instances.fabric')
+    return t('instances.vanilla')
+  }
+
   return (
     <PageShell
       title={t('pages.instances.title')}
       subtitle={t('pages.instances.subtitle')}
       actions={
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button variant="secondary" size="sm" onClick={() => setModal({ mode: 'create', preset: 'vanilla' })}>
-            {t('instances.vanilla')}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<Plus size={16} />}
+            onClick={() => setModal({ mode: 'create', preset: 'prime', initialMcVersion: '26.2' })}
+          >
+            {t('instances.createPrime26')}
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setModal({ mode: 'create', preset: 'fabric' })}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setModal({ mode: 'create', preset: 'prime', initialMcVersion: '1.21.11' })}
+          >
+            {t('instances.createPrime121')}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setModal({ mode: 'create', preset: 'fabric', initialMcVersion: '26.2' })}
+          >
             {t('instances.fabric')}
           </Button>
-          <Button variant="primary" icon={<Plus size={16} />} onClick={() => setModal({ mode: 'create', preset: 'prime' })}>
-            {t('instances.primeClient')}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setModal({ mode: 'create', preset: 'vanilla', initialMcVersion: '26.2' })}
+          >
+            {t('instances.vanilla')}
           </Button>
         </div>
       }
@@ -98,13 +135,19 @@ export function InstancesPage() {
                     {inst.name}
                   </div>
                   <div className="list-row__desc">
-                    {inst.minecraftVersion} · {inst.loader}
-                    {inst.includePrimeMod ? ' · Prime' : ''}
+                    Minecraft {inst.minecraftVersion} · {loaderLabel(inst)}
                   </div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                <Badge variant="default">MC {inst.minecraftVersion}</Badge>
+                {inst.includePrimeMod && <Badge variant="prime">{t('instances.primeBadge')}</Badge>}
+                {!inst.includePrimeMod && (
+                  <Badge variant="default">
+                    {inst.loader === 'fabric' ? t('instances.fabric') : t('instances.vanilla')}
+                  </Badge>
+                )}
                 <Badge variant="default">{t('instances.ramBadge', { mb: inst.ramMb })}</Badge>
                 <Badge variant="default">{t('instances.modsBadge', { count: inst.modCount })}</Badge>
                 {inst.isDefault && <Badge variant="prime">{t('instances.default')}</Badge>}
@@ -128,7 +171,11 @@ export function InstancesPage() {
                 >
                   {activeAccount ? t('instances.play') : t('instances.signInToPlay')}
                 </Button>
-                <Button variant="secondary" size="sm" onClick={() => setModal({ mode: 'edit', instance: inst })}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setModal({ mode: 'edit', instance: inst })}
+                >
                   {t('actions.configure')}
                 </Button>
                 <Button
@@ -177,8 +224,9 @@ export function InstancesPage() {
         {modal && (
           <InstanceModal
             mode={modal.mode}
-            preset={modal.preset}
-            instance={modal.instance}
+            preset={modal.mode === 'create' ? modal.preset : undefined}
+            initialMcVersion={modal.mode === 'create' ? modal.initialMcVersion : undefined}
+            instance={modal.mode === 'edit' ? modal.instance : undefined}
             onClose={() => setModal(null)}
             onSaved={() => void refresh()}
           />

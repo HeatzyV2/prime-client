@@ -14,6 +14,7 @@ import {
   pickWindowsLauncherAsset,
   type GitHubRelease
 } from '../../shared/githubRelease'
+import { allPrimeJarPrefixes, primeJarPrefix, resolveTarget } from '../../shared/minecraft-targets'
 import type { UpdateInstallResultDto, UpdateProgressDto, UpdateStatusDto } from '../../shared/ipc'
 import { getInstanceModsDir } from '../minecraft/paths'
 import { minecraftEngine } from '../minecraft/MinecraftEngine'
@@ -21,13 +22,13 @@ import { instanceService } from './InstanceService'
 import { settingsStore } from '../storage/SettingsStore'
 import { emitUpdateProgress } from './updateProgress'
 
-const PRIME_JAR_PREFIX = 'prime-client-1.21.11'
 const CHECK_CACHE_MS = 60 * 60 * 1000
 
 interface ModCacheManifest {
   tag: string
   fileName: string
   downloadedAt: string
+  jarPrefix?: string
 }
 
 function modCacheDir(): string {
@@ -96,16 +97,16 @@ async function downloadWithProgress(
   })
 }
 
-async function getInstalledModVersion(instanceId: string): Promise<string> {
+async function getInstalledModVersion(instanceId: string, jarPrefix: string): Promise<string> {
   const modsDir = getInstanceModsDir(instanceId)
   try {
     const files = await readdir(modsDir)
     let best: string | null = null
     for (const file of files) {
-      if (!isPrimeModJarAsset(file, PRIME_JAR_PREFIX)) {
+      if (!isPrimeModJarAsset(file, jarPrefix)) {
         continue
       }
-      const version = parseModVersionFromAsset(file)
+      const version = parseModVersionFromAsset(file, jarPrefix)
       if (version && (!best || compareSemver(version, best) > 0)) {
         best = version
       }
@@ -114,6 +115,10 @@ async function getInstalledModVersion(instanceId: string): Promise<string> {
   } catch {
     return '0.0.0'
   }
+}
+
+function isAnyPrimeJar(fileName: string): boolean {
+  return allPrimeJarPrefixes().some((prefix) => isPrimeModJarAsset(fileName, prefix))
 }
 
 async function removeStalePrimeJars(modsDir: string, keepFileName: string): Promise<void> {
@@ -126,7 +131,7 @@ async function removeStalePrimeJars(modsDir: string, keepFileName: string): Prom
 
   await Promise.all(
     files
-      .filter((f) => isPrimeModJarAsset(f, PRIME_JAR_PREFIX) && f !== keepFileName)
+      .filter((f) => isAnyPrimeJar(f) && f !== keepFileName)
       .map((f) => unlink(join(modsDir, f)).catch(() => undefined))
   )
 }
@@ -141,6 +146,7 @@ function statusFromRelease(
   currentLauncher: string,
   currentMod: string,
   checkedAt: string,
+  jarPrefix: string,
   notes?: string
 ): UpdateStatusDto {
   if (!release) {
@@ -155,13 +161,14 @@ function statusFromRelease(
   }
 
   const launcherAsset = pickWindowsLauncherAsset(release)
-  const modAsset = pickPrimeModAsset(release, PRIME_JAR_PREFIX)
+  const modAsset = pickPrimeModAsset(release, jarPrefix)
 
   const launcherLatest =
     (launcherAsset ? parseLauncherVersionFromAsset(launcherAsset.name) : null) ??
     release.tag_name.replace(/^v/i, '')
   const modLatest =
-    (modAsset ? parseModVersionFromAsset(modAsset.name) : null) ?? release.tag_name.replace(/^v/i, '')
+    (modAsset ? parseModVersionFromAsset(modAsset.name, jarPrefix) : null) ??
+    release.tag_name.replace(/^v/i, '')
 
   const launcherUpdate = compareSemver(currentLauncher, launcherLatest) < 0
   const modUpdate = compareSemver(currentMod, modLatest) < 0
@@ -225,12 +232,15 @@ export class UpdateService {
   private async fetchStatus(force: boolean): Promise<UpdateStatusDto> {
     const currentLauncher = app.getVersion()
     const defaultInstance = await instanceService.getDefault()
-    const currentMod = defaultInstance ? await getInstalledModVersion(defaultInstance.id) : '0.0.0'
+    const jarPrefix = primeJarPrefix(defaultInstance?.minecraftVersion)
+    const currentMod = defaultInstance
+      ? await getInstalledModVersion(defaultInstance.id, jarPrefix)
+      : '0.0.0'
     const checkedAt = new Date().toISOString()
 
     try {
       const release = await fetchLatestGitHubRelease()
-      const status = statusFromRelease(release, currentLauncher, currentMod, checkedAt)
+      const status = statusFromRelease(release, currentLauncher, currentMod, checkedAt, jarPrefix)
 
       await settingsStore.mutate((s) => {
         s.lastUpdateCheck = checkedAt
@@ -339,35 +349,47 @@ export class UpdateService {
       return { ok: false, errorKey: 'prime_mod_disabled' }
     }
 
-    const status = await this.check(true)
-    if (!status.mod.updateAvailable || !status.mod.downloadUrl || !status.mod.fileName) {
+    const target = resolveTarget(instance.minecraftVersion)
+    const jarPrefix = target.jarPrefix
+
+    const release = await fetchLatestGitHubRelease()
+    const modAsset = release ? pickPrimeModAsset(release, jarPrefix) : undefined
+    if (!modAsset?.browser_download_url || !modAsset.name) {
+      return { ok: false, errorKey: 'no_update' }
+    }
+
+    const currentMod = await getInstalledModVersion(instance.id, jarPrefix)
+    const latest =
+      parseModVersionFromAsset(modAsset.name, jarPrefix) ?? release!.tag_name.replace(/^v/i, '')
+    if (compareSemver(currentMod, latest) >= 0) {
       return { ok: false, errorKey: 'no_update' }
     }
 
     const modsDir = getInstanceModsDir(instance.id)
     await mkdir(modsDir, { recursive: true })
 
-    const cachePath = join(modCacheDir(), status.mod.fileName)
-    const destPath = join(modsDir, status.mod.fileName)
+    const cachePath = join(modCacheDir(), modAsset.name)
+    const destPath = join(modsDir, modAsset.name)
 
     try {
       emitUpdateProgress({
         target: 'mod',
         phase: 'downloading',
         percent: 0,
-        detail: status.mod.fileName
+        detail: modAsset.name
       })
 
-      await downloadWithProgress(status.mod.downloadUrl, cachePath, 'mod', status.mod.fileName)
+      await downloadWithProgress(modAsset.browser_download_url, cachePath, 'mod', modAsset.name)
 
       emitUpdateProgress({ target: 'mod', phase: 'installing', percent: 100 })
 
-      await removeStalePrimeJars(modsDir, status.mod.fileName)
+      await removeStalePrimeJars(modsDir, modAsset.name)
       await copyFile(cachePath, destPath)
 
       await writeModCacheManifest({
-        tag: status.mod.latest,
-        fileName: status.mod.fileName,
+        tag: latest,
+        fileName: modAsset.name,
+        jarPrefix,
         downloadedAt: new Date().toISOString()
       })
 
@@ -376,7 +398,7 @@ export class UpdateService {
       const refreshed = await this.check(true)
       this.cachedStatus = refreshed
 
-      return { ok: true, version: status.mod.latest }
+      return { ok: true, version: latest }
     } catch (err) {
       emitUpdateProgress({
         target: 'mod',

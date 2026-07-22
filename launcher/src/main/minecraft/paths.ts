@@ -29,7 +29,10 @@ export function getRepoRoot(): string {
   ].filter((value): value is string => Boolean(value))
 
   for (const root of candidates) {
-    if (existsSync(join(root, 'mc-1.21.11', 'build.gradle'))) {
+    if (
+      existsSync(join(root, 'mc-26.2', 'build.gradle')) ||
+      existsSync(join(root, 'mc-1.21.11', 'build.gradle'))
+    ) {
       return root
     }
   }

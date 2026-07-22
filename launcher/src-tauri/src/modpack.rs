@@ -1,6 +1,9 @@
 //! Installs Fabric API + Prime Client jar before launch (same behaviour as Electron ModPackService).
 use crate::error::AppError;
 use crate::instances;
+use crate::minecraft_targets::{
+    is_any_prime_jar, is_prime_jar_for_prefix, resolve_target, MinecraftTarget,
+};
 use crate::paths;
 use serde_json::Value;
 use std::fs;
@@ -8,7 +11,6 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 const FABRIC_API_PROJECT: &str = "P7dR8mSH";
-const PRIME_PREFIX: &str = "prime-client-1.21.11";
 const OWNER: &str = "HeatzyV2";
 const REPO: &str = "prime-client";
 
@@ -98,14 +100,10 @@ async fn ensure_fabric_api(instance_id: &str, mc_version: &str, preferred: Optio
     Ok(())
 }
 
-fn is_prime_jar(name: &str) -> bool {
-    name.starts_with(PRIME_PREFIX) && name.ends_with(".jar") && !name.contains("-sources") && !name.contains("-dev")
-}
-
-fn find_local_build() -> Option<PathBuf> {
+fn find_local_build(target: &MinecraftTarget) -> Option<PathBuf> {
     let libs = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
-        .join("mc-1.21.11")
+        .join(target.local_build_dir)
         .join("build")
         .join("libs");
     let Ok(rd) = fs::read_dir(libs) else {
@@ -114,28 +112,28 @@ fn find_local_build() -> Option<PathBuf> {
     let mut best: Option<PathBuf> = None;
     for e in rd.flatten() {
         let name = e.file_name().to_string_lossy().to_string();
-        if is_prime_jar(&name) {
+        if is_prime_jar_for_prefix(&name, target.jar_prefix) {
             best = Some(e.path());
         }
     }
     best
 }
 
-fn find_installed(mods: &Path) -> Option<PathBuf> {
+fn find_installed(mods: &Path, prefix: &str) -> Option<PathBuf> {
     let Ok(rd) = fs::read_dir(mods) else {
         return None;
     };
     let mut best: Option<PathBuf> = None;
     for e in rd.flatten() {
         let name = e.file_name().to_string_lossy().to_string();
-        if is_prime_jar(&name) {
+        if is_prime_jar_for_prefix(&name, prefix) {
             best = Some(e.path());
         }
     }
     best
 }
 
-fn find_cached() -> Option<PathBuf> {
+fn find_cached(prefix: &str) -> Option<PathBuf> {
     let cache = paths::cache_dir().join("prime-mod");
     let Ok(rd) = fs::read_dir(cache) else {
         return None;
@@ -143,14 +141,14 @@ fn find_cached() -> Option<PathBuf> {
     let mut best: Option<PathBuf> = None;
     for e in rd.flatten() {
         let name = e.file_name().to_string_lossy().to_string();
-        if is_prime_jar(&name) {
+        if is_prime_jar_for_prefix(&name, prefix) {
             best = Some(e.path());
         }
     }
     best
 }
 
-async fn download_from_github() -> Result<Option<PathBuf>, AppError> {
+async fn download_from_github(prefix: &str) -> Result<Option<PathBuf>, AppError> {
     let url = format!("https://api.github.com/repos/{OWNER}/{REPO}/releases/latest");
     let res = client()?
         .get(url)
@@ -166,7 +164,7 @@ async fn download_from_github() -> Result<Option<PathBuf>, AppError> {
     let asset = assets.iter().find(|a| {
         a.get("name")
             .and_then(|n| n.as_str())
-            .map(is_prime_jar)
+            .map(|n| is_prime_jar_for_prefix(n, prefix))
             .unwrap_or(false)
     });
     let Some(asset) = asset else {
@@ -191,7 +189,7 @@ fn remove_stale_prime(mods: &Path, keep: &str) {
     if let Ok(rd) = fs::read_dir(mods) {
         for e in rd.flatten() {
             let name = e.file_name().to_string_lossy().to_string();
-            if is_prime_jar(&name) && name != keep {
+            if is_any_prime_jar(&name) && name != keep {
                 let _ = fs::remove_file(e.path());
             }
         }
@@ -205,12 +203,13 @@ pub async fn ensure_instance_mods(instance_id: &str) -> Result<(), AppError> {
         return Ok(());
     }
 
-    ensure_fabric_api(
-        instance_id,
-        &stored.minecraft_version,
-        stored.fabric_api_version.as_deref(),
-    )
-    .await?;
+    let target = resolve_target(&stored.minecraft_version);
+    let fabric_api = stored
+        .fabric_api_version
+        .as_deref()
+        .unwrap_or(target.fabric_api);
+
+    ensure_fabric_api(instance_id, &stored.minecraft_version, Some(fabric_api)).await?;
 
     let mods = paths::instance_mods_dir(instance_id);
     fs::create_dir_all(&mods)?;
@@ -225,13 +224,13 @@ pub async fn ensure_instance_mods(instance_id: &str) -> Result<(), AppError> {
     } else {
         None
     }
-    .or_else(find_local_build)
-    .or_else(|| find_installed(&mods))
-    .or_else(find_cached);
+    .or_else(|| find_local_build(&target))
+    .or_else(|| find_installed(&mods, target.jar_prefix))
+    .or_else(|| find_cached(target.jar_prefix));
 
     let source = match source {
         Some(p) => p,
-        None => match download_from_github().await? {
+        None => match download_from_github(target.jar_prefix).await? {
             Some(p) => p,
             None => return Ok(()), // Fabric API alone is still useful
         },

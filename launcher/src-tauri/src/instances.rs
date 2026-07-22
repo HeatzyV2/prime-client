@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::minecraft_targets::{resolve_target, DEFAULT_TARGET};
 use crate::paths;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -7,8 +8,9 @@ use std::fs;
 use uuid::Uuid;
 use walkdir::WalkDir;
 
-const DEFAULT_FABRIC_LOADER: &str = "0.19.3";
-const DEFAULT_FABRIC_API: &str = "0.141.4+1.21.11";
+const DEFAULT_FABRIC_LOADER: &str = DEFAULT_TARGET.fabric_loader;
+const DEFAULT_FABRIC_API: &str = DEFAULT_TARGET.fabric_api;
+const DEFAULT_MC_VERSION: &str = DEFAULT_TARGET.mc_version;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,7 +48,7 @@ impl Default for InstanceDatabase {
             instances: vec![StoredInstance {
                 id: "prime-fabric".into(),
                 name: "Prime Client".into(),
-                minecraft_version: "1.21.11".into(),
+                minecraft_version: DEFAULT_MC_VERSION.into(),
                 loader: "fabric".into(),
                 fabric_loader_version: Some(DEFAULT_FABRIC_LOADER.into()),
                 fabric_api_version: Some(DEFAULT_FABRIC_API.into()),
@@ -163,34 +165,36 @@ pub fn create(input: serde_json::Value) -> Result<serde_json::Value, AppError> {
         .get("includePrimeMod")
         .and_then(|v| v.as_bool())
         .unwrap_or(loader == "fabric");
+    let mc_version = input
+        .get("minecraftVersion")
+        .and_then(|v| v.as_str())
+        .unwrap_or(DEFAULT_MC_VERSION)
+        .to_string();
+    let target = resolve_target(&mc_version);
     let stored = StoredInstance {
         id: Uuid::new_v4().to_string(),
         name: name.to_string(),
-        minecraft_version: input
-            .get("minecraftVersion")
-            .and_then(|v| v.as_str())
-            .unwrap_or("1.21.11")
-            .to_string(),
+        minecraft_version: mc_version,
         loader: loader.to_string(),
         fabric_loader_version: if loader == "fabric" {
             Some(
                 input
                     .get("fabricLoaderVersion")
                     .and_then(|v| v.as_str())
-                    .unwrap_or(DEFAULT_FABRIC_LOADER)
+                    .unwrap_or(target.fabric_loader)
                     .to_string(),
             )
         } else {
             None
         },
         fabric_api_version: if loader == "fabric" {
-            Some(
-                input
-                    .get("fabricApiVersion")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(DEFAULT_FABRIC_API)
-                    .to_string(),
-            )
+            if let Some(v) = input.get("fabricApiVersion").and_then(|v| v.as_str()) {
+                Some(v.to_string())
+            } else if include_prime {
+                Some(target.fabric_api.to_string())
+            } else {
+                None
+            }
         } else {
             None
         },
@@ -242,6 +246,13 @@ pub fn update(input: serde_json::Value) -> Result<serde_json::Value, AppError> {
     }
     if let Some(v) = input.get("minecraftVersion").and_then(|v| v.as_str()) {
         inst.minecraft_version = v.to_string();
+        if inst.include_prime_mod && input.get("fabricApiVersion").is_none() {
+            let target = resolve_target(v);
+            inst.fabric_api_version = Some(target.fabric_api.into());
+            if inst.fabric_loader_version.is_none() {
+                inst.fabric_loader_version = Some(target.fabric_loader.into());
+            }
+        }
     }
     if let Some(v) = input.get("loader").and_then(|v| v.as_str()) {
         inst.loader = v.to_string();

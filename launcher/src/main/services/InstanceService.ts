@@ -3,6 +3,7 @@ import { readdir, rm } from 'fs/promises'
 import { shell } from 'electron'
 import { join } from 'path'
 import type { GameInstance } from '../../shared/types'
+import { DEFAULT_MINECRAFT_TARGET, resolveTarget } from '../../shared/minecraft-targets'
 import { instanceStore } from '../storage/InstanceStore'
 import type {
   CreateInstanceInput,
@@ -14,8 +15,7 @@ import type { InstanceLaunchConfig } from '../minecraft/constants'
 import { getInstanceGameDir } from '../minecraft/paths'
 import { settingsStore } from '../storage/SettingsStore'
 
-const DEFAULT_FABRIC_LOADER = '0.19.3'
-const DEFAULT_FABRIC_API = '0.141.4+1.21.11'
+const DEFAULT_MC_VERSION = DEFAULT_MINECRAFT_TARGET.mcVersion
 
 function normalizeName(name: string): string | null {
   const trimmed = name.trim()
@@ -90,13 +90,14 @@ export class InstanceService {
   }
 
   toLaunchConfig(stored: StoredInstance): InstanceLaunchConfig {
+    const target = resolveTarget(stored.minecraftVersion)
     return {
       id: stored.id,
       name: stored.name,
       minecraftVersion: stored.minecraftVersion,
       loader: stored.loader,
-      fabricLoaderVersion: stored.fabricLoaderVersion ?? DEFAULT_FABRIC_LOADER,
-      fabricApiModrinthVersion: stored.fabricApiVersion ?? DEFAULT_FABRIC_API,
+      fabricLoaderVersion: stored.fabricLoaderVersion ?? target.fabricLoader,
+      fabricApiModrinthVersion: stored.fabricApiVersion ?? target.fabricApi,
       includePrimeMod: stored.includePrimeMod,
       ramMb: stored.ramMb,
       javaPath: stored.javaPath,
@@ -116,17 +117,21 @@ export class InstanceService {
     }
 
     const settings = await settingsStore.load()
+    const mcVersion = (input.minecraftVersion || DEFAULT_MC_VERSION).trim()
+    const target = resolveTarget(mcVersion)
+    const includePrimeMod = Boolean(input.includePrimeMod)
     const stored: StoredInstance = {
       id: randomUUID(),
       name,
-      minecraftVersion: input.minecraftVersion.trim(),
+      minecraftVersion: mcVersion,
       loader,
-      fabricLoaderVersion: loader === 'fabric' ? input.fabricLoaderVersion ?? DEFAULT_FABRIC_LOADER : undefined,
+      fabricLoaderVersion:
+        loader === 'fabric' ? input.fabricLoaderVersion ?? target.fabricLoader : undefined,
       fabricApiVersion:
-        loader === 'fabric' && input.includePrimeMod
-          ? input.fabricApiVersion ?? DEFAULT_FABRIC_API
+        loader === 'fabric' && includePrimeMod
+          ? input.fabricApiVersion ?? target.fabricApi
           : input.fabricApiVersion,
-      includePrimeMod: Boolean(input.includePrimeMod),
+      includePrimeMod,
       ramMb: clampRam(input.ramMb || settings.defaultRamMb),
       jvmArgs: input.jvmArgs ?? (loader === 'fabric' ? ['-XX:+UseG1GC'] : []),
       isDefault: false,
@@ -168,6 +173,11 @@ export class InstanceService {
       }
       if (input.minecraftVersion !== undefined) {
         inst.minecraftVersion = input.minecraftVersion.trim()
+        if (inst.includePrimeMod && input.fabricApiVersion === undefined) {
+          const target = resolveTarget(inst.minecraftVersion)
+          inst.fabricApiVersion = target.fabricApi
+          inst.fabricLoaderVersion = inst.fabricLoaderVersion ?? target.fabricLoader
+        }
       }
       if (input.loader !== undefined) {
         inst.loader = input.loader
