@@ -27,7 +27,8 @@
   --prime-info: #3b82f6;
 
   /* Typography */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-display: 'Sora', 'Outfit', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   --text-xs: 0.6875rem;
@@ -49,17 +50,17 @@
   --space-10: 40px;
   --space-12: 48px;
 
-  /* Radius */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  /* Radius — softer premium cards */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
   --radius-full: 9999px;
 
   /* Shadows & effects */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.45);
-  --shadow-glow: 0 0 40px var(--prime-red-glow);
+  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 48px var(--prime-red-glow);
   --blur-glass: blur(20px);
 
   /* Motion */
@@ -69,8 +70,8 @@
   --duration-normal: 250ms;
   --duration-slow: 450ms;
 
-  /* Layout */
-  --sidebar-width: 240px;
+  /* Layout — slim icon rail */
+  --sidebar-width: 72px;
   --titlebar-height: 40px;
 }
 
@@ -111,6 +112,44 @@ html[data-theme='prime-aurora'] {
   --prime-surface: #0c1c18;
   --prime-surface-2: #122820;
   --prime-surface-3: #183830;
+}
+
+/* Elevated — champagne gold on deep black, richer contrast */
+html[data-theme='prime-obsidian'] {
+  --prime-red: #d4af37;
+  --prime-red-bright: #f0d78c;
+  --prime-red-glow: rgba(240, 215, 140, 0.42);
+  --prime-red-dim: #8a7020;
+  --prime-red-subtle: rgba(212, 175, 55, 0.16);
+  --prime-black: #030303;
+  --prime-black-elevated: #080808;
+  --prime-surface: #0e0e0e;
+  --prime-surface-2: #161616;
+  --prime-surface-3: #222222;
+  --prime-border: rgba(240, 215, 140, 0.1);
+  --prime-border-hover: rgba(240, 215, 140, 0.22);
+  --prime-white: #f7f1df;
+  --prime-muted: #a89b78;
+  --prime-muted-2: #6e6450;
+}
+
+/* Elevated — copper ember on charcoal, warm depth */
+html[data-theme='prime-ember'] {
+  --prime-red: #ea580c;
+  --prime-red-bright: #fdba74;
+  --prime-red-glow: rgba(253, 186, 116, 0.45);
+  --prime-red-dim: #9a3412;
+  --prime-red-subtle: rgba(234, 88, 12, 0.16);
+  --prime-black: #080504;
+  --prime-black-elevated: #100a08;
+  --prime-surface: #15100d;
+  --prime-surface-2: #1e1612;
+  --prime-surface-3: #2a1e18;
+  --prime-border: rgba(253, 186, 116, 0.1);
+  --prime-border-hover: rgba(253, 186, 116, 0.22);
+  --prime-white: #fff5ed;
+  --prime-muted: #b89784;
+  --prime-muted-2: #7a5c4c;
 }
 
 /* Legacy alias — same as crimson */

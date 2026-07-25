@@ -18,14 +18,14 @@ import java.util.List;
 /** Card-based module browser with category tabs. */
 public final class ModuleCardBrowser {
 
-    public static final int CARD_W = 108;
-    public static final int CARD_H = 34;
-    public static final int TAB_H = 16;
-    public static final int TAB_PAD = 24;
+    public static final int CARD_W = 112;
+    public static final int CARD_H = 38;
+    public static final int TAB_H = 18;
+    public static final int TAB_PAD = 26;
 
     private static final int TITLE_X = 8;
     private static final int TEXT_PAD = 6;
-    private static final int TOGGLE_TOP = 6;
+    private static final int TOGGLE_TOP = 8;
 
     private final ModuleManager modules;
     private final FavoritesManager favorites;
@@ -116,23 +116,27 @@ public final class ModuleCardBrowser {
                             double mouseX, double mouseY) {
         boolean hover = mouseX >= x && mouseX < x + CARD_W && mouseY >= y && mouseY < y + CARD_H;
         boolean sel = module == selected;
-        UiChrome.cardLite(ctx, theme, x, y, CARD_W, CARD_H, sel);
+        UiChrome.cardLite(ctx, theme, x, y, CARD_W, CARD_H, sel || hover);
+        if (hover || sel) {
+            ctx.fillRect(x + 2, y + CARD_H - 2, CARD_W - 4, 1,
+                    ColorUtil.withAlpha(module.category().accent(), sel ? 0.95f : 0.55f));
+        }
 
-        ctx.fillRect(x + 2, y + 4, 2, CARD_H - 8, module.category().accent());
+        ctx.fillRect(x + 2, y + 5, 2, CARD_H - 10, module.category().accent());
 
         int toggleX = cardToggleX(x);
         int toggleY = cardToggleY(y);
         int textMax = toggleX - (x + TITLE_X) - 4;
 
         GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, module.name(), textMax),
-                x + TITLE_X, y + 5, theme.foreground());
+                x + TITLE_X, y + 6, theme.foreground());
         GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, module.description(), textMax),
-                x + TITLE_X, y + 18, theme.foregroundMuted());
+                x + TITLE_X, y + 20, theme.foregroundMuted());
 
         drawCardToggle(ctx, theme, toggleX, toggleY, module.isEnabled());
 
         if (favorites.isFavorite(module.id())) {
-            GuiLayout.label(ctx, "★", x + 6, y + CARD_H - 10, theme.accent());
+            GuiLayout.label(ctx, "★", x + 6, y + CARD_H - 11, theme.accent());
         }
     }
 

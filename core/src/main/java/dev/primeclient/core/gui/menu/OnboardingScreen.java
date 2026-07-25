@@ -1,8 +1,8 @@
 package dev.primeclient.core.gui.menu;
 
 import dev.primeclient.core.adapter.RenderContext;
-import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.design.PrimeLogo;
+import dev.primeclient.core.gui.UiChrome;
 import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.theme.Theme;
 
@@ -13,8 +13,8 @@ import dev.primeclient.core.theme.Theme;
  */
 public final class OnboardingScreen {
 
-    public static final int PANEL_W = 300;
-    public static final int PANEL_H = 168;
+    public static final int PANEL_W = 340;
+    public static final int PANEL_H = 196;
 
     private OnboardingScreen() {
     }
@@ -23,16 +23,15 @@ public final class OnboardingScreen {
                               int screenW, int screenH, float menuSlide, double mouseX, double mouseY) {
         int x = (screenW - PANEL_W) / 2;
         int y = (screenH - PANEL_H) / 2 + Math.round(menuSlide);
-        ctx.fillRect(x, y, PANEL_W, PANEL_H, theme.background());
-        ctx.fillRect(x, y, PANEL_W, 2, theme.accent());
+        UiChrome.glassPanel(ctx, theme, x, y, PANEL_W, PANEL_H);
         PrimeLogo.drawCentered(ctx, x + PANEL_W / 2, y + 10, 18, 0xFFFFFFFF);
 
         int step = onboarding.step();
         switch (step) {
             case 0 -> renderThemeStep(ctx, theme, onboarding, x, y, mouseX, mouseY);
             case 1 -> renderProfileStep(ctx, theme, onboarding, x, y, mouseX, mouseY);
-            case 2 -> renderKeybindStep(ctx, theme, x, y);
-            default -> renderFinishStep(ctx, theme, x, y);
+            case 2 -> renderKeybindStep(ctx, theme, x, y, mouseX, mouseY);
+            default -> renderFinishStep(ctx, theme, x, y, mouseX, mouseY);
         }
 
         int displayStep = Math.min(step + 1, 4);
@@ -68,18 +67,24 @@ public final class OnboardingScreen {
                                         int x, int y, double mouseX, double mouseY) {
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.theme.title", "Choose your theme"),
                 x + 12, y + 36, theme.accent(), true);
-        drawChoice(ctx, theme, x + 12, y + 56, 88,
+        drawChoice(ctx, theme, x + 12, y + 54, 60,
                 PrimeLang.get("prime.gui.settings.theme.crimson", "Crimson"),
                 "prime-crimson".equals(onboarding.chosenTheme()), mouseX, mouseY);
-        drawChoice(ctx, theme, x + 106, y + 56, 88,
+        drawChoice(ctx, theme, x + 76, y + 54, 60,
                 PrimeLang.get("prime.gui.settings.theme.midnight", "Midnight"),
                 "prime-midnight".equals(onboarding.chosenTheme()), mouseX, mouseY);
-        drawChoice(ctx, theme, x + 200, y + 56, 88,
+        drawChoice(ctx, theme, x + 140, y + 54, 60,
                 PrimeLang.get("prime.gui.settings.theme.aurora", "Aurora"),
                 "prime-aurora".equals(onboarding.chosenTheme()), mouseX, mouseY);
+        drawChoice(ctx, theme, x + 204, y + 54, 60,
+                PrimeLang.get("prime.gui.settings.theme.obsidian", "Obsidian"),
+                "prime-obsidian".equals(onboarding.chosenTheme()), mouseX, mouseY);
+        drawChoice(ctx, theme, x + 268, y + 54, 60,
+                PrimeLang.get("prime.gui.settings.theme.ember", "Ember"),
+                "prime-ember".equals(onboarding.chosenTheme()), mouseX, mouseY);
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.theme.hint", "Click an option then continue"),
-                x + 12, y + 88, theme.foregroundMuted(), true);
-        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24,
+                x + 12, y + 86, theme.foregroundMuted(), true);
+        drawPrimary(ctx, theme, x + 12, y + 112, PANEL_W - 24,
                 PrimeLang.get("prime.gui.onboarding.theme.continue", "Continue"), mouseX, mouseY);
     }
 
@@ -87,22 +92,23 @@ public final class OnboardingScreen {
                                           int x, int y, double mouseX, double mouseY) {
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.profile.title", "Module profile"),
                 x + 12, y + 36, theme.accent(), true);
-        drawChoice(ctx, theme, x + 12, y + 56, 88,
+        drawChoice(ctx, theme, x + 12, y + 56, 100,
                 PrimeLang.get("prime.gui.onboarding.profile.balanced", "Balanced"),
                 "default".equals(onboarding.chosenProfile()), mouseX, mouseY);
-        drawChoice(ctx, theme, x + 106, y + 56, 88,
+        drawChoice(ctx, theme, x + 120, y + 56, 100,
                 PrimeLang.get("prime.gui.onboarding.profile.pvp", "PvP"),
                 "pvp".equals(onboarding.chosenProfile()), mouseX, mouseY);
-        drawChoice(ctx, theme, x + 200, y + 56, 88,
+        drawChoice(ctx, theme, x + 228, y + 56, 100,
                 PrimeLang.get("prime.gui.onboarding.profile.survival", "Survival"),
                 "survival".equals(onboarding.chosenProfile()), mouseX, mouseY);
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.profile.hint", "FPS, coords, crosshair, Discord RPC included"),
                 x + 12, y + 88, theme.foregroundMuted(), true);
-        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24,
+        drawPrimary(ctx, theme, x + 12, y + 112, PANEL_W - 24,
                 PrimeLang.get("prime.gui.onboarding.theme.continue", "Continue"), mouseX, mouseY);
     }
 
-    private static void renderKeybindStep(RenderContext ctx, Theme theme, int x, int y) {
+    private static void renderKeybindStep(RenderContext ctx, Theme theme, int x, int y,
+                                          double mouseX, double mouseY) {
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.keybinds.title", "Essential shortcuts"),
                 x + 12, y + 36, theme.accent(), true);
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.keybinds.menu",
@@ -112,11 +118,12 @@ public final class OnboardingScreen {
                 x + 12, y + 72, theme.foreground(), true);
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.keybinds.zoom", "C  →  Zoom (Zoom module, hold)"),
                 x + 12, y + 88, theme.foregroundMuted(), true);
-        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24,
-                PrimeLang.get("prime.gui.onboarding.keybinds.got_it", "Got it!"), 0, 0);
+        drawPrimary(ctx, theme, x + 12, y + 112, PANEL_W - 24,
+                PrimeLang.get("prime.gui.onboarding.keybinds.got_it", "Got it!"), mouseX, mouseY);
     }
 
-    private static void renderFinishStep(RenderContext ctx, Theme theme, int x, int y) {
+    private static void renderFinishStep(RenderContext ctx, Theme theme, int x, int y,
+                                         double mouseX, double mouseY) {
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.finish.title", "You're all set!"),
                 x + 12, y + 36, theme.accent(), true);
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.finish.line1",
@@ -125,24 +132,32 @@ public final class OnboardingScreen {
         ctx.drawText(PrimeLang.get("prime.gui.onboarding.finish.line2",
                         "Explore Modules in the menu to customize everything."),
                 x + 12, y + 72, theme.foregroundMuted(), true);
-        drawPrimary(ctx, theme, x + 12, y + 108, PANEL_W - 24,
-                PrimeLang.get("prime.gui.onboarding.finish.enter", "Enter Prime Client"), 0, 0);
+        drawPrimary(ctx, theme, x + 12, y + 112, PANEL_W - 24,
+                PrimeLang.get("prime.gui.onboarding.finish.enter", "Enter Prime Client"), mouseX, mouseY);
     }
 
     private static boolean handleThemeClick(OnboardingManager onboarding, double mx, double my, int x, int y) {
-        if (hit(mx, my, x + 12, y + 56, 88, 22)) {
+        if (hit(mx, my, x + 12, y + 54, 60, 22)) {
             onboarding.setChosenTheme("prime-crimson");
             return true;
         }
-        if (hit(mx, my, x + 106, y + 56, 88, 22)) {
+        if (hit(mx, my, x + 76, y + 54, 60, 22)) {
             onboarding.setChosenTheme("prime-midnight");
             return true;
         }
-        if (hit(mx, my, x + 200, y + 56, 88, 22)) {
+        if (hit(mx, my, x + 140, y + 54, 60, 22)) {
             onboarding.setChosenTheme("prime-aurora");
             return true;
         }
-        if (hit(mx, my, x + 12, y + 108, PANEL_W - 24, 22)) {
+        if (hit(mx, my, x + 204, y + 54, 60, 22)) {
+            onboarding.setChosenTheme("prime-obsidian");
+            return true;
+        }
+        if (hit(mx, my, x + 268, y + 54, 60, 22)) {
+            onboarding.setChosenTheme("prime-ember");
+            return true;
+        }
+        if (hit(mx, my, x + 12, y + 112, PANEL_W - 24, 22)) {
             onboarding.nextStep();
             return true;
         }
@@ -150,19 +165,19 @@ public final class OnboardingScreen {
     }
 
     private static boolean handleProfileClick(OnboardingManager onboarding, double mx, double my, int x, int y) {
-        if (hit(mx, my, x + 12, y + 56, 88, 22)) {
+        if (hit(mx, my, x + 12, y + 56, 100, 22)) {
             onboarding.setChosenProfile("default");
             return true;
         }
-        if (hit(mx, my, x + 106, y + 56, 88, 22)) {
+        if (hit(mx, my, x + 120, y + 56, 100, 22)) {
             onboarding.setChosenProfile("pvp");
             return true;
         }
-        if (hit(mx, my, x + 200, y + 56, 88, 22)) {
+        if (hit(mx, my, x + 228, y + 56, 100, 22)) {
             onboarding.setChosenProfile("survival");
             return true;
         }
-        if (hit(mx, my, x + 12, y + 108, PANEL_W - 24, 22)) {
+        if (hit(mx, my, x + 12, y + 112, PANEL_W - 24, 22)) {
             onboarding.nextStep();
             return true;
         }
@@ -172,9 +187,9 @@ public final class OnboardingScreen {
     private static void drawChoice(RenderContext ctx, Theme theme, int x, int y, int w, String label,
                                    boolean selected, double mouseX, double mouseY) {
         boolean hover = hit(mouseX, mouseY, x, y, w, 22);
-        ctx.fillRect(x, y, w, 22, selected ? theme.surfaceElevated() : theme.backgroundLight());
-        if (selected || hover) {
-            ctx.fillRect(x, y + 21, w, 1, theme.accent());
+        UiChrome.cardLite(ctx, theme, x, y, w, 22, selected || hover);
+        if (selected) {
+            ctx.fillRect(x + 2, y + 20, w - 4, 1, theme.accent());
         }
         ctx.drawText(label, x + 6, y + 7, selected ? theme.accent() : theme.foreground(), true);
     }
@@ -182,8 +197,8 @@ public final class OnboardingScreen {
     private static void drawPrimary(RenderContext ctx, Theme theme, int x, int y, int w, String label,
                                     double mouseX, double mouseY) {
         boolean hover = hit(mouseX, mouseY, x, y, w, 22);
-        ctx.fillRect(x, y, w, 22, hover ? theme.accent() : theme.backgroundLight());
-        int textColor = hover ? theme.background() : theme.foreground();
+        UiChrome.button(ctx, theme, x, y, w, 22, hover, true);
+        int textColor = 0xFFFFFFFF;
         ctx.drawText(label, x + (w - ctx.textWidth(label)) / 2, y + 7, textColor, true);
     }
 

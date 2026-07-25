@@ -25,7 +25,7 @@
 }
 
 .prime-badge--prime {
-  background: linear-gradient(135deg, var(--prime-red-subtle), rgba(255, 45, 66, 0.08));
+  background: var(--prime-red-subtle);
   color: var(--prime-red-bright);
-  border: 1px solid rgba(255, 45, 66, 0.2);
+  border: 1px solid color-mix(in srgb, var(--prime-red-bright) 28%, transparent);
 }

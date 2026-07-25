@@ -120,16 +120,30 @@ public final class SocialHubUi {
         ctx.pushClip(x + PAD - 2, listTop, PANEL_W - PAD * 2 + 4, listH);
 
         if (friends.isEmpty()) {
-            UiChrome.cardLite(ctx, theme, x + PAD, listTop + 4, PANEL_W - PAD * 2, 52, false);
-            String emptyTitle = social.client().connected() ? "No friends yet" : "Not connected";
-            String emptySub = social.client().connected()
-                    ? "Add friends from the Prime Launcher"
+            int emptyH = 88;
+            UiChrome.card(ctx, theme, x + PAD, listTop + 4, PANEL_W - PAD * 2, emptyH, false);
+            boolean connected = social.client().connected();
+            String emptyTitle = connected
+                    ? "No friends yet"
+                    : (social.client().state() == SocialClient.ConnState.CONNECTING
+                    ? "Connecting…"
+                    : "Not connected");
+            String emptySub = connected
+                    ? "Add friends from the Prime Launcher social tab"
                     : (social.client().statusMessage().isBlank()
-                    ? "Tap Refresh to connect"
+                    ? "Tap Refresh — same session as the launcher"
                     : social.client().statusMessage());
-            ctx.drawSmoothText(emptyTitle, x + PAD + 14, listTop + 16, theme.foreground(), 0.92f);
+            ctx.drawSmoothText(emptyTitle, x + PAD + 16, listTop + 20, theme.foreground(), 0.98f);
             ctx.drawSmoothText(GuiLayout.trimToWidth(ctx, emptySub, PANEL_W - 56),
-                    x + PAD + 14, listTop + 32, theme.foregroundMuted(), 0.78f);
+                    x + PAD + 16, listTop + 38, theme.foregroundMuted(), 0.78f);
+            if (!connected) {
+                boolean ctaHover = hit(mouseX, mouseY, x + PAD + 16, listTop + 58, 120, 22);
+                UiChrome.button(ctx, theme, x + PAD + 16, listTop + 58, 120, 22, ctaHover, true);
+                ctx.drawSmoothText("Connect now", x + PAD + 36, listTop + 64, 0xFFFFFFFF, 0.82f);
+            } else {
+                ctx.drawSmoothText("Open the launcher to invite friends",
+                        x + PAD + 16, listTop + 60, theme.foregroundMuted(), 0.72f);
+            }
         } else {
             int i = 0;
             for (SocialClient.Friend f : friends) {
@@ -215,6 +229,14 @@ public final class SocialHubUi {
         cursorY += 14; // FRIENDS label
         int listTop = cursorY;
         List<SocialClient.Friend> friends = sortedFriends();
+        if (friends.isEmpty() && !social.client().connected()) {
+            if (hit(mouseX, mouseY, x + PAD + 16, listTop + 58, 120, 22)) {
+                refresh(true);
+                status = "Connecting…";
+                statusError = false;
+                return true;
+            }
+        }
         int i = 0;
         for (SocialClient.Friend f : friends) {
             int rowY = listTop + (i - scroll) * (ROW_H + 4);

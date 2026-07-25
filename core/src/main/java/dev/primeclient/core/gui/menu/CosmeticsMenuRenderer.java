@@ -9,19 +9,23 @@ import dev.primeclient.core.gui.GuiLayout;
 import dev.primeclient.core.gui.UiChrome;
 import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.theme.Theme;
+import dev.primeclient.core.util.ColorUtil;
 
 /** In-client cosmetics inventory — cape + wings only (world-rendered). */
 public final class CosmeticsMenuRenderer {
 
     private static final CosmeticType[] SLOTS = {CosmeticType.CAPE, CosmeticType.WINGS};
+    private static final int PANEL_W = 380;
+    private static final int PANEL_H = 240;
+    private static final int PREVIEW_W = 96;
 
     private CosmeticType slot = CosmeticType.CAPE;
     private int scrollIndex;
 
     public void render(RenderContext ctx, Theme theme, CosmeticManager cosmetics,
                        int screenW, int screenH, double mouseX, double mouseY) {
-        int w = 320;
-        int h = 220;
+        int w = PANEL_W;
+        int h = PANEL_H;
         int x = (screenW - w) / 2;
         int y = (screenH - h) / 2;
         UiChrome.glassPanel(ctx, theme, x, y, w, h);
@@ -37,8 +41,25 @@ public final class CosmeticsMenuRenderer {
             tabX += tw + 4;
         }
 
+        // Preview chrome
+        int previewX = x + w - PREVIEW_W - 14;
+        int previewY = y + 48;
+        int previewH = h - 72;
+        UiChrome.card(ctx, theme, previewX, previewY, PREVIEW_W, previewH, false);
+        CosmeticItem equipped = cosmetics.equipped(slot);
+        int tint = equipped != null ? equipped.tintArgb() : ColorUtil.withAlpha(theme.backgroundLight(), 0.9f);
+        ctx.fillRoundedRect(previewX + 14, previewY + 18, PREVIEW_W - 28, previewH - 48,
+                PrimeDesign.RADIUS_MD, tint);
+        ctx.fillGradientVertical(previewX + 14, previewY + 18, PREVIEW_W - 28, previewH - 48,
+                ColorUtil.withAlpha(0xFFFFFFFF, 0.18f), ColorUtil.withAlpha(0x00000000, 0f));
+        String previewLabel = equipped != null
+                ? GuiLayout.trimToWidth(ctx, equipped.name(), PREVIEW_W - 12)
+                : PrimeLang.get("prime.gui.cosmetics.none", "None");
+        GuiLayout.label(ctx, previewLabel, previewX + 8, previewY + previewH - 22, theme.foregroundMuted());
+
+        int listW = w - PREVIEW_W - 28;
         int rowY = y + 48;
-        ctx.pushClip(x + 4, rowY, w - 8, h - 80);
+        ctx.pushClip(x + 4, rowY, listW, h - 80);
         int shown = 0;
         for (CosmeticItem item : cosmetics.catalog().values()) {
             if (item.type() != slot) {
@@ -50,21 +71,20 @@ public final class CosmeticsMenuRenderer {
             if (rowY > y + h - 40) {
                 break;
             }
-            boolean equipped = cosmetics.equipped(slot) != null
-                    && cosmetics.equipped(slot).id().equals(item.id());
-            ctx.fillRoundedRect(x + 8, rowY, w - 16, 22, PrimeDesign.RADIUS_SM,
-                    equipped ? theme.surfaceElevated() : theme.backgroundLight());
-            // Larger tint swatch as texture preview stand-in
-            ctx.fillRect(x + 12, rowY + 3, 16, 16, item.tintArgb());
-            ctx.fillRect(x + 12, rowY + 3, 16, 2, theme.accent());
-            GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, item.name(), w - 110),
-                    x + 34, rowY + 4, theme.foreground());
-            GuiLayout.label(ctx, PrimeLang.enumValue(item.rarity()), x + w - 72, rowY + 4, theme.foregroundMuted());
-            if (equipped) {
+            boolean isEquipped = equipped != null && equipped.id().equals(item.id());
+            boolean hover = mouseX >= x + 8 && mouseX < x + 8 + listW - 8
+                    && mouseY >= rowY && mouseY < rowY + 26;
+            UiChrome.cardLite(ctx, theme, x + 8, rowY, listW - 8, 26, isEquipped || hover);
+            ctx.fillRoundedRect(x + 12, rowY + 5, 16, 16, 4, item.tintArgb());
+            ctx.fillRect(x + 12, rowY + 5, 16, 2, theme.accent());
+            GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, item.name(), listW - 90),
+                    x + 34, rowY + 5, theme.foreground());
+            GuiLayout.label(ctx, PrimeLang.enumValue(item.rarity()), x + listW - 70, rowY + 5, theme.foregroundMuted());
+            if (isEquipped) {
                 GuiLayout.label(ctx, PrimeLang.get("prime.gui.cosmetics.equipped", "Equipped"),
-                        x + 34, rowY + 13, theme.accent());
+                        x + 34, rowY + 14, theme.accent());
             }
-            rowY += 24;
+            rowY += 28;
         }
         ctx.popClip();
 
@@ -74,8 +94,8 @@ public final class CosmeticsMenuRenderer {
     }
 
     public boolean mousePressed(RenderContext ctx, double mx, double my, int screenW, int screenH, CosmeticManager cosmetics) {
-        int w = 320;
-        int h = 220;
+        int w = PANEL_W;
+        int h = PANEL_H;
         int x = (screenW - w) / 2;
         int y = (screenH - h) / 2;
         int tabX = x + 8;
@@ -88,12 +108,13 @@ public final class CosmeticsMenuRenderer {
             }
             tabX += tw + 4;
         }
+        int listW = w - PREVIEW_W - 28;
         int rowY = y + 48;
         for (CosmeticItem item : cosmetics.catalog().values()) {
             if (item.type() != slot) {
                 continue;
             }
-            if (mx >= x + 8 && mx < x + w - 8 && my >= rowY && my < rowY + 22) {
+            if (mx >= x + 8 && mx < x + 8 + listW - 8 && my >= rowY && my < rowY + 26) {
                 CosmeticItem current = cosmetics.equipped(slot);
                 if (current != null && current.id().equals(item.id())) {
                     cosmetics.unequip(slot);
@@ -102,7 +123,10 @@ public final class CosmeticsMenuRenderer {
                 }
                 return true;
             }
-            rowY += 24;
+            rowY += 28;
+            if (rowY > y + h - 40) {
+                break;
+            }
         }
         return mx >= x && mx < x + w && my >= y && my < y + h;
     }

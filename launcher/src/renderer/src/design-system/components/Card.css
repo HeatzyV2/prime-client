@@ -1,8 +1,7 @@
 .prime-card {
   background: var(--prime-surface);
   border: 1px solid var(--prime-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
+  border-radius: var(--radius-xl);
   transition:
     border-color var(--duration-normal) var(--ease-out),
     box-shadow var(--duration-normal) var(--ease-out),

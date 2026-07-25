@@ -2,11 +2,12 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { DashboardPage } from '@renderer/pages/DashboardPage'
 import { AccountsPage } from '@renderer/pages/AccountsPage'
 import { InstancesPage } from '@renderer/pages/InstancesPage'
+import { SkinsPage } from '@renderer/pages/SkinsPage'
+import { LibraryPage } from '@renderer/pages/LibraryPage'
 import { ModsPage } from '@renderer/pages/ModsPage'
 import { ResourcesPage } from '@renderer/pages/ResourcesPage'
 import { ShadersPage } from '@renderer/pages/ShadersPage'
 import { StorePage } from '@renderer/pages/StorePage'
-import { CosmeticsPage } from '@renderer/pages/CosmeticsPage'
 import { ServersPage } from '@renderer/pages/ServersPage'
 import { FriendsPage } from '@renderer/pages/FriendsPage'
 import { ChatPage } from '@renderer/pages/ChatPage'
@@ -29,11 +30,13 @@ export function AppRoutes({ news, servers }: AppRoutesProps) {
       <Route index element={<DashboardPage news={news} servers={servers} />} />
       <Route path="accounts" element={<AccountsPage />} />
       <Route path="instances" element={<InstancesPage />} />
+      <Route path="skins" element={<SkinsPage />} />
+      <Route path="library" element={<LibraryPage />} />
       <Route path="mods" element={<ModsPage />} />
       <Route path="resources" element={<ResourcesPage />} />
       <Route path="shaders" element={<ShadersPage />} />
       <Route path="store" element={<StorePage />} />
-      <Route path="cosmetics" element={<CosmeticsPage />} />
+      <Route path="cosmetics" element={<Navigate to="/skins" replace />} />
       <Route path="servers" element={<ServersPage />} />
       <Route path="friends" element={<FriendsPage />} />
       <Route path="chat" element={<ChatPage />} />

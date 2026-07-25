@@ -15,7 +15,7 @@ import java.util.Map;
  * <p>{@link #active()} is a plain field read — safe to call every frame.</p>
  *
  * <p>Shared IDs with the launcher: {@code prime-crimson}, {@code prime-midnight},
- * {@code prime-aurora}.</p>
+ * {@code prime-aurora}, {@code prime-obsidian}, {@code prime-ember}.</p>
  */
 public final class ThemeManager implements ConfigBinding {
 
@@ -76,6 +76,44 @@ public final class ThemeManager implements ConfigBinding {
             0xFFFB7185  // error
     );
 
+    /** Elevated — champagne gold on deep black. */
+    public static final Theme PRIME_OBSIDIAN = new Theme(
+            "prime-obsidian", "Prime Obsidian",
+            0xFFF0D78C, // accent
+            0xFFD4AF37, // accentSecondary
+            0xFF030303, // background
+            0xF00E0E0E, // backgroundLight
+            0xF0161616, // surfaceElevated
+            0xFFF7F1DF, // foreground
+            0xFFA89B78, // foregroundMuted
+            0x40F0D78C, // border
+            0xCC000000, // overlay
+            0xFF030303, // gradientTop
+            0xFF0E0E0E, // gradientBottom
+            0xFF4ADE80, // success
+            0xFFFBBF24, // warning
+            0xFFF87171  // error
+    );
+
+    /** Elevated — copper ember on charcoal. */
+    public static final Theme PRIME_EMBER = new Theme(
+            "prime-ember", "Prime Ember",
+            0xFFFDBA74, // accent
+            0xFFEA580C, // accentSecondary
+            0xFF080504, // background
+            0xF015100D, // backgroundLight
+            0xF01E1612, // surfaceElevated
+            0xFFFFF5ED, // foreground
+            0xFFB89784, // foregroundMuted
+            0x40FDBA74, // border
+            0xCC000000, // overlay
+            0xFF080504, // gradientTop
+            0xFF15100D, // gradientBottom
+            0xFF4ADE80, // success
+            0xFFFBBF24, // warning
+            0xFFF87171  // error
+    );
+
     private final Map<String, Theme> themes = new LinkedHashMap<>();
     private Theme active;
 
@@ -83,6 +121,8 @@ public final class ThemeManager implements ConfigBinding {
         register(PRIME_CRIMSON);
         register(PRIME_MIDNIGHT);
         register(PRIME_AURORA);
+        register(PRIME_OBSIDIAN);
+        register(PRIME_EMBER);
         this.active = PRIME_CRIMSON;
     }
 
@@ -122,7 +162,7 @@ public final class ThemeManager implements ConfigBinding {
     }
 
     /**
-     * Maps legacy IDs ({@code prime-dark}, {@code prime-light}) to the current trio.
+     * Maps legacy IDs ({@code prime-dark}, {@code prime-light}) to the current set.
      */
     public static String normalizeId(String id) {
         if (id == null || id.isBlank()) {

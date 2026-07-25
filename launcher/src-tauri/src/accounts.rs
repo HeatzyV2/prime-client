@@ -21,6 +21,8 @@ pub struct StoredMinecraftAccount {
     pub cape_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ms_refresh_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ms_auth_provider: Option<String>,
     pub added_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_used_at: Option<String>,
@@ -199,6 +201,7 @@ pub fn add_offline(username: String) -> Result<OkResult, AppError> {
         skin_url: Some(skin_url(&uuid)),
         cape_url: None,
         ms_refresh_token: None,
+        ms_auth_provider: None,
         added_at: Utc::now().to_rfc3339(),
         last_used_at: Some(Utc::now().to_rfc3339()),
     };

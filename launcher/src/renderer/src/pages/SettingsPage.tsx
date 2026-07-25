@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { PageShell } from '@renderer/pages/shared/PageShell'
-import { Toggle } from '@renderer/design-system/components'
+import { Toggle, Select } from '@renderer/design-system/components'
 import { useAccounts } from '@renderer/context/AccountProvider'
 import { useI18n } from '@renderer/context/I18nProvider'
 import { useTheme } from '@renderer/context/ThemeProvider'
@@ -15,6 +15,7 @@ import type {
   SettingsUpdateDto,
   PrimeThemeId
 } from '@shared/ipc'
+import { isElevatedTheme } from '@shared/theme'
 import './SettingsPage.css'
 
 const SECTION_IDS = [
@@ -47,6 +48,9 @@ interface SettingsState {
   gameWidth: number
   gameHeight: number
   gameDisplayMode: 'windowed' | 'borderless' | 'fullscreen'
+  wallpaperPath: string | null
+  accentColor: string | null
+  uiSounds: boolean
 }
 
 export function SettingsPage() {
@@ -83,7 +87,10 @@ export function SettingsPage() {
       jvmArgs: s.jvmArgs.join('\n'),
       gameWidth: s.gameWidth,
       gameHeight: s.gameHeight,
-      gameDisplayMode: s.gameDisplayMode
+      gameDisplayMode: s.gameDisplayMode,
+      wallpaperPath: s.wallpaperPath ?? null,
+      accentColor: s.accentColor ?? null,
+      uiSounds: s.uiSounds !== false
     })
     const catalog = await window.primeLauncher.store.catalog()
     setOwnsNebula(catalog.some((item: StoreItem) => item.id === 'bg-nebula' && item.owned))
@@ -98,14 +105,16 @@ export function SettingsPage() {
     if (!settings) {
       return
     }
-    const next = { ...settings, ...partial }
+    // Switching theme clears a custom accent so CSS theme tokens apply as labeled.
+    const clearedAccent =
+      partial.theme !== undefined && partial.theme !== settings.theme
+        ? { accentColor: null as string | null }
+        : {}
+    const next = { ...settings, ...partial, ...clearedAccent }
     setSettings(next)
 
     if (partial.language) {
       setLocale(partial.language)
-    }
-    if (partial.theme !== undefined || partial.backgroundNebula !== undefined) {
-      void refreshTheme()
     }
 
     const result = (await window.primeLauncher.settings.update({
@@ -128,8 +137,23 @@ export function SettingsPage() {
         .filter(Boolean),
       gameWidth: next.gameWidth,
       gameHeight: next.gameHeight,
-      gameDisplayMode: next.gameDisplayMode
+      gameDisplayMode: next.gameDisplayMode,
+      wallpaperPath: next.wallpaperPath,
+      accentColor: next.accentColor,
+      uiSounds: next.uiSounds
     })) as SettingsUpdateDto
+
+    // Apply theme only after settings are persisted — otherwise get() still returns the old theme.
+    if (
+      partial.theme !== undefined ||
+      partial.backgroundNebula !== undefined ||
+      partial.wallpaperPath !== undefined ||
+      partial.accentColor !== undefined ||
+      clearedAccent.accentColor !== undefined ||
+      partial.uiSounds !== undefined
+    ) {
+      await refreshTheme()
+    }
 
     setRestartRequired(Boolean(result.restartRequired))
     setSaved(true)
@@ -193,7 +217,7 @@ export function SettingsPage() {
       {restartRequired && (
         <p className="text-caption" style={{ marginBottom: 12, color: 'var(--prime-muted)' }}>
           {t('settings.restartRequired')}{' '}
-          <button className="settings__select" style={{ cursor: 'pointer' }} onClick={() => void window.primeLauncher.app.restart()}>
+          <button className="settings__input" style={{ cursor: 'pointer' }} onClick={() => void window.primeLauncher.app.restart()}>
             {t('settings.restartNow')}
           </button>
         </p>
@@ -219,17 +243,14 @@ export function SettingsPage() {
                   <div className="settings__label">{t('settings.language.label')}</div>
                   <div className="settings__hint">{t('settings.language.hint')}</div>
                 </div>
-                <select
+                <Select
+                  size="sm"
                   className="settings__select"
                   value={settings.language}
-                  onChange={(e) => void patch({ language: e.target.value as 'en' | 'fr' })}
-                >
-                  {LOCALES.map((lang) => (
-                    <option key={lang.id} value={lang.id}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
+                  aria-label={t('settings.language.label')}
+                  onChange={(v) => void patch({ language: v as 'en' | 'fr' })}
+                  options={LOCALES.map((lang) => ({ value: lang.id, label: lang.label }))}
+                />
               </div>
               <div className="settings__row">
                 <div>
@@ -268,21 +289,29 @@ export function SettingsPage() {
                     [
                       { id: 'prime-crimson' as const, swatch: '#e11d2e' },
                       { id: 'prime-midnight' as const, swatch: '#38bdf8' },
-                      { id: 'prime-aurora' as const, swatch: '#34d399' }
+                      { id: 'prime-aurora' as const, swatch: '#34d399' },
+                      { id: 'prime-obsidian' as const, swatch: '#f0d78c' },
+                      { id: 'prime-ember' as const, swatch: '#fdba74' }
                     ] as const
-                  ).map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      className={`settings__theme-swatch${settings.theme === opt.id ? ' settings__theme-swatch--active' : ''}`}
-                      style={{ '--swatch': opt.swatch } as CSSProperties}
-                      onClick={() => void patch({ theme: opt.id })}
-                      title={t(`settings.theme.${opt.id.replace('prime-', '')}`)}
-                    >
-                      <span className="settings__theme-swatch-dot" />
-                      <span>{t(`settings.theme.${opt.id.replace('prime-', '')}`)}</span>
-                    </button>
-                  ))}
+                  ).map((opt) => {
+                    const elevated = isElevatedTheme(opt.id)
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        className={`settings__theme-swatch${settings.theme === opt.id ? ' settings__theme-swatch--active' : ''}${elevated ? ' settings__theme-swatch--elevated' : ''}`}
+                        style={{ '--swatch': opt.swatch } as CSSProperties}
+                        onClick={() => void patch({ theme: opt.id })}
+                        title={t(`settings.theme.${opt.id.replace('prime-', '')}`)}
+                      >
+                        <span className="settings__theme-swatch-dot" />
+                        <span>{t(`settings.theme.${opt.id.replace('prime-', '')}`)}</span>
+                        {elevated && (
+                          <span className="settings__theme-elevated">{t('settings.theme.elevated')}</span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
               {ownsNebula && (
@@ -298,6 +327,82 @@ export function SettingsPage() {
                   />
                 </div>
               )}
+              <div className="settings__row">
+                <div>
+                  <div className="settings__label">{t('settings.wallpaper.label')}</div>
+                  <div className="settings__hint">
+                    {settings.wallpaperPath
+                      ? settings.wallpaperPath
+                      : t('settings.wallpaper.hint')}
+                  </div>
+                </div>
+                <div className="settings__java-picker">
+                  <button
+                    type="button"
+                    className="settings__java-browse"
+                    onClick={() =>
+                      void (async () => {
+                        const result = await window.primeLauncher.settings.browseWallpaper()
+                        if (result.ok) {
+                          await patch({ wallpaperPath: result.path ?? null })
+                          await refreshTheme()
+                        }
+                      })()
+                    }
+                  >
+                    {t('settings.wallpaper.browse')}
+                  </button>
+                  {settings.wallpaperPath && (
+                    <button
+                      type="button"
+                      className="settings__java-browse"
+                      onClick={() =>
+                        void (async () => {
+                          await window.primeLauncher.settings.clearWallpaper()
+                          await patch({ wallpaperPath: null })
+                          await refreshTheme()
+                        })()
+                      }
+                    >
+                      {t('settings.wallpaper.clear')}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="settings__row">
+                <div>
+                  <div className="settings__label">{t('settings.accent.label')}</div>
+                  <div className="settings__hint">{t('settings.accent.hint')}</div>
+                </div>
+                <div className="settings__java-picker">
+                  <input
+                    type="color"
+                    value={settings.accentColor ?? '#e11d2e'}
+                    onChange={(e) => void patch({ accentColor: e.target.value })}
+                    aria-label={t('settings.accent.label')}
+                  />
+                  {settings.accentColor && (
+                    <button
+                      type="button"
+                      className="settings__java-browse"
+                      onClick={() => void patch({ accentColor: null })}
+                    >
+                      {t('settings.accent.reset')}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="settings__row">
+                <div>
+                  <div className="settings__label">{t('settings.uiSounds.label')}</div>
+                  <div className="settings__hint">{t('settings.uiSounds.hint')}</div>
+                </div>
+                <Toggle
+                  checked={settings.uiSounds}
+                  onChange={(v) => void patch({ uiSounds: v })}
+                  label={t('settings.uiSounds.toggle')}
+                />
+              </div>
               <div className="settings__row">
                 <div>
                   <div className="settings__label">{t('settings.hardwareAccel.label')}</div>
@@ -319,24 +424,23 @@ export function SettingsPage() {
                   <div className="settings__hint">{t('settings.javaPath.hint')}</div>
                 </div>
                 <div className="settings__java-picker">
-                  <select
+                  <Select
+                    size="sm"
                     className="settings__select"
                     value={settings.defaultJavaPath ?? 'auto'}
-                    onChange={(e) =>
+                    aria-label={t('settings.javaPath.label')}
+                    onChange={(v) =>
                       void patch({
-                        defaultJavaPath: e.target.value === 'auto' ? null : e.target.value
+                        defaultJavaPath: v === 'auto' ? null : v
                       })
                     }
-                  >
-                    <option value="auto">{t('common.automatic')}</option>
-                    {javaInstalls.map((java) => (
-                      <option key={java.path} value={java.path}>
-                        {java.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={[
+                      { value: 'auto', label: t('common.automatic') },
+                      ...javaInstalls.map((java) => ({ value: java.path, label: java.label }))
+                    ]}
+                  />
                   <button
-                    className="settings__select settings__java-browse"
+                    className="settings__input settings__java-browse"
                     style={{ cursor: 'pointer' }}
                     onClick={() =>
                       void (async () => {
@@ -365,16 +469,19 @@ export function SettingsPage() {
                 <div>
                   <div className="settings__label">{t('settings.defaultRam.label')}</div>
                 </div>
-                <select
+                <Select
+                  size="sm"
                   className="settings__select"
                   value={String(settings.defaultRamMb)}
-                  onChange={(e) => void patch({ defaultRamMb: Number(e.target.value) })}
-                >
-                  <option value="2048">2048 MB</option>
-                  <option value="4096">4096 MB</option>
-                  <option value="6144">6144 MB</option>
-                  <option value="8192">8192 MB</option>
-                </select>
+                  aria-label={t('settings.defaultRam.label')}
+                  onChange={(v) => void patch({ defaultRamMb: Number(v) })}
+                  options={[
+                    { value: '2048', label: '2048 MB' },
+                    { value: '4096', label: '4096 MB' },
+                    { value: '6144', label: '6144 MB' },
+                    { value: '8192', label: '8192 MB' }
+                  ]}
+                />
               </div>
               <div className="settings__row">
                 <div>
@@ -384,7 +491,7 @@ export function SettingsPage() {
                 <div className="settings__resolution">
                   <input
                     type="number"
-                    className="settings__select settings__resolution-input"
+                    className="settings__input settings__resolution-input"
                     min={320}
                     max={7680}
                     value={settings.gameWidth}
@@ -393,7 +500,7 @@ export function SettingsPage() {
                   <span className="settings__resolution-sep">×</span>
                   <input
                     type="number"
-                    className="settings__select settings__resolution-input"
+                    className="settings__input settings__resolution-input"
                     min={240}
                     max={4320}
                     value={settings.gameHeight}
@@ -406,19 +513,22 @@ export function SettingsPage() {
                   <div className="settings__label">{t('settings.gameDisplayMode.label')}</div>
                   <div className="settings__hint">{t('settings.gameDisplayMode.hint')}</div>
                 </div>
-                <select
+                <Select
+                  size="sm"
                   className="settings__select"
                   value={settings.gameDisplayMode}
-                  onChange={(e) =>
+                  aria-label={t('settings.gameDisplayMode.label')}
+                  onChange={(v) =>
                     void patch({
-                      gameDisplayMode: e.target.value as SettingsState['gameDisplayMode']
+                      gameDisplayMode: v as SettingsState['gameDisplayMode']
                     })
                   }
-                >
-                  <option value="windowed">{t('settings.gameDisplayMode.windowed')}</option>
-                  <option value="borderless">{t('settings.gameDisplayMode.borderless')}</option>
-                  <option value="fullscreen">{t('settings.gameDisplayMode.fullscreen')}</option>
-                </select>
+                  options={[
+                    { value: 'windowed', label: t('settings.gameDisplayMode.windowed') },
+                    { value: 'borderless', label: t('settings.gameDisplayMode.borderless') },
+                    { value: 'fullscreen', label: t('settings.gameDisplayMode.fullscreen') }
+                  ]}
+                />
               </div>
             </>
           )}
@@ -428,16 +538,19 @@ export function SettingsPage() {
               <div>
                 <div className="settings__label">{t('settings.performancePreset.label')}</div>
               </div>
-              <select
+              <Select
+                size="sm"
                 className="settings__select"
                 value={settings.performancePreset}
-                onChange={(e) => void patch({ performancePreset: e.target.value as PerformancePreset })}
-              >
-                <option value="low">{t('settings.performancePreset.low')}</option>
-                <option value="balanced">{t('settings.performancePreset.balanced')}</option>
-                <option value="performance">{t('settings.performancePreset.performance')}</option>
-                <option value="ultra">{t('settings.performancePreset.ultra')}</option>
-              </select>
+                aria-label={t('settings.performancePreset.label')}
+                onChange={(v) => void patch({ performancePreset: v as PerformancePreset })}
+                options={[
+                  { value: 'low', label: t('settings.performancePreset.low') },
+                  { value: 'balanced', label: t('settings.performancePreset.balanced') },
+                  { value: 'performance', label: t('settings.performancePreset.performance') },
+                  { value: 'ultra', label: t('settings.performancePreset.ultra') }
+                ]}
+              />
             </div>
           )}
 
@@ -453,7 +566,7 @@ export function SettingsPage() {
                   </div>
                 </div>
                 <Link to="/accounts">
-                  <button className="settings__select" style={{ cursor: 'pointer' }}>
+                  <button className="settings__input" style={{ cursor: 'pointer' }}>
                     {t('common.manage')} ({accounts.length})
                   </button>
                 </Link>
@@ -462,7 +575,7 @@ export function SettingsPage() {
                 <div>
                   <div className="settings__label">{t('settings.microsoftAccount.label')}</div>
                 </div>
-                <button className="settings__select" style={{ cursor: 'pointer' }} onClick={() => void loginMicrosoft()}>
+                <button className="settings__input" style={{ cursor: 'pointer' }} onClick={() => void loginMicrosoft()}>
                   {t('common.signIn')}
                 </button>
               </div>
@@ -501,15 +614,18 @@ export function SettingsPage() {
               <div>
                 <div className="settings__label">{t('settings.concurrentDownloads.label')}</div>
               </div>
-              <select
+              <Select
+                size="sm"
                 className="settings__select"
                 value={String(settings.concurrentDownloads)}
-                onChange={(e) => void patch({ concurrentDownloads: Number(e.target.value) })}
-              >
-                <option value="1">1</option>
-                <option value="3">3</option>
-                <option value="5">5</option>
-              </select>
+                aria-label={t('settings.concurrentDownloads.label')}
+                onChange={(v) => void patch({ concurrentDownloads: Number(v) })}
+                options={[
+                  { value: '1', label: '1' },
+                  { value: '3', label: '3' },
+                  { value: '5', label: '5' }
+                ]}
+              />
             </div>
           )}
 
@@ -521,7 +637,7 @@ export function SettingsPage() {
                   <div className="settings__hint">{t('settings.checkUpdates.hint')}</div>
                 </div>
                 <button
-                  className="settings__select"
+                  className="settings__input"
                   style={{ cursor: 'pointer' }}
                   disabled={updateBusy !== null}
                   onClick={() => void handleCheckUpdate(true)}
@@ -544,7 +660,7 @@ export function SettingsPage() {
                     </div>
                     {updateInfo.launcher.updateAvailable ? (
                       <button
-                        className="settings__select"
+                        className="settings__input"
                         style={{ cursor: 'pointer' }}
                         disabled={updateBusy !== null}
                         onClick={() => void handleInstallUpdate('launcher')}
@@ -570,7 +686,7 @@ export function SettingsPage() {
                     </div>
                     {updateInfo.mod.updateAvailable ? (
                       <button
-                        className="settings__select"
+                        className="settings__input"
                         style={{ cursor: 'pointer' }}
                         disabled={updateBusy !== null}
                         onClick={() => void handleInstallUpdate('mod')}
@@ -614,7 +730,7 @@ export function SettingsPage() {
                 </div>
               </div>
               <textarea
-                className="settings__select"
+                className="settings__input"
                 style={{ width: '100%', minHeight: 80, margin: '0 16px 16px', fontFamily: 'var(--font-mono)' }}
                 value={settings.jvmArgs}
                 onChange={(e) => void patch({ jvmArgs: e.target.value })}

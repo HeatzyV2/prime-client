@@ -58,6 +58,12 @@
   border-color: rgba(255, 45, 66, 0.45);
 }
 
+.modal__select {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: var(--space-4);
+}
+
 .modal__actions {
   display: flex;
   flex-direction: column;

@@ -15,14 +15,15 @@
 .page-shell__title {
   font-size: var(--text-2xl);
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
   margin-bottom: var(--space-1);
 }
 
 .page-shell__subtitle {
   font-size: var(--text-sm);
   color: var(--prime-muted);
-  max-width: 520px;
+  max-width: 560px;
+  line-height: 1.45;
 }
 
 .page-shell__actions {
@@ -60,7 +61,7 @@
   padding: var(--space-3) var(--space-4);
   background: var(--prime-surface);
   border: 1px solid var(--prime-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   transition: border-color var(--duration-fast), background var(--duration-fast);
 }
 

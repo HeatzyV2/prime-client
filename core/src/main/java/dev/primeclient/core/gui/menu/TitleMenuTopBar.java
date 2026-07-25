@@ -22,6 +22,9 @@ public final class TitleMenuTopBar {
     private static final int PAD = 10;
     private static final float ICON_SCALE = 0.88f;
 
+    /** Last render layout — hit-testing must match drawn chip width (smooth font). */
+    private static volatile Layout lastLayout;
+
     private TitleMenuTopBar() {
     }
 
@@ -32,6 +35,7 @@ public final class TitleMenuTopBar {
     public static void render(RenderContext ctx, Theme theme, String playerName, String accountType,
                               double mouseX, double mouseY, float fade) {
         Layout layout = layout(ctx, playerName, accountType);
+        lastLayout = layout;
         ctx.setDrawOpacity(fade);
 
         drawIconButton(ctx, theme, layout.discordX(), layout.y(), "D", mouseX, mouseY);
@@ -45,10 +49,9 @@ public final class TitleMenuTopBar {
                     : ColorUtil.withAlpha(theme.surfaceElevated(), 0.44f);
             ctx.fillRoundedRect(layout.profileX(), layout.y(), layout.profileW(), BTN,
                     PrimeDesign.RADIUS_SM, fill);
-            if (hover) {
-                ctx.fillRoundedBorder(layout.profileX(), layout.y(), layout.profileW(), BTN,
-                        PrimeDesign.RADIUS_SM, 1, ColorUtil.withAlpha(theme.accent(), 0.55f), fill);
-            }
+            ctx.fillRoundedBorder(layout.profileX(), layout.y(), layout.profileW(), BTN,
+                    PrimeDesign.RADIUS_SM, 1,
+                    ColorUtil.withAlpha(theme.accent(), hover ? 0.7f : 0.28f), fill);
             ctx.drawSmoothText(layout.profileLabel(), layout.profileX() + 8,
                     layout.y() + (BTN - ctx.fontHeight()) / 2 + 1, theme.foreground(), 0.88f);
         }
@@ -58,7 +61,10 @@ public final class TitleMenuTopBar {
 
     public static Action hitAction(double mouseX, double mouseY, int screenWidth,
                                    String playerName, String accountType) {
-        Layout layout = layout(screenWidth, playerName, accountType);
+        Layout layout = lastLayout;
+        if (layout == null || layout.screenWidth() != screenWidth) {
+            layout = layout(screenWidth, playerName, accountType);
+        }
         if (layout.profileW() > 0 && hit(mouseX, mouseY, layout.profileX(), layout.y(), layout.profileW(), BTN)) {
             return Action.PROFILE;
         }
@@ -98,7 +104,8 @@ public final class TitleMenuTopBar {
 
     private static Layout layout(int screenWidth, String playerName, String accountType) {
         String label = profileLabel(playerName, accountType);
-        int profileW = label.isEmpty() ? 0 : label.length() * 6 + 16;
+        // Fallback estimate when no render context — prefer lastLayout when available.
+        int profileW = label.isEmpty() ? 0 : Math.max(72, (int) (label.length() * 5.6f) + 16);
         return layout(screenWidth, profileW, label);
     }
 
@@ -107,7 +114,7 @@ public final class TitleMenuTopBar {
         int settingsX = profileX - (profileW > 0 ? GAP : 0) - BTN;
         int vanillaX = settingsX - GAP - BTN;
         int discordX = vanillaX - GAP - BTN;
-        return new Layout(discordX, vanillaX, settingsX, profileX, profileW, PAD, label);
+        return new Layout(screenWidth, discordX, vanillaX, settingsX, profileX, profileW, PAD, label);
     }
 
     private static String profileLabel(String playerName, String accountType) {
@@ -138,7 +145,7 @@ public final class TitleMenuTopBar {
         return mx >= x && mx < x + w && my >= y && my < y + h;
     }
 
-    private record Layout(int discordX, int vanillaX, int settingsX, int profileX, int profileW,
-                          int y, String profileLabel) {
+    private record Layout(int screenWidth, int discordX, int vanillaX, int settingsX, int profileX,
+                          int profileW, int y, String profileLabel) {
     }
 }

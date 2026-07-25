@@ -3,13 +3,17 @@ export const en = {
     name: 'Prime Launcher'
   },
   nav: {
+    primary: 'Main navigation',
+    more: 'More',
     dashboard: 'Home',
     accounts: 'Accounts',
     instances: 'Instances',
+    skins: 'Skins',
+    library: 'Library',
     mods: 'Mods',
     resources: 'Resource Packs',
     shaders: 'Shaders',
-    store: 'Prime Store',
+    store: 'Store',
     cosmetics: 'Cosmetics',
     servers: 'Servers',
     friends: 'Friends',
@@ -50,7 +54,8 @@ export const en = {
   newsTag: {
     update: 'Update',
     event: 'Event',
-    announcement: 'Announcement'
+    announcement: 'Announcement',
+    launcher: 'Launcher'
   },
   dashboard: {
     signInTitle: 'Sign in to play',
@@ -63,7 +68,17 @@ export const en = {
     primeAccount: 'Prime Account',
     lastSession: 'Last Session',
     news: 'News',
+    moreNews: 'All news',
     favoriteServers: 'Favorite Servers',
+    noServers: 'No favorite servers yet.',
+    noServersHint: 'Add a server to jump in from Home.',
+    addServer: 'Add server',
+    playHub: {
+      account: 'Account',
+      instance: 'Instance',
+      server: 'Server',
+      singleplayer: 'Singleplayer / menu'
+    },
     timePlayed: 'Time played',
     mods: 'Mods',
     ram: 'RAM',
@@ -116,7 +131,10 @@ export const en = {
       dark: 'Crimson',
       crimson: 'Crimson',
       midnight: 'Midnight',
-      aurora: 'Aurora'
+      aurora: 'Aurora',
+      obsidian: 'Obsidian',
+      ember: 'Ember',
+      elevated: 'Pro'
     },
     hardwareAccel: {
       label: 'Hardware acceleration',
@@ -126,6 +144,22 @@ export const en = {
       label: 'Nebula background',
       hint: 'Animated space background from the Store',
       toggle: 'Nebula background'
+    },
+    wallpaper: {
+      label: 'Custom wallpaper',
+      hint: 'Optional image behind the launcher content',
+      browse: 'Choose image',
+      clear: 'Remove'
+    },
+    accent: {
+      label: 'Accent color',
+      hint: 'Overrides the theme accent in the launcher',
+      reset: 'Reset'
+    },
+    uiSounds: {
+      label: 'UI sounds',
+      hint: 'Soft clicks on Play and important actions',
+      toggle: 'UI sounds'
     },
     restartRequired: 'Restart required to apply hardware acceleration.',
     restartNow: 'Restart now',
@@ -223,11 +257,11 @@ export const en = {
   pages: {
     accounts: {
       title: 'Accounts',
-      subtitle: 'Microsoft authentication, offline profiles, and Prime Account sync.'
+      subtitle: 'Active profile, Microsoft & offline accounts.'
     },
     instances: {
       title: 'Instances',
-      subtitle: 'Create and manage Minecraft installations with Prime Client.'
+      subtitle: 'Your Minecraft installs — play, configure, keep it simple.'
     },
     mods: {
       title: 'Mods',
@@ -244,6 +278,14 @@ export const en = {
     store: {
       title: 'Prime Store',
       subtitle: 'Unlock cosmetics and themes with Prime Coins — all local, no payment server.'
+    },
+    skins: {
+      title: 'Skins',
+      subtitle: 'Preview your character, equip Prime capes & wings, keep your look ready to play.'
+    },
+    library: {
+      title: 'Library',
+      subtitle: 'Mods, packs, shaders, and tools for your active instance — without cluttering the sidebar.'
     },
     cosmetics: {
       title: 'Cosmetics',
@@ -353,23 +395,28 @@ export const en = {
     }
   },
   accounts: {
-    addAccount: 'Add Account',
+    addAccount: 'Add account',
+    activeProfile: 'Active profile',
+    editSkin: 'Edit skin',
     primeAccount: 'Prime Account',
     quickAdd: 'Quick Add',
     quickAddHint: 'Microsoft opens a secure login window (Xbox Live → Minecraft Services).',
     signInMicrosoft: 'Sign in with Microsoft',
     offlinePlaceholder: 'Offline username',
-    addOffline: 'Add Offline Account',
-    minecraftAccounts: 'Minecraft Accounts',
-    noAccounts: 'No accounts yet.',
+    addOffline: 'Add offline',
+    minecraftAccounts: 'Minecraft accounts',
+    count: '{count} saved',
+    noAccounts: 'No accounts yet',
+    emptyHint: 'Sign in with Microsoft or add an offline profile to play.',
     addOne: 'Add one',
     toPlay: 'to play.',
     level: 'Level {level}',
-    syncDescription: 'Local backup of configs, HUD, cosmetics, and stats on this PC — no remote cloud.',
-    syncButton: 'Sync Prime Profile',
+    syncDescription: 'Configs, HUD, cosmetics and stats stay on this PC — local sync only.',
+    syncButton: 'Sync profile',
     refreshMicrosoft: 'Refresh token',
     refreshSuccess: 'Microsoft token refreshed.',
     refreshFailed: 'Token refresh failed.',
+    remove: 'Remove account',
     microsoft: 'Microsoft',
     offline: 'Offline'
   },
@@ -498,6 +545,10 @@ export const en = {
     unlocked: '{name} unlocked! Equip cosmetics from the Cosmetics page.',
     purchaseFailed: 'Purchase failed.',
     coinsPrice: '{price} coins',
+    buyFor: 'Buy · {price} coins',
+    preview: 'Preview',
+    emptyTitle: 'Nothing here',
+    emptyDesc: 'Try another category or check back later.',
     categories: {
       all: 'All',
       cosmetic: 'Cosmetics',
@@ -516,20 +567,82 @@ export const en = {
     badges: 'Badges',
     emptyOwned: 'No cosmetics owned yet — visit the Store.'
   },
+  skins: {
+    tabs: {
+      skins: 'Skins',
+      capes: 'Capes',
+      wings: 'Wings',
+      badges: 'Badges'
+    },
+    pose: {
+      idle: 'Idle',
+      walk: 'Walk',
+      run: 'Run'
+    },
+    addSkin: 'Import PNG',
+    addSoon: 'Custom skin import coming soon',
+    applySkin: 'Apply this skin',
+    applyCosmetic: 'Apply cosmetic',
+    changeCape: 'Change cape',
+    openStore: 'Open Store',
+    remove: 'Remove',
+    emptyCosmeticsHint: 'Unlock cosmetics in the Store, then equip them here.'
+  },
+  onboarding: {
+    eyebrow: '60-second setup',
+    next: 'Continue',
+    finish: 'Let’s play',
+    skip: 'Skip for now',
+    steps: {
+      account: {
+        title: 'Add your account',
+        body: 'Sign in with Microsoft or create an offline profile to launch.'
+      },
+      instance: {
+        title: 'Pick an instance',
+        body: 'Prime Client ships ready for 1.21.11 and 26.2 — choose one on Home.'
+      },
+      skin: {
+        title: 'Customize your look',
+        body: 'Import a PNG skin or browse capes in the Skins hub.'
+      },
+      play: {
+        title: 'Hit Play',
+        body: 'Account, instance and optional server — one Play button on Home.'
+      }
+    }
+  },
+  social: {
+    title: 'Friends',
+    onlineCount: '{count} online',
+    emptyTitle: 'No friends yet',
+    emptyDesc: 'Add friends to see who’s online and join their server.',
+    openFriends: 'Open Friends'
+  },
+  whatsNew: {
+    eyebrow: 'Update',
+    title: "What's new",
+    gotIt: 'Got it',
+    changelog: 'Full changelog'
+  },
   instances: {
     vanilla: 'Vanilla',
     fabric: 'Fabric',
     primeClient: 'Prime Client',
     primeBadge: 'Prime',
+    newInstance: 'New instance',
     createPrime26: 'Prime 26.2',
     createPrime121: 'Prime 1.21.11',
     play: 'Play',
     default: 'Default',
+    setDefault: 'Set as default',
     loading: 'Loading instances…',
-    signInToPlay: 'Sign in to play.',
+    signInToPlay: 'Sign in',
     lastPlayed: 'Last played {date}',
     ramBadge: '{mb} MB RAM',
-    modsBadge: '{count} mods'
+    modsBadge: '{count} mods',
+    emptyTitle: 'No instances yet',
+    emptyDesc: 'Create a Prime Client install to get started.'
   },
   media: {
     openFolder: 'Open clips folder',

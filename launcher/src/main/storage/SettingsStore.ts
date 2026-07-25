@@ -33,6 +33,18 @@ export interface LauncherSettings {
   dismissedUpdateBanner?: string
   /** Last multiplayer address used for Quick Play. */
   lastServerAddress?: string
+  /** Custom wallpaper image path (file:// served via data URL in UI). */
+  wallpaperPath?: string | null
+  /** Optional accent override hex, e.g. #34d399 */
+  accentColor?: string | null
+  /** Soft UI click sounds. */
+  uiSounds: boolean
+  /** First-run onboarding completed. */
+  onboardingDone: boolean
+  /** Last launcher version for which What's New was shown. */
+  lastSeenLauncherVersion?: string
+  /** Active custom skin from local library (null = account/default). */
+  activeSkinId?: string | null
 }
 
 const DEFAULT_SETTINGS = (): LauncherSettings => ({
@@ -54,7 +66,12 @@ const DEFAULT_SETTINGS = (): LauncherSettings => ({
   customJavaPaths: [],
   gameWidth: 1920,
   gameHeight: 1080,
-  gameDisplayMode: 'windowed'
+  gameDisplayMode: 'windowed',
+  wallpaperPath: null,
+  accentColor: null,
+  uiSounds: true,
+  onboardingDone: false,
+  activeSkinId: null
 })
 
 export class SettingsStore {

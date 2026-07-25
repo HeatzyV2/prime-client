@@ -11,24 +11,87 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
-/** Refreshes a Microsoft account into a live Minecraft access token (same flow as the launcher). */
+/**
+ * Refreshes a Microsoft account into a live Minecraft access token.
+ *
+ * <p>Supports both launcher auth stacks:
+ * <ul>
+ *   <li>Electron / msmc — Mojang client {@code 00000000402b5328} via {@code login.live.com}</li>
+ *   <li>Tauri / Prism — Azure client {@code 1ce91f64-…} via {@code login.microsoftonline.com}</li>
+ * </ul>
+ */
 public final class MicrosoftTokenRefresh {
 
-    public record Result(String accessToken, String refreshToken, String username, String uuid) {
+    /** msmc / Electron default (Minecraft Launcher public client). */
+    public static final String CLIENT_LIVE = "00000000402b5328";
+    /** Prism / MultiMC family public client. */
+    public static final String CLIENT_AZURE = "1ce91f64-568a-42b5-b1c3-4e6871f5b8c5";
+
+    public record Result(String accessToken, String refreshToken, String username, String uuid, String authProvider) {
+    }
+
+    private record Endpoint(String name, String tokenUrl, String clientId) {
     }
 
     private MicrosoftTokenRefresh() {
     }
 
-    public static Result refresh(String refreshToken, String clientId) throws IOException {
-        JsonObject token = postForm(
+    /**
+     * @param preferredProvider optional hint from accounts.json ({@code live} / {@code azure}); null = try live then azure
+     */
+    public static Result refresh(String refreshToken, String preferredProvider) throws IOException {
+        List<Endpoint> order = new ArrayList<>(2);
+        Endpoint live = new Endpoint(
+                "live",
+                "https://login.live.com/oauth20_token.srf",
+                CLIENT_LIVE);
+        Endpoint azure = new Endpoint(
+                "azure",
                 "https://login.microsoftonline.com/consumers/oauth2/v2.0/token",
-                "client_id=" + enc(clientId)
-                        + "&grant_type=refresh_token"
-                        + "&refresh_token=" + enc(refreshToken)
-                        + "&scope=" + enc("XboxLive.signin offline_access"));
+                CLIENT_AZURE);
+
+        if ("azure".equalsIgnoreCase(preferredProvider)) {
+            order.add(azure);
+            order.add(live);
+        } else {
+            // Default: Electron/msmc first (primary launcher), then Tauri/Prism.
+            order.add(live);
+            order.add(azure);
+        }
+
+        IOException last = null;
+        for (Endpoint ep : order) {
+            try {
+                return refreshWith(refreshToken, ep);
+            } catch (IOException e) {
+                last = e;
+            }
+        }
+        throw last != null
+                ? last
+                : new IOException("Microsoft token refresh failed.");
+    }
+
+    /** @deprecated Prefer {@link #refresh(String, String)} with an auth-provider hint. */
+    @Deprecated
+    public static Result refresh(String refreshToken, String clientId, boolean unused) throws IOException {
+        String preferred = CLIENT_AZURE.equals(clientId) ? "azure" : "live";
+        return refresh(refreshToken, preferred);
+    }
+
+    private static Result refreshWith(String refreshToken, Endpoint endpoint) throws IOException {
+        String form = "client_id=" + enc(endpoint.clientId)
+                + "&grant_type=refresh_token"
+                + "&refresh_token=" + enc(refreshToken);
+        if ("azure".equals(endpoint.name)) {
+            form += "&scope=" + enc("XboxLive.signin offline_access");
+        }
+
+        JsonObject token = postForm(endpoint.tokenUrl, form);
         String msAccess = req(token, "access_token");
         String newRefresh = token.has("refresh_token")
                 ? token.get("refresh_token").getAsString()
@@ -72,7 +135,7 @@ public final class MicrosoftTokenRefresh {
         String rawId = req(profile, "id");
         String name = profile.has("name") ? profile.get("name").getAsString() : "Player";
         String dashed = dashUuid(rawId);
-        return new Result(mcToken, newRefresh, name, dashed);
+        return new Result(mcToken, newRefresh, name, dashed, endpoint.name);
     }
 
     private static String dashUuid(String uuid) {

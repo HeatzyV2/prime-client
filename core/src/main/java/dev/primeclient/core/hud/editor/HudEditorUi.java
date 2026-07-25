@@ -477,13 +477,15 @@ final class HudEditorUi {
     }
 
     private void renderHints(RenderContext ctx, Theme theme) {
-        hintBar = Rect.EMPTY;
         int fontH = ctx.uiFontHeight();
         String line = HudEditorHints.LINE_1;
-        int w = ctx.uiTextWidth(line) + 12;
+        int w = Math.min(ctx.screenWidth() - 24, ctx.uiTextWidth(line) + 20);
         int x = (ctx.screenWidth() - w) / 2;
-        int y = ctx.screenHeight() - fontH - 3;
-        ctx.drawUiText(line, x + 6, y, ColorUtil.withAlpha(theme.foregroundMuted(), 0.75f));
+        int y = ctx.screenHeight() - fontH - 6;
+        hintBar = new Rect(x, y - 3, w, fontH + 8);
+        ctx.fillRoundedRect(hintBar.x(), hintBar.y(), hintBar.w(), hintBar.h(),
+                PrimeDesign.RADIUS_SM, ColorUtil.withAlpha(theme.surfaceElevated(), 0.55f));
+        ctx.drawUiText(line, x + 10, y, ColorUtil.withAlpha(theme.foregroundMuted(), 0.9f));
     }
 
     private static String truncate(RenderContext ctx, String text, int maxWidth) {

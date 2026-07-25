@@ -3,7 +3,7 @@ package dev.primeclient.core.gui.menu;
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.cloud.CloudClient;
 import dev.primeclient.core.cloud.CloudSyncManager;
-import dev.primeclient.core.design.PrimeDesign;
+import dev.primeclient.core.gui.UiChrome;
 import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.theme.Theme;
@@ -17,9 +17,9 @@ import java.util.List;
  */
 public final class ConfigurationsMenuRenderer {
 
-    private static final int PANEL_W = 320;
-    private static final int PANEL_H = 210;
-    private static final int BTN_H = 18;
+    private static final int PANEL_W = 360;
+    private static final int PANEL_H = 230;
+    private static final int BTN_H = 20;
     private static final int BTN_GAP = 6;
 
     private int selectedVersion;
@@ -29,31 +29,30 @@ public final class ConfigurationsMenuRenderer {
                        int screenW, int screenH, double mouseX, double mouseY) {
         int x = (screenW - PANEL_W) / 2;
         int y = (screenH - PANEL_H) / 2;
-        ctx.fillRect(x, y, PANEL_W, PANEL_H, theme.background());
-        ctx.fillRect(x, y, PANEL_W, 2, theme.accent());
+        UiChrome.glassPanel(ctx, theme, x, y, PANEL_W, PANEL_H);
 
         ctx.drawText(PrimeLang.get("prime.gui.configurations.title", "Configurations"),
-                x + 12, y + 10, theme.accent(), true);
+                x + 12, y + 12, theme.accent(), true);
         ctx.drawText(PrimeLang.get("prime.gui.configurations.local_only", "Local backups only — stored on this PC"),
-                x + 12, y + 26, theme.foregroundMuted(), true);
+                x + 12, y + 28, theme.foregroundMuted(), true);
         ctx.drawText(PrimeLang.get("prime.gui.configurations.profile", "Profile: %s", profiles.activeProfile()),
-                x + 12, y + 42, theme.foreground(), true);
+                x + 12, y + 44, theme.foreground(), true);
 
-        int btnY = y + 60;
+        int btnY = y + 64;
         int btnW = (PANEL_W - 24 - BTN_GAP * 2) / 3;
         drawButton(ctx, theme, x + 12, btnY, btnW, BTN_H,
-                PrimeLang.get("prime.gui.configurations.upload", "Upload"), mouseX, mouseY);
+                PrimeLang.get("prime.gui.configurations.upload", "Upload"), mouseX, mouseY, true);
         drawButton(ctx, theme, x + 12 + btnW + BTN_GAP, btnY, btnW, BTN_H,
-                PrimeLang.get("prime.gui.configurations.download", "Download"), mouseX, mouseY);
+                PrimeLang.get("prime.gui.configurations.download", "Download"), mouseX, mouseY, false);
         drawButton(ctx, theme, x + 12 + (btnW + BTN_GAP) * 2, btnY, btnW, BTN_H,
-                PrimeLang.get("prime.gui.configurations.restore", "Restore"), mouseX, mouseY);
+                PrimeLang.get("prime.gui.configurations.restore", "Restore"), mouseX, mouseY, false);
 
         List<CloudClient.VersionEntry> versions = cloud.listVersions(profiles.activeProfile());
         if (selectedVersion >= versions.size()) {
             selectedVersion = Math.max(0, versions.size() - 1);
         }
 
-        int rowY = btnY + BTN_H + 12;
+        int rowY = btnY + BTN_H + 14;
         ctx.drawText(PrimeLang.get("prime.gui.configurations.versions", "Versions (%d):", versions.size()),
                 x + 12, rowY, theme.foreground(), true);
         rowY += 14;
@@ -61,13 +60,13 @@ public final class ConfigurationsMenuRenderer {
         for (int i = 0; i < versions.size() && shown < 5; i++) {
             CloudClient.VersionEntry entry = versions.get(i);
             boolean sel = i == selectedVersion;
-            int rowH = 12;
-            if (sel) {
-                ctx.fillRect(x + 12, rowY - 1, PANEL_W - 24, rowH + 2,
-                        ColorUtil.withAlpha(theme.accent(), 0.25f));
+            int rowH = 14;
+            if (sel || hit(mouseX, mouseY, x + 12, rowY - 1, PANEL_W - 24, rowH + 2)) {
+                ctx.fillRoundedRect(x + 12, rowY - 1, PANEL_W - 24, rowH + 2, 4,
+                        ColorUtil.withAlpha(theme.accent(), sel ? 0.28f : 0.12f));
             }
-            ctx.drawText((sel ? "› " : "  ") + trimLabel(entry.label(), 36),
-                    x + 14, rowY, sel ? theme.accent() : theme.foregroundMuted(), true);
+            ctx.drawText((sel ? "› " : "  ") + trimLabel(entry.label(), 40),
+                    x + 14, rowY + 1, sel ? theme.accent() : theme.foregroundMuted(), true);
             rowY += rowH + 2;
             shown++;
         }
@@ -95,7 +94,7 @@ public final class ConfigurationsMenuRenderer {
             return false;
         }
 
-        int btnY = y + 60;
+        int btnY = y + 64;
         int btnW = (PANEL_W - 24 - BTN_GAP * 2) / 3;
         if (hit(mx, my, x + 12, btnY, btnW, BTN_H)) {
             profiles.saveActive();
@@ -129,13 +128,13 @@ public final class ConfigurationsMenuRenderer {
         }
 
         List<CloudClient.VersionEntry> versions = cloud.listVersions(profiles.activeProfile());
-        int rowY = btnY + BTN_H + 12 + 14;
+        int rowY = btnY + BTN_H + 14 + 14;
         for (int i = 0; i < versions.size() && i < 5; i++) {
             if (hit(mx, my, x + 12, rowY - 1, PANEL_W - 24, 14)) {
                 selectedVersion = i;
                 return true;
             }
-            rowY += 14;
+            rowY += 16;
         }
         return true;
     }
@@ -160,13 +159,12 @@ public final class ConfigurationsMenuRenderer {
     }
 
     private static void drawButton(RenderContext ctx, Theme theme, int x, int y, int w, int h,
-                                   String label, double mouseX, double mouseY) {
+                                   String label, double mouseX, double mouseY, boolean primary) {
         boolean hover = hit(mouseX, mouseY, x, y, w, h);
-        ctx.fillRoundedRect(x, y, w, h, PrimeDesign.RADIUS_SM,
-                hover ? theme.accent() : theme.backgroundLight());
+        UiChrome.button(ctx, theme, x, y, w, h, hover, primary);
         int tw = ctx.textWidth(label);
         ctx.drawText(label, x + (w - tw) / 2, y + (h - ctx.fontHeight()) / 2 + 1,
-                hover ? theme.foreground() : theme.foregroundMuted(), false);
+                primary || hover ? 0xFFFFFFFF : theme.foregroundMuted(), false);
     }
 
     private static String trimLabel(String label, int max) {

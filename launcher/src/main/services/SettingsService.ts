@@ -91,6 +91,44 @@ export class SettingsService {
 
     return { ok: true, install }
   }
+
+  async browseWallpaper(): Promise<{ ok: boolean; path?: string; error?: string }> {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Select wallpaper',
+      properties: ['openFile'],
+      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }]
+    })
+    if (canceled || !filePaths[0]) {
+      return { ok: false, error: 'Cancelled.' }
+    }
+    await this.update({ wallpaperPath: filePaths[0] })
+    return { ok: true, path: filePaths[0] }
+  }
+
+  async clearWallpaper(): Promise<{ settings: LauncherSettings; restartRequired?: boolean }> {
+    return this.update({ wallpaperPath: null })
+  }
+
+  async getWallpaperDataUrl(): Promise<string | null> {
+    const settings = await settingsStore.load()
+    const path = settings.wallpaperPath
+    if (!path) return null
+    try {
+      const { readFile } = await import('fs/promises')
+      const { extname } = await import('path')
+      const buf = await readFile(path)
+      const ext = extname(path).toLowerCase().replace('.', '')
+      const mime =
+        ext === 'jpg' || ext === 'jpeg'
+          ? 'image/jpeg'
+          : ext === 'webp'
+            ? 'image/webp'
+            : 'image/png'
+      return `data:${mime};base64,${buf.toString('base64')}`
+    } catch {
+      return null
+    }
+  }
 }
 
 export const settingsService = new SettingsService()

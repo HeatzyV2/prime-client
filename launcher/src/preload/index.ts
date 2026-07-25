@@ -173,6 +173,13 @@ const api = {
     list: () => ipcRenderer.invoke(IPC.COSMETIC_LIST),
     toggle: (cosmeticId: string) => ipcRenderer.invoke(IPC.COSMETIC_TOGGLE, cosmeticId)
   },
+  skins: {
+    list: () => ipcRenderer.invoke(IPC.SKIN_LIST),
+    import: () => ipcRenderer.invoke(IPC.SKIN_IMPORT),
+    remove: (id: string) => ipcRenderer.invoke(IPC.SKIN_REMOVE, id),
+    setActive: (id: string | null) => ipcRenderer.invoke(IPC.SKIN_SET_ACTIVE, id),
+    activeData: () => ipcRenderer.invoke(IPC.SKIN_ACTIVE_DATA)
+  },
   friends: {
     list: () => ipcRenderer.invoke(IPC.FRIENDS_LIST),
     add: (username: string, note?: string) => ipcRenderer.invoke(IPC.FRIENDS_ADD, username, note),
@@ -241,7 +248,10 @@ const api = {
     update: (partial: Record<string, unknown>) => ipcRenderer.invoke(IPC.SETTINGS_UPDATE, partial),
     listJava: () => ipcRenderer.invoke(IPC.SETTINGS_JAVA_LIST),
     browseJava: () => ipcRenderer.invoke(IPC.SETTINGS_JAVA_BROWSE),
-    addJavaPath: (javaPath: string) => ipcRenderer.invoke(IPC.SETTINGS_JAVA_ADD, javaPath)
+    addJavaPath: (javaPath: string) => ipcRenderer.invoke(IPC.SETTINGS_JAVA_ADD, javaPath),
+    browseWallpaper: () => ipcRenderer.invoke(IPC.SETTINGS_WALLPAPER_BROWSE),
+    clearWallpaper: () => ipcRenderer.invoke(IPC.SETTINGS_WALLPAPER_CLEAR),
+    wallpaperData: () => ipcRenderer.invoke(IPC.SETTINGS_WALLPAPER_DATA)
   },
   update: {
     check: (force?: boolean) => ipcRenderer.invoke(IPC.UPDATE_CHECK, force),

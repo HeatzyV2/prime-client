@@ -5,13 +5,17 @@ export const fr: LocaleCatalog = {
     name: 'Prime Launcher'
   },
   nav: {
+    primary: 'Navigation principale',
+    more: 'Plus',
     dashboard: 'Accueil',
     accounts: 'Comptes',
     instances: 'Instances',
+    skins: 'Skins',
+    library: 'Bibliothèque',
     mods: 'Mods',
     resources: 'Packs de ressources',
     shaders: 'Shaders',
-    store: 'Boutique Prime',
+    store: 'Boutique',
     cosmetics: 'Cosmétiques',
     servers: 'Serveurs',
     friends: 'Amis',
@@ -52,7 +56,8 @@ export const fr: LocaleCatalog = {
   newsTag: {
     update: 'Mise à jour',
     event: 'Événement',
-    announcement: 'Annonce'
+    announcement: 'Annonce',
+    launcher: 'Launcher'
   },
   dashboard: {
     signInTitle: 'Connectez-vous pour jouer',
@@ -65,7 +70,17 @@ export const fr: LocaleCatalog = {
     primeAccount: 'Compte Prime',
     lastSession: 'Dernière session',
     news: 'Actualités',
+    moreNews: 'Toutes les actus',
     favoriteServers: 'Serveurs favoris',
+    noServers: 'Aucun serveur favori pour l’instant.',
+    noServersHint: 'Ajoute un serveur pour le rejoindre depuis l’accueil.',
+    addServer: 'Ajouter un serveur',
+    playHub: {
+      account: 'Compte',
+      instance: 'Instance',
+      server: 'Serveur',
+      singleplayer: 'Solo / menu'
+    },
     timePlayed: 'Temps de jeu',
     mods: 'Mods',
     ram: 'RAM',
@@ -118,7 +133,10 @@ export const fr: LocaleCatalog = {
       dark: 'Crimson',
       crimson: 'Crimson',
       midnight: 'Midnight',
-      aurora: 'Aurora'
+      aurora: 'Aurora',
+      obsidian: 'Obsidian',
+      ember: 'Ember',
+      elevated: 'Pro'
     },
     hardwareAccel: {
       label: 'Accélération matérielle',
@@ -128,6 +146,22 @@ export const fr: LocaleCatalog = {
       label: 'Fond nébuleuse',
       hint: 'Fond animé débloqué dans la Boutique',
       toggle: 'Fond nébuleuse'
+    },
+    wallpaper: {
+      label: 'Fond d’écran',
+      hint: 'Image optionnelle derrière le contenu',
+      browse: 'Choisir une image',
+      clear: 'Retirer'
+    },
+    accent: {
+      label: 'Couleur d’accent',
+      hint: 'Remplace l’accent du thème dans le launcher',
+      reset: 'Réinitialiser'
+    },
+    uiSounds: {
+      label: 'Sons d’interface',
+      hint: 'Clics discrets sur Play et actions importantes',
+      toggle: 'Sons d’interface'
     },
     restartRequired: 'Redémarrage requis pour l\'accélération matérielle.',
     restartNow: 'Redémarrer',
@@ -225,11 +259,11 @@ export const fr: LocaleCatalog = {
   pages: {
     accounts: {
       title: 'Comptes',
-      subtitle: 'Authentification Microsoft, profils hors ligne et sync Compte Prime.'
+      subtitle: 'Profil actif, comptes Microsoft et hors ligne.'
     },
     instances: {
       title: 'Instances',
-      subtitle: 'Créez et gérez vos installations Minecraft avec Prime Client.'
+      subtitle: 'Tes installs Minecraft — jouer, configurer, rester simple.'
     },
     mods: {
       title: 'Mods',
@@ -246,6 +280,14 @@ export const fr: LocaleCatalog = {
     store: {
       title: 'Boutique Prime',
       subtitle: 'Débloquez cosmétiques et thèmes avec des Prime Coins — tout en local.'
+    },
+    skins: {
+      title: 'Skins',
+      subtitle: 'Aperçu du personnage, capes et ailes Prime — ton look prêt à jouer.'
+    },
+    library: {
+      title: 'Bibliothèque',
+      subtitle: 'Mods, packs, shaders et outils pour l’instance active — sans surcharger la sidebar.'
     },
     cosmetics: {
       title: 'Cosmétiques',
@@ -356,22 +398,27 @@ export const fr: LocaleCatalog = {
   },
   accounts: {
     addAccount: 'Ajouter un compte',
+    activeProfile: 'Profil actif',
+    editSkin: 'Modifier le skin',
     primeAccount: 'Compte Prime',
     quickAdd: 'Ajout rapide',
     quickAddHint: 'Microsoft ouvre une fenêtre sécurisée (Xbox Live → Minecraft).',
     signInMicrosoft: 'Se connecter avec Microsoft',
     offlinePlaceholder: 'Pseudo hors ligne',
-    addOffline: 'Ajouter compte hors ligne',
+    addOffline: 'Ajouter hors ligne',
     minecraftAccounts: 'Comptes Minecraft',
-    noAccounts: 'Aucun compte.',
+    count: '{count} enregistré(s)',
+    noAccounts: 'Aucun compte',
+    emptyHint: 'Connecte-toi avec Microsoft ou ajoute un profil hors ligne pour jouer.',
     addOne: 'Ajoutez-en un',
     toPlay: 'pour jouer.',
     level: 'Niveau {level}',
-    syncDescription: 'Sauvegarde locale des configs, HUD, cosmétiques et stats sur ce PC — pas de cloud distant.',
-    syncButton: 'Sync profil Prime',
+    syncDescription: 'Configs, HUD, cosmétiques et stats restent sur ce PC — sync locale uniquement.',
+    syncButton: 'Sync profil',
     refreshMicrosoft: 'Rafraîchir le token',
     refreshSuccess: 'Token Microsoft rafraîchi.',
     refreshFailed: 'Échec du rafraîchissement du token.',
+    remove: 'Supprimer le compte',
     microsoft: 'Microsoft',
     offline: 'Hors ligne'
   },
@@ -500,6 +547,10 @@ export const fr: LocaleCatalog = {
     unlocked: '{name} débloqué ! Équipez depuis Cosmétiques.',
     purchaseFailed: 'Achat échoué.',
     coinsPrice: '{price} coins',
+    buyFor: 'Acheter · {price} coins',
+    preview: 'Aperçu',
+    emptyTitle: 'Rien ici',
+    emptyDesc: 'Essayez une autre catégorie ou revenez plus tard.',
     categories: {
       all: 'Tout',
       cosmetic: 'Cosmétiques',
@@ -518,20 +569,82 @@ export const fr: LocaleCatalog = {
     badges: 'Badges',
     emptyOwned: 'Aucun cosmétique — visitez la Boutique.'
   },
+  skins: {
+    tabs: {
+      skins: 'Skins',
+      capes: 'Capes',
+      wings: 'Ailes',
+      badges: 'Badges'
+    },
+    pose: {
+      idle: 'Immobile',
+      walk: 'Marcher',
+      run: 'Courir'
+    },
+    addSkin: 'Importer PNG',
+    addSoon: 'Import de skins custom bientôt',
+    applySkin: 'Appliquer ce skin',
+    applyCosmetic: 'Appliquer le cosmétique',
+    changeCape: 'Changer cape',
+    openStore: 'Ouvrir la Boutique',
+    remove: 'Supprimer',
+    emptyCosmeticsHint: 'Débloque des cosmétiques dans la Boutique, puis équipe-les ici.'
+  },
+  onboarding: {
+    eyebrow: 'Setup en 60 secondes',
+    next: 'Continuer',
+    finish: 'C’est parti',
+    skip: 'Passer pour l’instant',
+    steps: {
+      account: {
+        title: 'Ajoute ton compte',
+        body: 'Connecte-toi avec Microsoft ou crée un profil offline pour lancer.'
+      },
+      instance: {
+        title: 'Choisis une instance',
+        body: 'Prime Client est prêt pour 1.21.11 et 26.2 — sélectionne depuis l’accueil.'
+      },
+      skin: {
+        title: 'Personnalise ton look',
+        body: 'Importe un skin PNG ou parcours les capes dans Skins.'
+      },
+      play: {
+        title: 'Appuie sur Play',
+        body: 'Compte, instance et serveur optionnel — un seul bouton sur l’accueil.'
+      }
+    }
+  },
+  social: {
+    title: 'Amis',
+    onlineCount: '{count} en ligne',
+    emptyTitle: 'Pas encore d’amis',
+    emptyDesc: 'Ajoute des amis pour voir qui est en ligne et rejoindre leur serveur.',
+    openFriends: 'Ouvrir Amis'
+  },
+  whatsNew: {
+    eyebrow: 'Mise à jour',
+    title: 'Nouveautés',
+    gotIt: 'Compris',
+    changelog: 'Changelog complet'
+  },
   instances: {
     vanilla: 'Vanilla',
     fabric: 'Fabric',
     primeClient: 'Prime Client',
     primeBadge: 'Prime',
+    newInstance: 'Nouvelle instance',
     createPrime26: 'Prime 26.2',
     createPrime121: 'Prime 1.21.11',
     play: 'Jouer',
     default: 'Par défaut',
+    setDefault: 'Définir par défaut',
     loading: 'Chargement des instances…',
-    signInToPlay: 'Connectez-vous pour jouer.',
+    signInToPlay: 'Se connecter',
     lastPlayed: 'Dernière session {date}',
     ramBadge: '{mb} Mo RAM',
-    modsBadge: '{count} mods'
+    modsBadge: '{count} mods',
+    emptyTitle: 'Aucune instance',
+    emptyDesc: 'Crée une install Prime Client pour commencer.'
   },
   media: {
     openFolder: 'Ouvrir le dossier clips',

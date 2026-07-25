@@ -69,6 +69,11 @@ export const IPC = {
   STORE_PURCHASE: 'store:purchase',
   COSMETIC_LIST: 'cosmetic:list',
   COSMETIC_TOGGLE: 'cosmetic:toggle',
+  SKIN_LIST: 'skin:list',
+  SKIN_IMPORT: 'skin:import',
+  SKIN_REMOVE: 'skin:remove',
+  SKIN_SET_ACTIVE: 'skin:set-active',
+  SKIN_ACTIVE_DATA: 'skin:active-data',
   FRIENDS_LIST: 'friends:list',
   FRIENDS_ADD: 'friends:add',
   FRIENDS_ACCEPT: 'friends:accept',
@@ -110,6 +115,9 @@ export const IPC = {
   SETTINGS_JAVA_LIST: 'settings:java-list',
   SETTINGS_JAVA_BROWSE: 'settings:java-browse',
   SETTINGS_JAVA_ADD: 'settings:java-add',
+  SETTINGS_WALLPAPER_BROWSE: 'settings:wallpaper-browse',
+  SETTINGS_WALLPAPER_CLEAR: 'settings:wallpaper-clear',
+  SETTINGS_WALLPAPER_DATA: 'settings:wallpaper-data',
   UPDATE_CHECK: 'update:check',
   UPDATE_GET_STATUS: 'update:get-status',
   UPDATE_INSTALL_LAUNCHER: 'update:install-launcher',
@@ -273,7 +281,7 @@ export interface JavaInstallationDto {
 }
 
 export type { PrimeThemeId } from './theme'
-export { normalizePrimeTheme, PRIME_THEMES } from './theme'
+export { normalizePrimeTheme, PRIME_THEMES, ELEVATED_PRIME_THEMES, isElevatedTheme, isPremiumTheme, storeIdForTheme, themeIdFromStoreId } from './theme'
 
 export interface LauncherSettingsDto {
   language: 'en' | 'fr'
@@ -298,6 +306,13 @@ export interface LauncherSettingsDto {
   lastUpdateCheck?: string
   lastPrimeSync?: string
   dismissedUpdateBanner?: string
+  lastServerAddress?: string
+  wallpaperPath?: string | null
+  accentColor?: string | null
+  uiSounds: boolean
+  onboardingDone: boolean
+  lastSeenLauncherVersion?: string
+  activeSkinId?: string | null
 }
 
 export interface SettingsUpdateDto {

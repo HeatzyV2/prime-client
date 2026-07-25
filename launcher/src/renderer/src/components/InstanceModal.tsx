@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Button } from '@renderer/design-system/components'
+import { Button, Select } from '@renderer/design-system/components'
 import { useI18n } from '@renderer/context/I18nProvider'
 import type { GameInstance } from '@shared/types'
 import type { JavaInstallationDto } from '@shared/ipc'
@@ -273,20 +273,17 @@ export function InstanceModal({
                 <p className="text-caption" style={{ margin: '0 0 8px', color: 'var(--prime-muted)' }}>
                   {t('modals.instance.javaPathHint')}
                 </p>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <select
-                    className="modal__field"
-                    style={{ flex: 1 }}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <Select
+                    className="modal__select"
                     value={javaPath || 'auto'}
-                    onChange={(e) => setJavaPath(e.target.value === 'auto' ? '' : e.target.value)}
-                  >
-                    <option value="auto">{t('common.automatic')}</option>
-                    {javaInstalls.map((java) => (
-                      <option key={java.path} value={java.path}>
-                        {java.label}
-                      </option>
-                    ))}
-                  </select>
+                    aria-label={t('modals.instance.javaPath')}
+                    onChange={(v) => setJavaPath(v === 'auto' ? '' : v)}
+                    options={[
+                      { value: 'auto', label: t('common.automatic') },
+                      ...javaInstalls.map((java) => ({ value: java.path, label: java.label }))
+                    ]}
+                  />
                   <Button
                     variant="ghost"
                     onClick={() =>

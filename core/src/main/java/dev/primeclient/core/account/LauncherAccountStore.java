@@ -24,14 +24,14 @@ import java.util.UUID;
 public final class LauncherAccountStore {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final String CLIENT_ID = "1ce91f64-568a-42b5-b1c3-4e6871f5b8c5";
 
     public record AccountEntry(
             String id,
             String type,
             String username,
             String uuid,
-            Optional<String> msRefreshToken
+            Optional<String> msRefreshToken,
+            Optional<String> msAuthProvider
     ) {
         public boolean microsoft() {
             return "microsoft".equalsIgnoreCase(type);
@@ -93,7 +93,14 @@ public final class LauncherAccountStore {
                     refresh = Optional.of(t);
                 }
             }
-            out.add(new AccountEntry(id, type, username, uuid, refresh));
+            Optional<String> provider = Optional.empty();
+            if (a.has("msAuthProvider") && !a.get("msAuthProvider").isJsonNull()) {
+                String p = a.get("msAuthProvider").getAsString();
+                if (p != null && !p.isBlank()) {
+                    provider = Optional.of(p);
+                }
+            }
+            out.add(new AccountEntry(id, type, username, uuid, refresh, provider));
         }
         return out;
     }
@@ -180,7 +187,7 @@ public final class LauncherAccountStore {
         accounts.add(account);
         saveRoot(root);
         setActive(id);
-        return Optional.of(new AccountEntry(id, "offline", trimmed, uuid, Optional.empty()));
+        return Optional.of(new AccountEntry(id, "offline", trimmed, uuid, Optional.empty(), Optional.empty()));
     }
 
     public static SwitchPayload resolveForSwitch(AccountEntry account) throws IOException {
@@ -194,8 +201,9 @@ public final class LauncherAccountStore {
         }
         String refresh = account.msRefreshToken()
                 .orElseThrow(() -> new IOException("Microsoft account needs a launcher re-login."));
-        MicrosoftTokenRefresh.Result tokens = MicrosoftTokenRefresh.refresh(refresh, CLIENT_ID);
-        persistRotatedRefresh(account.id(), tokens.refreshToken());
+        String preferred = account.msAuthProvider().orElse(null);
+        MicrosoftTokenRefresh.Result tokens = MicrosoftTokenRefresh.refresh(refresh, preferred);
+        persistRotatedRefresh(account.id(), tokens.refreshToken(), tokens.authProvider());
         return new SwitchPayload(
                 tokens.username(),
                 tokens.uuid(),
@@ -204,7 +212,7 @@ public final class LauncherAccountStore {
         );
     }
 
-    private static void persistRotatedRefresh(String accountId, String refreshToken) {
+    private static void persistRotatedRefresh(String accountId, String refreshToken, String authProvider) {
         JsonObject root = loadRoot();
         if (!root.has("accounts") || !root.get("accounts").isJsonArray()) {
             return;
@@ -216,6 +224,9 @@ public final class LauncherAccountStore {
             JsonObject a = el.getAsJsonObject();
             if (accountId.equals(str(a, "id"))) {
                 a.addProperty("msRefreshToken", refreshToken);
+                if (authProvider != null && !authProvider.isBlank()) {
+                    a.addProperty("msAuthProvider", authProvider);
+                }
                 break;
             }
         }

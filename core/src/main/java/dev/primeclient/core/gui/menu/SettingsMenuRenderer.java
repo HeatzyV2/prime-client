@@ -86,11 +86,19 @@ public final class SettingsMenuRenderer {
         return true;
     }
 
+    private static int settingsPanelW(int screenW) {
+        return Math.min(420, Math.max(360, screenW - 80));
+    }
+
+    private static int settingsPanelH(int screenH) {
+        return Math.min(300, Math.max(260, screenH - 60));
+    }
+
     public void render(RenderContext ctx, Theme theme, ThemeManager themes, ProfileManager profiles,
                        CloudSyncManager cloud, MinecraftAdapter adapter, KeybindManager keybinds,
                        int screenW, int screenH, double mouseX, double mouseY) {
-        int panelW = 340;
-        int panelH = 240;
+        int panelW = settingsPanelW(screenW);
+        int panelH = settingsPanelH(screenH);
         int x = (screenW - panelW) / 2;
         int y = (screenH - panelH) / 2;
         UiChrome.glassPanel(ctx, theme, x, y, panelW, panelH);
@@ -149,6 +157,13 @@ public final class SettingsMenuRenderer {
                 drawThemeChip(ctx, theme, themes, "prime-aurora",
                         PrimeLang.get("prime.gui.settings.theme.aurora", "Aurora"),
                         x + 224, rowY, 100);
+                rowY += 20;
+                drawThemeChip(ctx, theme, themes, "prime-obsidian",
+                        PrimeLang.get("prime.gui.settings.theme.obsidian", "Obsidian"),
+                        x + 12, rowY, 100);
+                drawThemeChip(ctx, theme, themes, "prime-ember",
+                        PrimeLang.get("prime.gui.settings.theme.ember", "Ember"),
+                        x + 118, rowY, 100);
             }
             case PERFORMANCE -> row(ctx, theme, x + 12, rowY,
                     PrimeLang.get("prime.gui.settings.row.tip", "Tip"),
@@ -158,9 +173,27 @@ public final class SettingsMenuRenderer {
                 row(ctx, theme, x + 12, rowY,
                         PrimeLang.get("prime.gui.settings.row.player", "Player"), adapter.playerName());
                 rowY += 16;
+                String type = adapter.sessionAccountType();
                 row(ctx, theme, x + 12, rowY,
-                        PrimeLang.get("prime.gui.settings.row.prime_account", "Prime Account"),
-                        PrimeLang.get("prime.gui.settings.account.hint", "Connect via Prime Account module"));
+                        PrimeLang.get("prime.gui.settings.row.session", "Session"),
+                        type == null || type.isBlank() ? "—" : type);
+                rowY += 22;
+                boolean canSwitch = !adapter.isInGame();
+                boolean hover = canSwitch && mouseX >= x + 12 && mouseX < x + 168
+                        && mouseY >= rowY && mouseY < rowY + 20;
+                UiChrome.button(ctx, theme, x + 12, rowY, 156, 20, hover, canSwitch);
+                String btn = PrimeLang.get("prime.gui.settings.account.switch", "Switch account…");
+                GuiLayout.label(ctx, btn, x + 20, rowY + 6,
+                        canSwitch ? theme.foreground() : theme.foregroundMuted());
+                rowY += 26;
+                GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx,
+                                canSwitch
+                                        ? PrimeLang.get("prime.gui.settings.account.switch_hint",
+                                        "Uses accounts from the Prime Launcher")
+                                        : PrimeLang.get("prime.gui.settings.account.in_world",
+                                        "Return to the title screen to switch accounts"),
+                                panelW - 40),
+                        x + 12, rowY, theme.foregroundMuted());
             }
             case PRIVACY -> row(ctx, theme, x + 12, rowY,
                     PrimeLang.get("prime.gui.settings.row.data", "Data"),
@@ -220,9 +253,9 @@ public final class SettingsMenuRenderer {
     }
 
     public boolean mousePressed(RenderContext ctx, double mx, double my, int screenW, int screenH,
-                                ThemeManager themes, KeybindManager keybinds) {
-        int panelW = 340;
-        int panelH = 240;
+                                ThemeManager themes, KeybindManager keybinds, MinecraftAdapter adapter) {
+        int panelW = settingsPanelW(screenW);
+        int panelH = settingsPanelH(screenH);
         int x = (screenW - panelW) / 2;
         int y = (screenH - panelH) / 2;
         int tabY = y + 28;
@@ -248,7 +281,7 @@ public final class SettingsMenuRenderer {
             tabsInRow++;
         }
         if (active == Category.APPEARANCE) {
-            int rowY = y + 92;
+            int rowY = tabY + 40;
             if (mx >= x + 12 && mx < x + 112 && my >= rowY && my < rowY + 16) {
                 themes.setActive("prime-crimson");
                 return true;
@@ -259,6 +292,22 @@ public final class SettingsMenuRenderer {
             }
             if (mx >= x + 224 && mx < x + 324 && my >= rowY && my < rowY + 16) {
                 themes.setActive("prime-aurora");
+                return true;
+            }
+            int row2 = rowY + 20;
+            if (mx >= x + 12 && mx < x + 112 && my >= row2 && my < row2 + 16) {
+                themes.setActive("prime-obsidian");
+                return true;
+            }
+            if (mx >= x + 118 && mx < x + 218 && my >= row2 && my < row2 + 16) {
+                themes.setActive("prime-ember");
+                return true;
+            }
+        }
+        if (active == Category.ACCOUNT && adapter != null && !adapter.isInGame()) {
+            int rowY = tabY + 22 + 16 + 22;
+            if (mx >= x + 12 && mx < x + 168 && my >= rowY && my < rowY + 20) {
+                adapter.openAccountSwitcher();
                 return true;
             }
         }

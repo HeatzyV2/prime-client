@@ -1,13 +1,27 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { Plus, Play, Box, FolderOpen, Copy, Trash2, Star } from 'lucide-react'
+import {
+  Plus,
+  Play,
+  Box,
+  FolderOpen,
+  Copy,
+  Trash2,
+  Star,
+  Settings2,
+  ChevronDown
+} from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
-import { Badge, Button, Card } from '@renderer/design-system/components'
+import { Badge, Button } from '@renderer/design-system/components'
 import { InstanceModal, type InstancePreset } from '@renderer/components/InstanceModal'
 import { LoginModal } from '@renderer/components/LoginModal'
+import { EmptyState } from '@renderer/components/EmptyState'
+import { Skeleton } from '@renderer/components/Skeleton'
 import { useAccounts } from '@renderer/context/AccountProvider'
 import { useI18n } from '@renderer/context/I18nProvider'
+import { playUiSound } from '@renderer/lib/uiSounds'
 import type { GameInstance } from '@shared/types'
+import './InstancesPage.css'
 
 type CreateModalState = {
   mode: 'create'
@@ -30,6 +44,8 @@ export function InstancesPage() {
   const [modal, setModal] = useState<ModalState | null>(null)
   const [showLogin, setShowLogin] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const createRef = useRef<HTMLDivElement>(null)
 
   const refresh = useCallback(async () => {
     const list = await window.primeLauncher.instance.list()
@@ -41,12 +57,24 @@ export function InstancesPage() {
     void refresh()
   }, [refresh])
 
+  useEffect(() => {
+    if (!createOpen) return
+    function onPointerDown(e: PointerEvent) {
+      if (createRef.current && !createRef.current.contains(e.target as Node)) {
+        setCreateOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [createOpen])
+
   async function handlePlay(inst: GameInstance) {
     if (!activeAccount) {
       setShowLogin(true)
       return
     }
     setBusyId(inst.id)
+    playUiSound('click')
     await window.primeLauncher.profile.setInstance(inst.id)
     await launch(inst.id)
     setBusyId(null)
@@ -54,11 +82,13 @@ export function InstancesPage() {
   }
 
   async function handleSetDefault(id: string) {
+    playUiSound('click')
     await window.primeLauncher.instance.setDefault(id)
     await refresh()
   }
 
   async function handleDuplicate(id: string) {
+    playUiSound('click')
     await window.primeLauncher.instance.duplicate(id)
     await refresh()
   }
@@ -73,7 +103,13 @@ export function InstancesPage() {
       alert(result.error ?? t('errors.deleteInstance'))
       return
     }
+    playUiSound('click')
     await refresh()
+  }
+
+  function openCreate(preset: InstancePreset, initialMcVersion?: string) {
+    setCreateOpen(false)
+    setModal({ mode: 'create', preset, initialMcVersion })
   }
 
   function loaderLabel(inst: GameInstance): string {
@@ -87,138 +123,148 @@ export function InstancesPage() {
       title={t('pages.instances.title')}
       subtitle={t('pages.instances.subtitle')}
       actions={
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="instances__create" ref={createRef}>
           <Button
             variant="primary"
-            size="sm"
             icon={<Plus size={16} />}
-            onClick={() => setModal({ mode: 'create', preset: 'prime', initialMcVersion: '26.2' })}
+            onClick={() => setCreateOpen((v) => !v)}
           >
-            {t('instances.createPrime26')}
+            {t('instances.newInstance')}
+            <ChevronDown size={14} />
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setModal({ mode: 'create', preset: 'prime', initialMcVersion: '1.21.11' })}
-          >
-            {t('instances.createPrime121')}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setModal({ mode: 'create', preset: 'fabric', initialMcVersion: '26.2' })}
-          >
-            {t('instances.fabric')}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setModal({ mode: 'create', preset: 'vanilla', initialMcVersion: '26.2' })}
-          >
-            {t('instances.vanilla')}
-          </Button>
+          {createOpen && (
+            <div className="instances__create-menu">
+              <button type="button" onClick={() => openCreate('prime', '26.2')}>
+                <strong>{t('instances.createPrime26')}</strong>
+                <span>Minecraft 26.2 · Prime</span>
+              </button>
+              <button type="button" onClick={() => openCreate('prime', '1.21.11')}>
+                <strong>{t('instances.createPrime121')}</strong>
+                <span>Minecraft 1.21.11 · Prime</span>
+              </button>
+              <button type="button" onClick={() => openCreate('fabric', '26.2')}>
+                <strong>{t('instances.fabric')}</strong>
+                <span>Minecraft 26.2 · Fabric</span>
+              </button>
+              <button type="button" onClick={() => openCreate('vanilla', '26.2')}>
+                <strong>{t('instances.vanilla')}</strong>
+                <span>Minecraft 26.2 · Vanilla</span>
+              </button>
+            </div>
+          )}
         </div>
       }
     >
-      {loading ? (
-        <p className="text-caption">{t('instances.loading')}</p>
-      ) : (
-        <div className="page-grid page-grid--3">
-          {instances.map((inst) => (
-            <Card key={inst.id} glow={inst.isDefault} hover>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <div className="list-row__icon">
+      <div className="instances">
+        {loading ? (
+          <div className="instances__loading">
+            <Skeleton height={88} radius={16} />
+            <Skeleton height={88} radius={16} />
+          </div>
+        ) : instances.length === 0 ? (
+          <EmptyState
+            icon={<Box size={22} />}
+            title={t('instances.emptyTitle')}
+            description={t('instances.emptyDesc')}
+            action={
+              <Button variant="primary" icon={<Plus size={16} />} onClick={() => openCreate('prime', '26.2')}>
+                {t('instances.createPrime26')}
+              </Button>
+            }
+          />
+        ) : (
+          <ul className="instances__list">
+            {instances.map((inst) => (
+              <li key={inst.id} className={`instances__row${inst.isDefault ? ' is-default' : ''}`}>
+                <div className="instances__icon">
                   <Box size={20} />
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="list-row__title" style={{ fontSize: '1rem' }}>
-                    {inst.name}
+
+                <div className="instances__body">
+                  <div className="instances__title-row">
+                    <h3>{inst.name}</h3>
+                    {inst.isDefault && <Badge variant="prime">{t('instances.default')}</Badge>}
                   </div>
-                  <div className="list-row__desc">
-                    Minecraft {inst.minecraftVersion} · {loaderLabel(inst)}
+                  <p className="instances__meta">
+                    MC {inst.minecraftVersion}
+                    <span>·</span>
+                    {loaderLabel(inst)}
+                    <span>·</span>
+                    {inst.ramMb} MB
+                    <span>·</span>
+                    {t('instances.modsBadge', { count: inst.modCount })}
+                  </p>
+                  {inst.lastPlayed && (
+                    <p className="instances__played">
+                      {t('instances.lastPlayed', {
+                        date: new Date(inst.lastPlayed).toLocaleDateString(locale)
+                      })}
+                    </p>
+                  )}
+                </div>
+
+                <div className="instances__actions">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<Play size={14} fill="currentColor" />}
+                    disabled={busyId === inst.id}
+                    onClick={() => void handlePlay(inst)}
+                  >
+                    {activeAccount ? t('instances.play') : t('instances.signInToPlay')}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<Settings2 size={14} />}
+                    onClick={() => setModal({ mode: 'edit', instance: inst })}
+                  >
+                    {t('actions.configure')}
+                  </Button>
+                  <div className="instances__icon-actions">
+                    <button
+                      type="button"
+                      className="instances__icon-btn"
+                      title={t('actions.folder')}
+                      onClick={() => void window.primeLauncher.instance.openFolder(inst.id)}
+                    >
+                      <FolderOpen size={15} />
+                    </button>
+                    {!inst.isDefault && (
+                      <button
+                        type="button"
+                        className="instances__icon-btn"
+                        title={t('instances.setDefault')}
+                        onClick={() => void handleSetDefault(inst.id)}
+                      >
+                        <Star size={15} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="instances__icon-btn"
+                      title={t('actions.duplicate')}
+                      onClick={() => void handleDuplicate(inst.id)}
+                    >
+                      <Copy size={15} />
+                    </button>
+                    {instances.length > 1 && (
+                      <button
+                        type="button"
+                        className="instances__icon-btn instances__icon-btn--danger"
+                        title={t('actions.delete')}
+                        onClick={() => void handleDelete(inst)}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
                   </div>
                 </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-                <Badge variant="default">MC {inst.minecraftVersion}</Badge>
-                {inst.includePrimeMod && <Badge variant="prime">{t('instances.primeBadge')}</Badge>}
-                {!inst.includePrimeMod && (
-                  <Badge variant="default">
-                    {inst.loader === 'fabric' ? t('instances.fabric') : t('instances.vanilla')}
-                  </Badge>
-                )}
-                <Badge variant="default">{t('instances.ramBadge', { mb: inst.ramMb })}</Badge>
-                <Badge variant="default">{t('instances.modsBadge', { count: inst.modCount })}</Badge>
-                {inst.isDefault && <Badge variant="prime">{t('instances.default')}</Badge>}
-              </div>
-
-              {inst.lastPlayed && (
-                <p className="text-caption" style={{ marginBottom: 12 }}>
-                  {t('instances.lastPlayed', {
-                    date: new Date(inst.lastPlayed).toLocaleDateString(locale)
-                  })}
-                </p>
-              )}
-
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={<Play size={14} />}
-                  disabled={busyId === inst.id}
-                  onClick={() => void handlePlay(inst)}
-                >
-                  {activeAccount ? t('instances.play') : t('instances.signInToPlay')}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setModal({ mode: 'edit', instance: inst })}
-                >
-                  {t('actions.configure')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={<FolderOpen size={14} />}
-                  onClick={() => void window.primeLauncher.instance.openFolder(inst.id)}
-                >
-                  {t('actions.folder')}
-                </Button>
-                {!inst.isDefault && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<Star size={14} />}
-                    onClick={() => void handleSetDefault(inst.id)}
-                  >
-                    {t('instances.default')}
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={<Copy size={14} />}
-                  onClick={() => void handleDuplicate(inst.id)}
-                >
-                  {t('actions.duplicate')}
-                </Button>
-                {instances.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<Trash2 size={14} />}
-                    onClick={() => void handleDelete(inst)}
-                  >
-                    {t('actions.delete')}
-                  </Button>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <AnimatePresence>
         {modal && (

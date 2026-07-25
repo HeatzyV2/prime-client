@@ -9,9 +9,25 @@ export const STORE_CATALOG: StoreItem[] = [
   { id: 'cape-midnight', name: 'Midnight Cape', description: 'Indigo midnight cape.', price: 200, category: 'cosmetic', owned: false },
   { id: 'wings-aurora', name: 'Aurora Wings', description: 'Animated aurora wings — visible to Prime peers.', price: 0, category: 'cosmetic', owned: true },
   { id: 'wings-ember', name: 'Ember Wings', description: 'Animated fiery wings.', price: 400, category: 'cosmetic', owned: false },
-  { id: 'theme-crimson', name: 'Crimson Theme', description: 'Signature red Prime theme (free in settings).', price: 0, category: 'theme', owned: true },
-  { id: 'theme-midnight', name: 'Midnight Theme', description: 'Cool indigo theme (free in settings).', price: 0, category: 'theme', owned: true },
-  { id: 'theme-aurora', name: 'Aurora Theme', description: 'Cyan aurora theme (free in settings).', price: 0, category: 'theme', owned: true },
+  { id: 'theme-crimson', name: 'Crimson Theme', description: 'Signature red Prime theme.', price: 0, category: 'theme', owned: true },
+  { id: 'theme-midnight', name: 'Midnight Theme', description: 'Cool indigo theme.', price: 0, category: 'theme', owned: true },
+  { id: 'theme-aurora', name: 'Aurora Theme', description: 'Cyan aurora theme.', price: 0, category: 'theme', owned: true },
+  {
+    id: 'theme-obsidian',
+    name: 'Obsidian Theme',
+    description: 'Signature black & champagne gold — elevated Prime look.',
+    price: 0,
+    category: 'theme',
+    owned: true
+  },
+  {
+    id: 'theme-ember',
+    name: 'Ember Theme',
+    description: 'Copper glow on deep charcoal — elevated Prime look.',
+    price: 0,
+    category: 'theme',
+    owned: true
+  },
   { id: 'bg-nebula', name: 'Nebula Background', description: 'Animated space background.', price: 150, category: 'background', owned: false },
   { id: 'badge-founder', name: 'Founder Badge', description: 'Limited edition launcher profile badge.', price: 500, category: 'badge', owned: false }
 ]
@@ -74,5 +90,13 @@ export const PERFORMANCE_PRESETS: PerformancePresetInfo[] = [
   { id: 'ultra', label: 'Ultra', ramMb: 8192, renderDistance: 24, description: 'Maximum quality for powerful PCs.' }
 ]
 
-export const DEFAULT_OWNED_STORE = ['cape-prime', 'wings-aurora', 'theme-crimson', 'theme-midnight', 'theme-aurora']
+export const DEFAULT_OWNED_STORE = [
+  'cape-prime',
+  'wings-aurora',
+  'theme-crimson',
+  'theme-midnight',
+  'theme-aurora',
+  'theme-obsidian',
+  'theme-ember'
+]
 export const DEFAULT_EQUIPPED_COSMETICS = ['cape-prime', 'wings-aurora']

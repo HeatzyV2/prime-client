@@ -49,7 +49,7 @@ export interface NewsItem {
   title: string
   summary: string
   date: string
-  tag: 'update' | 'event' | 'announcement'
+  tag: 'update' | 'event' | 'announcement' | 'launcher'
 }
 
 export interface FavoriteServer {
@@ -77,6 +77,8 @@ export type NavSection =
   | 'dashboard'
   | 'accounts'
   | 'instances'
+  | 'skins'
+  | 'library'
   | 'mods'
   | 'resources'
   | 'shaders'
@@ -98,17 +100,42 @@ export interface NavItem {
   phase: number
 }
 
+/** Slim primary rail — keep this short so the launcher stays scannable. */
+export const PRIMARY_NAV: NavSection[] = [
+  'dashboard',
+  'instances',
+  'skins',
+  'store',
+  'library',
+  'servers',
+  'friends'
+]
+
+/** Overflow / “More” destinations — still routed, just not on the main rail. */
+export const SECONDARY_NAV: NavSection[] = [
+  'accounts',
+  'chat',
+  'media',
+  'news',
+  'downloads',
+  'console',
+  'performance'
+]
+
+/** @deprecated Prefer PRIMARY_NAV + SECONDARY_NAV — kept for any legacy consumers. */
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Home', phase: 3 },
-  { id: 'accounts', label: 'Accounts', phase: 3 },
   { id: 'instances', label: 'Instances', phase: 3 },
+  { id: 'skins', label: 'Skins', phase: 3 },
+  { id: 'store', label: 'Prime Store', phase: 3 },
+  { id: 'library', label: 'Library', phase: 3 },
+  { id: 'servers', label: 'Servers', phase: 3 },
+  { id: 'friends', label: 'Friends', phase: 3 },
+  { id: 'accounts', label: 'Accounts', phase: 3 },
   { id: 'mods', label: 'Mods', phase: 3 },
   { id: 'resources', label: 'Resource Packs', phase: 3 },
   { id: 'shaders', label: 'Shaders', phase: 3 },
-  { id: 'store', label: 'Prime Store', phase: 3 },
   { id: 'cosmetics', label: 'Cosmetics', phase: 3 },
-  { id: 'servers', label: 'Servers', phase: 3 },
-  { id: 'friends', label: 'Friends', phase: 3 },
   { id: 'chat', label: 'Chat', phase: 3 },
   { id: 'news', label: 'News', phase: 3 },
   { id: 'media', label: 'Media', phase: 3 },

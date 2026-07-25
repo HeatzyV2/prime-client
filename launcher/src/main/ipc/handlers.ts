@@ -7,6 +7,7 @@ import { serverService } from '../services/ServerService'
 import { contentService } from '../services/ContentService'
 import { cloudService } from '../services/CloudService'
 import { cosmeticService } from '../services/CosmeticService'
+import { skinLibraryService } from '../services/SkinLibraryService'
 import { launchService } from '../services/LaunchService'
 import { launchLogService } from '../services/LaunchLogService'
 import { launcherBridgeService } from '../services/LauncherBridgeService'
@@ -176,6 +177,12 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.COSMETIC_LIST, () => cosmeticService.list())
   ipcMain.handle(IPC.COSMETIC_TOGGLE, (_e, cosmeticId: string) => cosmeticService.toggleEquip(cosmeticId))
 
+  ipcMain.handle(IPC.SKIN_LIST, () => skinLibraryService.list())
+  ipcMain.handle(IPC.SKIN_IMPORT, () => skinLibraryService.importPng())
+  ipcMain.handle(IPC.SKIN_REMOVE, (_e, id: string) => skinLibraryService.remove(id))
+  ipcMain.handle(IPC.SKIN_SET_ACTIVE, (_e, id: string | null) => skinLibraryService.setActive(id))
+  ipcMain.handle(IPC.SKIN_ACTIVE_DATA, () => skinLibraryService.getActiveDataUrl())
+
   ipcMain.handle(IPC.FRIENDS_LIST, () => friendsService.list())
   ipcMain.handle(IPC.FRIENDS_ADD, (_e, username: string, note?: string) => friendsService.add(username, note))
   ipcMain.handle(IPC.FRIENDS_ACCEPT, (_e, friendId: string) => friendsService.accept(friendId))
@@ -226,6 +233,9 @@ export function registerServiceHandlers(): void {
 
   ipcMain.handle(IPC.SETTINGS_GET, () => settingsService.get())
   ipcMain.handle(IPC.SETTINGS_UPDATE, (_e, partial: Partial<LauncherSettings>) => settingsService.update(partial))
+  ipcMain.handle(IPC.SETTINGS_WALLPAPER_BROWSE, () => settingsService.browseWallpaper())
+  ipcMain.handle(IPC.SETTINGS_WALLPAPER_CLEAR, () => settingsService.clearWallpaper())
+  ipcMain.handle(IPC.SETTINGS_WALLPAPER_DATA, () => settingsService.getWallpaperDataUrl())
 
   ipcMain.handle(IPC.UPDATE_CHECK, (_e, force?: boolean) => updateService.check(Boolean(force)))
   ipcMain.handle(IPC.UPDATE_GET_STATUS, () => updateService.getStatus())

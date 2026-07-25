@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, Zap, UserCog, Box, KeyRound } from 'lucide-react'
-import { Avatar, Badge, Button, Card } from '@renderer/design-system/components'
+import { Play, UserCog, Box, Shirt, ChevronRight, Globe } from 'lucide-react'
+import { Badge, Button, Select } from '@renderer/design-system/components'
 import { useAccounts } from '@renderer/context/AccountProvider'
 import { useI18n } from '@renderer/context/I18nProvider'
 import { LoginModal } from '@renderer/components/LoginModal'
 import { UpdateModal } from '@renderer/components/UpdateModal'
 import { CrashReportPanel } from '@renderer/components/CrashReportPanel'
+import { LaunchStrip, Skeleton } from '@renderer/components/Skeleton'
+import { EmptyState } from '@renderer/components/EmptyState'
 import type { UpdateStatusDto } from '@shared/ipc'
-import { formatLoader, formatTier } from '@shared/format'
+import { formatLoader, formatTier, playerCapeUrl } from '@shared/format'
 import type { FavoriteServer, GameInstance, NewsItem } from '@shared/types'
+import { SkinViewer3D } from '@renderer/components/SkinViewer3D'
+import { playUiSound } from '@renderer/lib/uiSounds'
 import './DashboardPage.css'
 
 interface DashboardPageProps {
@@ -18,18 +22,25 @@ interface DashboardPageProps {
   servers: FavoriteServer[]
 }
 
-function formatPlayTime(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return h > 0 ? `${h}h ${m}m` : `${m}m`
-}
-
 export function DashboardPage({ news, servers }: DashboardPageProps) {
   const { t, locale } = useI18n()
-  const { prime, activeAccount, profile, launch, launchMessage, launchProgress, clearLaunchMessage } = useAccounts()
+  const {
+    prime,
+    accounts,
+    activeAccount,
+    profile,
+    launch,
+    launchMessage,
+    launchProgress,
+    clearLaunchMessage,
+    setActive
+  } = useAccounts()
   const [showLogin, setShowLogin] = useState(false)
   const [launching, setLaunching] = useState(false)
+  const [instances, setInstances] = useState<GameInstance[]>([])
   const [instance, setInstance] = useState<GameInstance | null>(null)
+  const [selectedServer, setSelectedServer] = useState('')
+  const [skinDataUrl, setSkinDataUrl] = useState<string | null>(null)
   const [crashDismissed, setCrashDismissed] = useState(false)
   const [updateStatus, setUpdateStatus] = useState<UpdateStatusDto | null>(null)
   const [showUpdate, setShowUpdate] = useState(false)
@@ -56,21 +67,38 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
 
   useEffect(() => {
     void (async () => {
+      const list = (await window.primeLauncher.instance.list()) as GameInstance[]
+      setInstances(list)
+      let current: GameInstance | null = null
       if (profile?.instanceId) {
-        const inst = await window.primeLauncher.instance.get(profile.instanceId)
-        if (inst) {
-          setInstance(inst)
-          return
-        }
+        current = list.find((i: GameInstance) => i.id === profile.instanceId) ?? null
       }
-      const fallback = await window.primeLauncher.instance.getDefault()
-      setInstance(fallback)
+      if (!current) {
+        current = (await window.primeLauncher.instance.getDefault()) ?? list[0] ?? null
+      }
+      setInstance(current)
     })()
   }, [profile?.instanceId])
 
+  useEffect(() => {
+    void (async () => {
+      const settings = await window.primeLauncher.settings.get()
+      const last =
+        typeof settings.lastServerAddress === 'string' ? settings.lastServerAddress.trim() : ''
+      if (last) {
+        setSelectedServer(last)
+        return
+      }
+      if (servers[0]?.address) setSelectedServer(servers[0].address)
+    })()
+  }, [servers])
+
+  useEffect(() => {
+    void window.primeLauncher.skins.activeData().then(setSkinDataUrl)
+  }, [activeAccount?.id])
+
   const mcUsername = activeAccount?.username ?? t('common.guest')
-  const playTimeMinutes = profile?.playTimeMinutes ?? 0
-  const lastPlayed = profile?.lastPlayed
+  const capeUrl = playerCapeUrl(activeAccount?.uuid, mcUsername, activeAccount?.capeUrl)
 
   async function handlePlay() {
     if (!activeAccount || !instance) {
@@ -78,14 +106,14 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
       return
     }
     setLaunching(true)
+    playUiSound('click')
     clearLaunchMessage()
     await window.primeLauncher.profile.setInstance(instance.id)
-    const settings = await window.primeLauncher.settings.get()
-    const lastServer =
-      typeof settings.lastServerAddress === 'string' && settings.lastServerAddress.trim()
-        ? settings.lastServerAddress.trim()
-        : undefined
-    await launch(instance.id, lastServer)
+    const server = selectedServer.trim() || undefined
+    if (server) {
+      await window.primeLauncher.settings.update({ lastServerAddress: server })
+    }
+    await launch(instance.id, server)
     setLaunching(false)
   }
 
@@ -94,7 +122,9 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
       setShowLogin(true)
       return
     }
+    setSelectedServer(address)
     setLaunching(true)
+    playUiSound('click')
     clearLaunchMessage()
     await window.primeLauncher.profile.setInstance(instance.id)
     await window.primeLauncher.settings.update({ lastServerAddress: address })
@@ -102,181 +132,247 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
     setLaunching(false)
   }
 
-  if (!instance) {
-    return null
+  async function handleInstanceChange(id: string) {
+    const next = instances.find((i) => i.id === id)
+    if (!next) return
+    setInstance(next)
+    await window.primeLauncher.profile.setInstance(id)
+    playUiSound('click')
   }
+
+  async function handleAccountChange(id: string) {
+    await setActive(id)
+    playUiSound('click')
+  }
+
+  if (!instance) {
+    return (
+      <div className="home home--loading">
+        <Skeleton width={280} height={360} radius={16} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+          <Skeleton width="40%" height={14} />
+          <Skeleton width="70%" height={36} />
+          <Skeleton width="55%" height={18} />
+          <Skeleton width={180} height={48} radius={12} />
+        </div>
+      </div>
+    )
+  }
+
+  const topNews = news.slice(0, 3)
+  const topServers = servers.slice(0, 4)
+  const showLaunchStrip =
+    launching ||
+    (launchProgress && launchProgress.phase !== 'log' && launchProgress.phase !== 'crashed') ||
+    Boolean(launchMessage)
 
   return (
     <motion.div
-      className="dashboard"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="home"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35 }}
     >
       {!activeAccount && (
-        <Card glow>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-            <div>
-              <div className="text-subtitle">{t('dashboard.signInTitle')}</div>
-              <p className="text-caption">{t('dashboard.signInHint')}</p>
-            </div>
-            <Button variant="primary" icon={<KeyRound size={16} />} onClick={() => setShowLogin(true)}>
-              {t('dashboard.addAccount')}
-            </Button>
+        <div className="home__alert">
+          <div>
+            <strong>{t('dashboard.signInTitle')}</strong>
+            <p>{t('dashboard.signInHint')}</p>
           </div>
-        </Card>
+          <Button variant="primary" onClick={() => setShowLogin(true)}>
+            {t('dashboard.addAccount')}
+          </Button>
+        </div>
       )}
 
       {(launchMessage || launchProgress) && (
-        <Card>
+        <div className="home__status">
           {launchProgress?.phase === 'crashed' && launchProgress.crash && !crashDismissed && (
             <CrashReportPanel crash={launchProgress.crash} onDismiss={() => setCrashDismissed(true)} />
           )}
-          {launchProgress && launchProgress.phase !== 'log' && launchProgress.phase !== 'crashed' && (
-            <p className="text-caption" style={{ marginBottom: 8 }}>
-              {launchProgress.detail}
-              {launchProgress.percent !== undefined ? ` · ${launchProgress.percent}%` : ''}
-            </p>
+          {showLaunchStrip && launchProgress?.phase !== 'crashed' && (
+            <LaunchStrip
+              detail={launchProgress?.detail ?? launchMessage ?? t('common.launching')}
+              percent={launchProgress?.percent}
+              phase={launchProgress?.phase}
+            />
           )}
-          {launchProgress?.phase === 'stopped' && (
-            <p className="text-caption" style={{ color: 'var(--prime-muted)' }}>
-              {launchProgress.detail}
-            </p>
-          )}
-          {launchMessage && (
-            <p
-              className="text-body"
-              style={{
-                color: launchMessage.toLowerCase().includes('started') || launchMessage.toLowerCase().includes('running')
-                  ? 'var(--prime-success)'
-                  : 'var(--prime-red-bright)'
-              }}
-            >
-              {launchMessage}
-            </p>
-          )}
-        </Card>
+        </div>
       )}
 
-      <section className="dashboard__hero">
-        <div className="dashboard__welcome">
-          <span className="text-caption">{t('dashboard.welcomeBack')}</span>
-          <h1 className="text-display text-gradient">{mcUsername}</h1>
-          <p className="text-body" style={{ color: 'var(--prime-muted)' }}>
-            Prime Client {instance.minecraftVersion} · {formatLoader(instance.loader)}
-          </p>
+      <section className="home__stage">
+        <div className="home__character">
+          <div className="home__character-glow" />
+          <SkinViewer3D
+            className="home__viewer"
+            uuid={activeAccount?.uuid}
+            username={mcUsername}
+            skinUrl={skinDataUrl}
+            capeUrl={capeUrl}
+            pose="idle"
+            width={300}
+            height={400}
+            showControls
+          />
         </div>
-        <div className="dashboard__play-area">
-          <Button
-            variant="primary"
-            size="xl"
-            icon={<Play size={22} fill="currentColor" />}
-            disabled={launching}
-            onClick={() => void handlePlay()}
-          >
-            {launching ? t('common.launching') : t('common.play')}
-          </Button>
-          <span className="dashboard__instance">{instance.name}</span>
-          <div className="dashboard__quick-actions">
-            <Button variant="secondary" size="sm" icon={<Zap size={14} />} disabled={!activeAccount} onClick={() => void handlePlay()}>
-              {t('dashboard.quickLaunch')}
+
+        <div className="home__copy">
+          <p className="home__eyebrow">{t('dashboard.welcomeBack')}</p>
+          <h1 className="home__name">{mcUsername}</h1>
+          <p className="home__meta">
+            {instance.name}
+            <span>·</span>
+            MC {instance.minecraftVersion}
+            <span>·</span>
+            {formatLoader(instance.loader)}
+          </p>
+
+          <div className="home__chips">
+            <Badge variant="prime">{formatTier(prime?.tier ?? 'free', locale)}</Badge>
+            <span className="home__chip">
+              {instance.ramMb} MB · {instance.modCount} mods
+            </span>
+          </div>
+
+          <div className="home__playhub">
+            <label className="home__field">
+              <span>{t('dashboard.playHub.account')}</span>
+              <Select
+                value={activeAccount?.id ?? ''}
+                disabled={accounts.length === 0}
+                aria-label={t('dashboard.playHub.account')}
+                onChange={(id) => void handleAccountChange(id)}
+                options={
+                  accounts.length === 0
+                    ? [{ value: '', label: t('common.guest') }]
+                    : accounts.map((a) => ({ value: a.id, label: a.username }))
+                }
+              />
+            </label>
+            <label className="home__field">
+              <span>{t('dashboard.playHub.instance')}</span>
+              <Select
+                value={instance.id}
+                aria-label={t('dashboard.playHub.instance')}
+                onChange={(id) => void handleInstanceChange(id)}
+                options={instances.map((i) => ({
+                  value: i.id,
+                  label: `${i.name} · ${i.minecraftVersion}`
+                }))}
+              />
+            </label>
+            <label className="home__field">
+              <span>{t('dashboard.playHub.server')}</span>
+              <Select
+                value={selectedServer}
+                aria-label={t('dashboard.playHub.server')}
+                onChange={(v) => {
+                  setSelectedServer(v)
+                  playUiSound('click')
+                }}
+                options={[
+                  { value: '', label: t('dashboard.playHub.singleplayer') },
+                  ...servers.map((s) => ({ value: s.address, label: s.name }))
+                ]}
+              />
+            </label>
+          </div>
+
+          <div className="home__cta">
+            <Button
+              variant="primary"
+              size="xl"
+              icon={<Play size={22} fill="currentColor" />}
+              disabled={launching}
+              onClick={() => void handlePlay()}
+            >
+              {launching ? t('common.launching') : t('common.play')}
             </Button>
-            <Link to="/accounts">
-              <Button variant="ghost" size="sm" icon={<UserCog size={14} />}>
-                {t('dashboard.profile')}
-              </Button>
-            </Link>
-            <Link to="/instances">
-              <Button variant="ghost" size="sm" icon={<Box size={14} />}>
+            <div className="home__links">
+              <Link to="/instances" className="home__link">
+                <Box size={15} />
                 {t('dashboard.instance')}
-              </Button>
-            </Link>
+              </Link>
+              <Link to="/skins" className="home__link">
+                <Shirt size={15} />
+                {t('nav.skins')}
+              </Link>
+              <Link to="/accounts" className="home__link">
+                <UserCog size={15} />
+                {t('dashboard.profile')}
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      <Card title={t('dashboard.whatsNew.title')}>
-        <ul className="dashboard__whats-new">
-          <li>{t('dashboard.whatsNew.themes')}</li>
-          <li>{t('dashboard.whatsNew.fps')}</li>
-          <li>{t('dashboard.whatsNew.chat')}</li>
-        </ul>
-        <a
-          className="dashboard__whats-new-link"
-          href="https://github.com/HeatzyV2/prime-client/releases/latest"
-          target="_blank"
-          rel="noreferrer"
-        >
-          {t('dashboard.whatsNew.release')}
-        </a>
-      </Card>
-
-      <div className="dashboard__grid">
-        <Card title={t('dashboard.primeAccount')} glow className="dashboard__grid-span-2">
-          <div className="dashboard__profile">
-            <Avatar alt={mcUsername} uuid={activeAccount?.uuid} size="xl" glow />
-            <div className="dashboard__profile-info">
-              <h3>{prime?.username ?? t('common.guest')}</h3>
-              <Badge variant="prime">
-                {formatTier(prime?.tier ?? 'free', locale)} · Lv. {prime?.level ?? 1}
-              </Badge>
-              <div className="dashboard__stats">
-                <div>
-                  <div className="dashboard__stat-value">{formatPlayTime(playTimeMinutes)}</div>
-                  <div className="dashboard__stat-label">{t('dashboard.timePlayed')}</div>
-                </div>
-                <div>
-                  <div className="dashboard__stat-value">{instance.modCount}</div>
-                  <div className="dashboard__stat-label">{t('dashboard.mods')}</div>
-                </div>
-                <div>
-                  <div className="dashboard__stat-value">{instance.ramMb}MB</div>
-                  <div className="dashboard__stat-label">{t('dashboard.ram')}</div>
-                </div>
-              </div>
-            </div>
+      <section className="home__rail">
+        <div className="home__panel">
+          <div className="home__panel-head">
+            <h2>{t('dashboard.favoriteServers')}</h2>
+            <Link to="/servers" className="home__panel-more">
+              <ChevronRight size={16} />
+            </Link>
           </div>
-        </Card>
+          {topServers.length === 0 ? (
+            <EmptyState
+              icon={<Globe size={20} />}
+              title={t('dashboard.noServers')}
+              description={t('dashboard.noServersHint')}
+              action={
+                <Link to="/servers">
+                  <Button variant="secondary" size="sm">
+                    {t('dashboard.addServer')}
+                  </Button>
+                </Link>
+              }
+            />
+          ) : (
+            <ul className="home__list">
+              {topServers.map((s) => (
+                <li key={s.id} className="home__row">
+                  <div className="home__row-icon">
+                    <Globe size={16} />
+                  </div>
+                  <div className="home__row-text">
+                    <strong>{s.name}</strong>
+                    <span>{s.address}</span>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={launching}
+                    onClick={() => void handleJoinServer(s.address)}
+                  >
+                    {t('common.join')}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-        <Card title={t('dashboard.lastSession')}>
-          <p className="text-body" style={{ marginBottom: 'var(--space-2)' }}>
-            {lastPlayed
-              ? new Date(lastPlayed).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { dateStyle: 'medium' })
-              : t('common.never')}
-          </p>
-          <p className="text-caption">
-            {t('dashboard.version')} {instance.minecraftVersion}
-          </p>
-        </Card>
-
-        <Card title={t('dashboard.news')}>
-          {news.map((item) => (
-            <div key={item.id} className="dashboard__news-item">
-              <div className="dashboard__news-title">
-                <Badge variant={item.tag === 'update' ? 'red' : 'default'}>{t(`newsTag.${item.tag}`)}</Badge>{' '}
-                {item.title}
-              </div>
-              <p className="dashboard__news-summary">{item.summary}</p>
-            </div>
-          ))}
-        </Card>
-
-        <Card title={t('dashboard.favoriteServers')} className="dashboard__grid-span-2">
-          {servers.map((s) => (
-            <div key={s.id} className="dashboard__server">
-              <div className="dashboard__server-info">
-                <span className="dashboard__server-name">{s.name}</span>
-                <span className="dashboard__server-meta">
-                  {s.address} · {s.players ?? 0}/{s.maxPlayers ?? '?'} · {s.ping ?? '—'}ms
-                </span>
-              </div>
-              <Button variant="secondary" size="sm" disabled={launching} onClick={() => void handleJoinServer(s.address)}>
-                {t('common.join')}
-              </Button>
-            </div>
-          ))}
-        </Card>
-      </div>
+        <div className="home__panel">
+          <div className="home__panel-head">
+            <h2>{t('dashboard.news')}</h2>
+            <Link to="/news" className="home__panel-more">
+              {t('dashboard.moreNews')}
+              <ChevronRight size={16} />
+            </Link>
+          </div>
+          <ul className="home__list">
+            {topNews.map((item) => (
+              <li key={item.id} className="home__news">
+                <Badge variant={item.tag === 'update' ? 'red' : 'default'}>{t(`newsTag.${item.tag}`)}</Badge>
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>{item.summary}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
       <AnimatePresence>{showLogin && <LoginModal onClose={() => setShowLogin(false)} />}</AnimatePresence>
       <AnimatePresence>

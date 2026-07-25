@@ -8,6 +8,8 @@ export interface StoredMinecraftAccount {
   capeUrl?: string
   /** MSMC refresh token from Xbox.save() */
   msRefreshToken?: string
+  /** Which OAuth stack issued the refresh token: live (Electron/msmc) or azure (Tauri/Prism). */
+  msAuthProvider?: 'live' | 'azure'
   addedAt: string
   lastUsedAt?: string
 }

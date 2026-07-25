@@ -114,6 +114,7 @@ export class MicrosoftAuth {
       skinUrl: activeSkin?.url ?? skinUrlForUuid(profile.id),
       capeUrl: activeCape?.url,
       msRefreshToken: xbox.save(),
+      msAuthProvider: 'live',
       addedAt: new Date().toISOString(),
       lastUsedAt: new Date().toISOString()
     }
@@ -147,6 +148,7 @@ export class MicrosoftAuth {
         skinUrl: activeSkin?.url ?? skinUrlForUuid(profile.id),
         capeUrl: activeCape?.url,
         msRefreshToken: xbox.save(),
+        msAuthProvider: 'live',
         lastUsedAt: new Date().toISOString()
       }
 

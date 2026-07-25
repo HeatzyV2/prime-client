@@ -334,6 +334,7 @@ fn tokens_to_account(tokens: MsTokens) -> Result<StoredMinecraftAccount, AppErro
         skin_url: Some(skin.unwrap_or_else(|| skin_url(&uuid))),
         cape_url: cape,
         ms_refresh_token: Some(tokens.refresh_token),
+        ms_auth_provider: Some("azure".into()),
         added_at: Utc::now().to_rfc3339(),
         last_used_at: Some(Utc::now().to_rfc3339()),
     })
@@ -357,6 +358,7 @@ pub fn refresh_account(account_id: &str) -> Result<OkResult, AppError> {
     account.skin_url = Some(skin.unwrap_or_else(|| skin_url(&uuid)));
     account.cape_url = cape;
     account.ms_refresh_token = Some(tokens.refresh_token);
+    account.ms_auth_provider = Some("azure".into());
     account.last_used_at = Some(Utc::now().to_rfc3339());
     save(&db)?;
     Ok(OkResult::ok())

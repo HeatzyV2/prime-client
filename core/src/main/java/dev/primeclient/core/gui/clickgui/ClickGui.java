@@ -354,7 +354,7 @@ public final class ClickGui implements ConfigBinding {
             return handleMainMenuPress(mouseX, mouseY);
         }
         if (view == ClickGuiView.SETTINGS) {
-            return settingsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, themes, keybinds);
+            return settingsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, themes, keybinds, adapter);
         }
         if (view == ClickGuiView.COSMETICS) {
             return cosmeticsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, cosmetics);

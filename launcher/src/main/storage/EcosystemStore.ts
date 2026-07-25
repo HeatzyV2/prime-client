@@ -39,6 +39,20 @@ export class EcosystemStore {
     } catch {
       this.db = DEFAULT_DB()
       await this.save()
+      return this.db!
+    }
+    // Ensure free defaults (new themes, free cosmetics) stay owned for existing installs.
+    const owned = new Set(this.db.ownedStoreItems ?? [])
+    let changed = false
+    for (const id of DEFAULT_OWNED_STORE) {
+      if (!owned.has(id)) {
+        owned.add(id)
+        changed = true
+      }
+    }
+    if (changed) {
+      this.db.ownedStoreItems = [...owned]
+      await this.save()
     }
     return this.db!
   }
