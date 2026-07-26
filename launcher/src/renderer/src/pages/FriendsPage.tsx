@@ -19,6 +19,13 @@ function statusDot(status: FriendEntry['status']): string {
   }
 }
 
+interface PartyInvite {
+  id: string
+  fromUsername?: string
+  partyId?: string
+  serverAddress?: string | null
+}
+
 export function FriendsPage() {
   const { t } = useI18n()
   const { launch } = useAccounts()
@@ -32,6 +39,7 @@ export function FriendsPage() {
     serverAddress?: string | null
     members?: { uuid: string; username: string; leader?: boolean }[]
   } | null>(null)
+  const [partyInvites, setPartyInvites] = useState<PartyInvite[]>([])
   const [shareAddress, setShareAddress] = useState('')
   const [joinPrompt, setJoinPrompt] = useState<string | null>(null)
 
@@ -67,9 +75,63 @@ export function FriendsPage() {
 
   useEffect(() => {
     const unsub = window.primeLauncher.social.onEvent((event) => {
+      if (
+        event.t === 'presence' ||
+        event.t === 'friend_request' ||
+        event.t === 'friend_accepted' ||
+        event.t === 'friend_removed' ||
+        event.t === 'friend_update' ||
+        event.t === 'snapshot'
+      ) {
+        if (event.t === 'snapshot') {
+          const invites = Array.isArray(event.partyInvites)
+            ? (event.partyInvites as Array<{
+                id?: string
+                fromUsername?: string
+                partyId?: string
+                party?: { serverAddress?: string | null }
+              }>).flatMap((inv) => {
+                if (!inv.id) return []
+                return [
+                  {
+                    id: inv.id,
+                    fromUsername: inv.fromUsername,
+                    partyId: inv.partyId,
+                    serverAddress: inv.party?.serverAddress ?? null
+                  }
+                ]
+              })
+            : []
+          setPartyInvites(invites)
+          if (event.party && typeof event.party === 'object') {
+            setParty(event.party as typeof party)
+          }
+        }
+        void refresh()
+        return
+      }
       if (event.t === 'party') {
         const partyPayload = event.party as typeof party
         setParty(partyPayload ?? null)
+        return
+      }
+      if (event.t === 'party_invite') {
+        const inviteId = typeof event.inviteId === 'string' ? event.inviteId : null
+        if (inviteId) {
+          setPartyInvites((prev) => {
+            if (prev.some((i) => i.id === inviteId)) return prev
+            return [
+              ...prev,
+              {
+                id: inviteId,
+                fromUsername: typeof event.fromUsername === 'string' ? event.fromUsername : undefined,
+                partyId: typeof event.partyId === 'string' ? event.partyId : undefined,
+                serverAddress:
+                  typeof event.serverAddress === 'string' ? event.serverAddress : null
+              }
+            ]
+          })
+        }
         return
       }
       if (event.t === 'party_join_server') {
@@ -151,6 +213,41 @@ export function FriendsPage() {
         </p>
       )}
 
+      {partyInvites.map((invite) => (
+        <div key={invite.id} className="list-row" style={{ marginBottom: 12, borderColor: 'var(--prime-red)' }}>
+          <div className="list-row__body">
+            <div className="list-row__title">{t('friends.partyInvite')}</div>
+            <div className="list-row__desc">
+              {invite.fromUsername || t('friends.partyInviteUnknown')}
+              {invite.serverAddress ? ` · ${invite.serverAddress}` : ''}
+            </div>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() =>
+              void window.primeLauncher.party.accept(invite.id).then(() => {
+                setPartyInvites((prev) => prev.filter((i) => i.id !== invite.id))
+                return refresh()
+              })
+            }
+          >
+            {t('friends.acceptParty')}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              void window.primeLauncher.party.decline(invite.id).then(() => {
+                setPartyInvites((prev) => prev.filter((i) => i.id !== invite.id))
+              })
+            }
+          >
+            {t('friends.declineParty')}
+          </Button>
+        </div>
+      ))}
+
       {joinPrompt ? (
         <div className="list-row" style={{ marginBottom: 16, borderColor: 'var(--prime-red)' }}>
           <div className="list-row__body">
@@ -178,28 +275,46 @@ export function FriendsPage() {
         </div>
       ) : null}
 
-      {party?.serverAddress ? (
+      {party ? (
         <div className="list-row" style={{ marginBottom: 16 }}>
+          <Users size={16} style={{ marginRight: 8, opacity: 0.7 }} />
           <div className="list-row__body">
-            <div className="list-row__title">{t('friends.partyServer')}</div>
-            <div className="list-row__desc">{party.serverAddress}</div>
+            <div className="list-row__title">{t('friends.partyMembers')}</div>
+            <div className="list-row__desc">
+              {(party.members || []).map((m) => m.username).join(', ') || t('friends.partyAlone')}
+              {party.serverAddress ? ` · ${party.serverAddress}` : ''}
+            </div>
           </div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() =>
-              void (async () => {
-                const inst = await window.primeLauncher.instance.getDefault()
-                if (!inst?.id || !party.serverAddress) return
-                await window.primeLauncher.settings.update({ lastServerAddress: party.serverAddress })
-                await launch(inst.id, party.serverAddress)
-              })()
-            }
-          >
-            {t('friends.joinPartyServer')}
+          {party.serverAddress ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() =>
+                void (async () => {
+                  const inst = await window.primeLauncher.instance.getDefault()
+                  if (!inst?.id || !party.serverAddress) return
+                  await window.primeLauncher.settings.update({ lastServerAddress: party.serverAddress })
+                  await launch(inst.id, party.serverAddress)
+                })()
+              }
+            >
+              {t('friends.joinPartyServer')}
+            </Button>
+          ) : null}
+          <Button variant="ghost" size="sm" onClick={() => void window.primeLauncher.party.leave().then(refresh)}>
+            {t('friends.leaveParty')}
           </Button>
         </div>
-      ) : null}
+      ) : (
+        <Button
+          variant="secondary"
+          size="sm"
+          style={{ marginBottom: 16 }}
+          onClick={() => void window.primeLauncher.party.create().then(refresh)}
+        >
+          {t('friends.createParty')}
+        </Button>
+      )}
 
       <div className="page-grid page-grid--2" style={{ marginBottom: 12 }}>
         <input
@@ -254,7 +369,13 @@ export function FriendsPage() {
                     placeholder={t('friends.notePlaceholder')}
                   />
                 ) : (
-                  <div className="list-row__desc">{friend.activity ?? t('friends.offline')}</div>
+                  <div className="list-row__desc">
+                    {friend.note
+                      ? friend.note
+                      : friend.serverAddress
+                        ? `Playing ${friend.serverAddress}`
+                        : friend.activity ?? t('friends.offline')}
+                  </div>
                 )}
               </div>
               <div className="list-row__meta">
@@ -263,7 +384,14 @@ export function FriendsPage() {
                     {t('friends.saveNote')}
                   </Button>
                 ) : (
-                  <Button variant="ghost" size="sm" onClick={() => { setEditingId(friend.id); setEditNote(friend.activity ?? '') }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingId(friend.id)
+                      setEditNote(friend.note ?? '')
+                    }}
+                  >
                     {t('actions.save')}
                   </Button>
                 )}
@@ -285,7 +413,7 @@ export function FriendsPage() {
                 >
                   {t('friends.inviteParty')}
                 </Button>
-                {friend.activity === 'Pending friend request' ? (
+                {friend.incoming ? (
                   <Button variant="secondary" size="sm" onClick={() => void window.primeLauncher.friends.accept(friend.id).then(refresh)}>
                     {t('friends.accept')}
                   </Button>

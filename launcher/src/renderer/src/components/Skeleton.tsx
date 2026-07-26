@@ -18,20 +18,29 @@ export function Skeleton({ width = '100%', height = 16, radius = 8, className = 
 }
 
 export function LaunchStrip({
-  detail,
+  label,
   percent,
-  phase
+  phase,
+  running
 }: {
-  detail?: string
+  label: string
   percent?: number
   phase?: string
+  running?: boolean
 }) {
-  const pct = typeof percent === 'number' ? Math.max(0, Math.min(100, percent)) : null
+  const pct = running
+    ? 100
+    : typeof percent === 'number'
+      ? Math.max(0, Math.min(100, percent))
+      : null
   return (
-    <div className={`launch-strip${phase === 'crashed' ? ' is-error' : ''}`}>
+    <div
+      className={`launch-strip${phase === 'crashed' || phase === 'error' ? ' is-error' : ''}${running ? ' is-running' : ''}`}
+    >
       <div className="launch-strip__row">
-        <span className="launch-strip__label">{detail ?? 'Preparing…'}</span>
-        {pct !== null && <span className="launch-strip__pct">{pct}%</span>}
+        <span className="launch-strip__dot" aria-hidden />
+        <span className="launch-strip__label">{label}</span>
+        {pct !== null && !running && <span className="launch-strip__pct">{pct}%</span>}
       </div>
       <div className="launch-strip__track">
         <div

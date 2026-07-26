@@ -81,6 +81,15 @@ export const fr: LocaleCatalog = {
       server: 'Serveur',
       singleplayer: 'Solo / menu'
     },
+    launchStatus: {
+      preparing: 'Préparation…',
+      download: 'Téléchargement…',
+      mods: 'Installation des mods…',
+      starting: 'Démarrage de Minecraft…',
+      running: 'Jeu lancé',
+      inGame: 'En jeu',
+      error: 'Échec du lancement'
+    },
     timePlayed: 'Temps de jeu',
     mods: 'Mods',
     ram: 'RAM',
@@ -453,7 +462,15 @@ export const fr: LocaleCatalog = {
     dismiss: 'Ignorer',
     shareServer: 'Partager un serveur avec la party',
     shareServerPrompt: 'hôte:port ou adresse…',
-    shareServerFailed: 'Impossible de partager (réservé au leader)'
+    shareServerFailed: 'Impossible de partager (réservé au leader)',
+    partyInvite: 'Invitation party',
+    partyInviteUnknown: 'Quelqu’un t’a invité en party',
+    acceptParty: 'Accepter',
+    declineParty: 'Refuser',
+    leaveParty: 'Quitter la party',
+    createParty: 'Créer une party',
+    partyMembers: 'Ta party',
+    partyAlone: 'Toi seul'
   },
   chat: {
     refresh: 'Actualiser',
@@ -471,7 +488,8 @@ export const fr: LocaleCatalog = {
     startBody: 'Début de ta conversation avec {name}.',
     composerHint: 'Entrée pour envoyer · images supportées',
     today: 'Aujourd’hui',
-    yesterday: 'Hier'
+    yesterday: 'Hier',
+    typing: '{name} est en train d’écrire…'
   },
   actions: {
     import: 'Importer',

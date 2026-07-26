@@ -66,6 +66,14 @@ public final class SocialHubScreen extends Screen {
     }
 
     @Override
+    public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
+        if (ui.charTyped((char) event.codepoint())) {
+            return true;
+        }
+        return super.charTyped(event);
+    }
+
+    @Override
     public void onClose() {
         Minecraft.getInstance().gui.setScreen(parent);
     }

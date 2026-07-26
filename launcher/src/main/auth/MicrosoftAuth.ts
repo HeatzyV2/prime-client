@@ -60,6 +60,13 @@ export class MicrosoftAuth {
     return cached.authenticator
   }
 
+  /** Returns a cached Minecraft access token when a recent launch/refresh session exists. */
+  peekCachedAccessToken(accountId: string): string | null {
+    const cached = this.getCachedLaunchSession(accountId)
+    const token = cached?.access_token?.trim()
+    return token || null
+  }
+
   private buildAuthenticator(
     account: StoredMinecraftAccount,
     mc: { mclc: (refreshable?: boolean) => { name?: string; uuid: string; access_token: string; client_token?: string; user_properties?: unknown; meta?: { demo?: boolean } }; profile?: { name?: string } }

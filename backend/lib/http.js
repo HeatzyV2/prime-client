@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 const { URL } = require('url');
 const db = require('./db');
 const rateLimit = require('./rateLimit');
@@ -7,9 +8,10 @@ const { loadNews, versionsManifest } = require('./news');
 
 const UPLOAD_DIR = process.env.PRIME_UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
 const CRASH_DIR = process.env.PRIME_CRASH_DIR || path.join(UPLOAD_DIR, 'crashes');
-const MAX_UPLOAD = 5 * 1024 * 1024; // 5 MB
+const MAX_UPLOAD = 5 * 1024 * 1024;
 const MAX_CRASH = 2 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
+const BACKEND_VERSION = '2.0.0';
 
 function ensureUploadDir() {
   if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -40,7 +42,7 @@ function json(res, status, body) {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
   });
   res.end(raw);
 }
@@ -108,6 +110,73 @@ function requireAuth(req, res) {
   return session;
 }
 
+function dashUuid(raw) {
+  const u = String(raw || '').replace(/-/g, '').toLowerCase();
+  if (u.length !== 32) return String(raw || '');
+  return `${u.slice(0, 8)}-${u.slice(8, 12)}-${u.slice(12, 16)}-${u.slice(16, 20)}-${u.slice(20)}`;
+}
+
+function verifyMinecraftProfile(accessToken) {
+  return new Promise((resolve) => {
+    const req = https.request(
+      {
+        hostname: 'api.minecraftservices.com',
+        path: '/minecraft/profile',
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'User-Agent': 'Prime-Backend/2.0',
+        },
+        timeout: 8000,
+      },
+      (res) => {
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => {
+          if (res.statusCode !== 200) {
+            resolve(null);
+            return;
+          }
+          try {
+            resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+          } catch {
+            resolve(null);
+          }
+        });
+      }
+    );
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(null);
+    });
+    req.end();
+  });
+}
+
+function partyMembers(party) {
+  if (!party) return null;
+  return {
+    ...party,
+    members: party.memberUuids.map((id) => ({
+      uuid: id,
+      username: db.getUser(id)?.username || 'Player',
+      leader: id === party.leaderUuid,
+    })),
+  };
+}
+
+function broadcastParty(ctx, party, alsoNullTo) {
+  if (party) {
+    const dto = { t: 'party', party: partyMembers(party) };
+    for (const u of party.memberUuids) ctx.social.sendToUser(u, dto);
+  }
+  if (alsoNullTo) {
+    for (const u of alsoNullTo) ctx.social.sendToUser(u, { t: 'party', party: null });
+  }
+}
+
 /**
  * @param {import('http').IncomingMessage} req
  * @param {import('http').ServerResponse} res
@@ -123,10 +192,13 @@ async function handleHttp(req, res, ctx) {
   }
 
   if (req.method === 'GET' && (pathname === '/' || pathname === '/health')) {
+    const stats = db.dbStats();
     json(res, 200, {
       ok: true,
       service: 'prime-backend',
-      version: versionsManifest().backend,
+      version: BACKEND_VERSION,
+      db: stats,
+      ws: { social: ctx.social.socketCount?.() ?? 0 },
       voice: '/voice',
       social: '/social',
       api: '/v1',
@@ -140,7 +212,8 @@ async function handleHttp(req, res, ctx) {
   }
 
   if (req.method === 'GET' && pathname === '/v1/versions') {
-    json(res, 200, versionsManifest());
+    const manifest = versionsManifest();
+    json(res, 200, { ...manifest, backend: BACKEND_VERSION });
     return true;
   }
 
@@ -172,23 +245,52 @@ async function handleHttp(req, res, ctx) {
   if (!pathname.startsWith('/v1/')) return false;
 
   try {
-    // Auth — Microsoft / offline UUID from launcher or game (unchanged client auth model)
     if (req.method === 'POST' && pathname === '/v1/auth/session') {
-      if (!enforceRate(req, res, 'auth', { limit: 30, windowMs: 60_000 })) return true;
       const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
-      const uuid = String(body.uuid || '').trim();
+      const uuid = dashUuid(String(body.uuid || '').trim());
       const username = String(body.username || '').trim();
       const offline = !!body.offline;
       const client = String(body.client || 'unknown');
+      const accessToken = body.accessToken ? String(body.accessToken).trim() : '';
       if (!uuid || !username) {
         json(res, 400, { error: 'uuid and username required' });
         return true;
       }
-      const user = db.upsertUser(uuid, username, offline);
-      const session = db.createSession(uuid, client);
+
+      let verified = false;
+      if (!offline && accessToken) {
+        if (!enforceRate(req, res, 'auth-verify', { limit: 20, windowMs: 60_000 })) return true;
+        const profile = await verifyMinecraftProfile(accessToken);
+        if (!profile?.id) {
+          json(res, 401, { error: 'Invalid Minecraft access token' });
+          return true;
+        }
+        const profileUuid = dashUuid(profile.id);
+        if (profileUuid.toLowerCase() !== uuid.toLowerCase()) {
+          json(res, 401, { error: 'UUID does not match Minecraft profile' });
+          return true;
+        }
+        verified = true;
+        if (profile.name) {
+          // Prefer live Mojang name when verified.
+          body.username = profile.name;
+        }
+      } else {
+        const limit = offline ? 40 : 15;
+        if (!enforceRate(req, res, offline ? 'auth-offline' : 'auth-unverified', {
+          limit,
+          windowMs: 60_000,
+        })) {
+          return true;
+        }
+      }
+
+      const user = db.upsertUser(uuid, String(body.username || username).trim(), offline);
+      const session = db.createSession(uuid, client, verified);
       json(res, 200, {
         token: session.token,
         expiresAt: session.expiresAt,
+        verified: session.verified,
         user,
       });
       return true;
@@ -197,7 +299,11 @@ async function handleHttp(req, res, ctx) {
     if (req.method === 'GET' && pathname === '/v1/me') {
       const session = requireAuth(req, res);
       if (!session) return true;
-      json(res, 200, { user: db.getUser(session.uuid), presence: ctx.social.presence.get(session.uuid) || null });
+      json(res, 200, {
+        user: db.getUser(session.uuid),
+        presence: ctx.social.presence.get(session.uuid) || null,
+        verified: !!session.verified,
+      });
       return true;
     }
 
@@ -215,9 +321,11 @@ async function handleHttp(req, res, ctx) {
           incoming: f.status === 'pending' && f.toUuid === session.uuid,
           uuid: other,
           username: user?.username || 'Player',
+          note: db.getFriendNote(session.uuid, other) || '',
           presence: p
             ? { status: p.status, activity: p.activity, serverAddress: p.serverAddress }
             : { status: 'offline', activity: '', serverAddress: null },
+          serverAddress: p?.serverAddress || null,
         };
       });
       json(res, 200, { friends: list });
@@ -225,18 +333,16 @@ async function handleHttp(req, res, ctx) {
     }
 
     if (req.method === 'POST' && pathname === '/v1/friends/request') {
-      if (!enforceRate(req, res, 'friend-request', { limit: 20, windowMs: 60_000 })) return true;
+      if (!enforceRate(req, res, 'friend-request', { limit: 15, windowMs: 60_000 })) return true;
       const session = requireAuth(req, res);
       if (!session) return true;
       const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
-      let targetUuid = body.uuid ? String(body.uuid) : null;
+      let targetUuid = body.uuid ? dashUuid(String(body.uuid)) : null;
       const username = body.username ? String(body.username).trim() : null;
       if (!targetUuid && username) {
         const found = db.findUserByName(username);
         if (found) targetUuid = found.uuid;
         else {
-          // Allow requesting by Mojang username even if never logged into Prime yet:
-          // create a placeholder user once they come online they'll match by name.
           json(res, 404, {
             error: 'User has never opened Prime yet. They must launch Prime Client or Launcher once.',
           });
@@ -245,6 +351,10 @@ async function handleHttp(req, res, ctx) {
       }
       if (!targetUuid) {
         json(res, 400, { error: 'uuid or username required' });
+        return true;
+      }
+      if (db.isBlocked(session.uuid, targetUuid)) {
+        json(res, 403, { error: 'Blocked' });
         return true;
       }
       const friendship = db.requestFriend(session.uuid, targetUuid);
@@ -263,7 +373,7 @@ async function handleHttp(req, res, ctx) {
       const session = requireAuth(req, res);
       if (!session) return true;
       const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
-      const otherUuid = String(body.uuid || '');
+      const otherUuid = dashUuid(String(body.uuid || ''));
       const friendship = db.acceptFriend(session.uuid, otherUuid);
       ctx.social.sendToUser(otherUuid, { t: 'friend_accepted', uuid: session.uuid, friendship });
       ctx.social.sendToUser(session.uuid, { t: 'friend_accepted', uuid: otherUuid, friendship });
@@ -273,10 +383,45 @@ async function handleHttp(req, res, ctx) {
       return true;
     }
 
+    if (req.method === 'POST' && pathname === '/v1/friends/block') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+      const otherUuid = dashUuid(String(body.uuid || ''));
+      const friendship = db.blockUser(session.uuid, otherUuid);
+      ctx.social.sendToUser(otherUuid, { t: 'friend_removed', uuid: session.uuid });
+      ctx.social.sendToUser(session.uuid, { t: 'friend_update', friendship });
+      json(res, 200, { friendship });
+      return true;
+    }
+
+    if (req.method === 'DELETE' && pathname === '/v1/friends/block') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const otherUuid = dashUuid(String(url.searchParams.get('uuid') || ''));
+      db.unblockUser(session.uuid, otherUuid);
+      json(res, 200, { ok: true });
+      return true;
+    }
+
+    if (req.method === 'PUT' && pathname.startsWith('/v1/friends/') && pathname.endsWith('/note')) {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const otherUuid = dashUuid(pathname.slice('/v1/friends/'.length, -'/note'.length));
+      const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+      const note = db.setFriendNote(session.uuid, otherUuid, body.note);
+      json(res, 200, { note });
+      return true;
+    }
+
     if (req.method === 'DELETE' && pathname.startsWith('/v1/friends/')) {
       const session = requireAuth(req, res);
       if (!session) return true;
-      const otherUuid = pathname.slice('/v1/friends/'.length);
+      const otherUuid = dashUuid(pathname.slice('/v1/friends/'.length));
+      if (otherUuid.includes('/')) {
+        json(res, 404, { error: 'Not found' });
+        return true;
+      }
       db.removeFriend(session.uuid, otherUuid);
       ctx.social.sendToUser(otherUuid, { t: 'friend_removed', uuid: session.uuid });
       ctx.social.sendToUser(session.uuid, { t: 'friend_removed', uuid: otherUuid });
@@ -306,7 +451,11 @@ async function handleHttp(req, res, ctx) {
       const session = requireAuth(req, res);
       if (!session) return true;
       const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
-      const otherUuid = String(body.uuid || '');
+      const otherUuid = dashUuid(String(body.uuid || ''));
+      if (db.isBlocked(session.uuid, otherUuid)) {
+        json(res, 403, { error: 'Blocked' });
+        return true;
+      }
       if (!db.areFriends(session.uuid, otherUuid)) {
         json(res, 403, { error: 'Must be friends to DM' });
         return true;
@@ -336,7 +485,7 @@ async function handleHttp(req, res, ctx) {
     }
 
     if (req.method === 'POST' && pathname.startsWith('/v1/conversations/') && pathname.endsWith('/messages')) {
-      if (!enforceRate(req, res, 'chat-send', { limit: 40, windowMs: 60_000 })) return true;
+      if (!enforceRate(req, res, 'chat-send', { limit: 30, windowMs: 60_000 })) return true;
       const session = requireAuth(req, res);
       if (!session) return true;
       const conversationId = pathname.slice('/v1/conversations/'.length, -'/messages'.length);
@@ -355,10 +504,7 @@ async function handleHttp(req, res, ctx) {
       const message = db.addMessage(conversationId, session.uuid, text, imageUrl);
       const senderUsername = db.getUser(session.uuid)?.username || null;
       const enriched = { ...message, senderUsername };
-      const event = {
-        t: 'message',
-        message: enriched,
-      };
+      const event = { t: 'message', message: enriched };
       for (const u of conversation.participantUuids) {
         ctx.social.sendToUser(u, event);
       }
@@ -366,7 +512,7 @@ async function handleHttp(req, res, ctx) {
       return true;
     }
 
-    // Upload image (launcher / desktop clients)
+    // Upload
     if (req.method === 'POST' && pathname === '/v1/upload') {
       if (!enforceRate(req, res, 'upload', { limit: 15, windowMs: 60_000 })) return true;
       const session = requireAuth(req, res);
@@ -408,7 +554,6 @@ async function handleHttp(req, res, ctx) {
       return true;
     }
 
-    // Crash report upload (optional, launcher / mod)
     if (req.method === 'POST' && pathname === '/v1/crash') {
       if (!enforceRate(req, res, 'crash', { limit: 8, windowMs: 60_000 })) return true;
       const session = requireAuth(req, res);
@@ -421,10 +566,10 @@ async function handleHttp(req, res, ctx) {
         return true;
       }
       ensureCrashDir();
-      const id = require('crypto').randomUUID();
-      const fileName = `${id}.log`;
+      const crashId = require('crypto').randomUUID();
+      const fileName = `${crashId}.log`;
       const meta = {
-        id,
+        id: crashId,
         uuid: session.uuid,
         username: db.getUser(session.uuid)?.username || 'Player',
         title,
@@ -432,8 +577,8 @@ async function handleHttp(req, res, ctx) {
         client: session.client,
       };
       fs.writeFileSync(path.join(CRASH_DIR, fileName), text, 'utf8');
-      fs.writeFileSync(path.join(CRASH_DIR, `${id}.json`), JSON.stringify(meta, null, 2));
-      json(res, 200, { ok: true, id, fileName });
+      fs.writeFileSync(path.join(CRASH_DIR, `${crashId}.json`), JSON.stringify(meta, null, 2));
+      json(res, 200, { ok: true, id: crashId, fileName });
       return true;
     }
 
@@ -442,19 +587,14 @@ async function handleHttp(req, res, ctx) {
       const session = requireAuth(req, res);
       if (!session) return true;
       const party = db.getPartyForUser(session.uuid);
-      if (!party) {
-        json(res, 200, { party: null });
-        return true;
-      }
+      const invites = db.listPartyInvitesFor(session.uuid).map((inv) => ({
+        ...inv,
+        fromUsername: db.getUser(inv.fromUuid)?.username || 'Player',
+        party: partyMembers(db.getParty(inv.partyId)),
+      }));
       json(res, 200, {
-        party: {
-          ...party,
-          members: party.memberUuids.map((u) => ({
-            uuid: u,
-            username: db.getUser(u)?.username || 'Player',
-            leader: u === party.leaderUuid,
-          })),
-        },
+        party: partyMembers(party),
+        invites,
       });
       return true;
     }
@@ -463,8 +603,8 @@ async function handleHttp(req, res, ctx) {
       const session = requireAuth(req, res);
       if (!session) return true;
       const party = db.createParty(session.uuid);
-      ctx.social.sendToUser(session.uuid, { t: 'party', party });
-      json(res, 200, { party });
+      ctx.social.sendToUser(session.uuid, { t: 'party', party: partyMembers(party) });
+      json(res, 200, { party: partyMembers(party) });
       return true;
     }
 
@@ -472,35 +612,66 @@ async function handleHttp(req, res, ctx) {
       const session = requireAuth(req, res);
       if (!session) return true;
       const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
-      const targetUuid = String(body.uuid || '');
+      const targetUuid = dashUuid(String(body.uuid || ''));
       if (!db.areFriends(session.uuid, targetUuid)) {
         json(res, 403, { error: 'Can only invite friends' });
         return true;
       }
+      if (db.isBlocked(session.uuid, targetUuid)) {
+        json(res, 403, { error: 'Blocked' });
+        return true;
+      }
       let party = db.getPartyForUser(session.uuid);
       if (!party) party = db.createParty(session.uuid);
-      party = db.inviteToParty(party.id, session.uuid, targetUuid);
-      for (const u of party.memberUuids) {
-        ctx.social.sendToUser(u, {
-          t: 'party',
-          party: {
-            ...party,
-            members: party.memberUuids.map((id) => ({
-              uuid: id,
-              username: db.getUser(id)?.username || 'Player',
-              leader: id === party.leaderUuid,
-            })),
-          },
-        });
-      }
+      const invite = db.createPartyInvite(party.id, session.uuid, targetUuid);
       ctx.social.sendToUser(targetUuid, {
         t: 'party_invite',
+        inviteId: invite.id,
         fromUuid: session.uuid,
         fromUsername: db.getUser(session.uuid)?.username,
         partyId: party.id,
         serverAddress: party.serverAddress,
       });
-      json(res, 200, { party });
+      ctx.social.sendToUser(session.uuid, { t: 'party', party: partyMembers(party) });
+      json(res, 200, { invite, party: partyMembers(party) });
+      return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/v1/party/accept') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+      const inviteId = String(body.inviteId || body.id || '');
+      const party = db.acceptPartyInvite(session.uuid, inviteId);
+      broadcastParty(ctx, party);
+      json(res, 200, { party: partyMembers(party) });
+      return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/v1/party/decline') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+      const inviteId = String(body.inviteId || body.id || '');
+      db.declinePartyInvite(session.uuid, inviteId);
+      json(res, 200, { ok: true });
+      return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/v1/party/kick') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+      const targetUuid = dashUuid(String(body.uuid || ''));
+      const before = db.getPartyForUser(session.uuid);
+      const party = db.kickFromParty(session.uuid, targetUuid);
+      broadcastParty(ctx, party, [targetUuid]);
+      if (before) {
+        for (const u of before.memberUuids) {
+          if (u !== targetUuid) ctx.social.sendToUser(u, { t: 'party', party: partyMembers(party) });
+        }
+      }
+      json(res, 200, { party: partyMembers(party) });
       return true;
     }
 
@@ -512,19 +683,7 @@ async function handleHttp(req, res, ctx) {
       if (before) {
         for (const u of before.memberUuids) {
           if (u === session.uuid) continue;
-          ctx.social.sendToUser(u, {
-            t: 'party',
-            party: party
-              ? {
-                  ...party,
-                  members: party.memberUuids.map((id) => ({
-                    uuid: id,
-                    username: db.getUser(id)?.username || 'Player',
-                    leader: id === party.leaderUuid,
-                  })),
-                }
-              : null,
-          });
+          ctx.social.sendToUser(u, { t: 'party', party: partyMembers(party) });
         }
       }
       ctx.social.sendToUser(session.uuid, { t: 'party', party: null });
@@ -538,17 +697,7 @@ async function handleHttp(req, res, ctx) {
       const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
       const party = db.setPartyServer(session.uuid, body.serverAddress || null);
       for (const u of party.memberUuids) {
-        ctx.social.sendToUser(u, {
-          t: 'party',
-          party: {
-            ...party,
-            members: party.memberUuids.map((id) => ({
-              uuid: id,
-              username: db.getUser(id)?.username || 'Player',
-              leader: id === party.leaderUuid,
-            })),
-          },
-        });
+        ctx.social.sendToUser(u, { t: 'party', party: partyMembers(party) });
         if (u !== session.uuid && party.serverAddress) {
           ctx.social.sendToUser(u, {
             t: 'party_join_server',
@@ -558,7 +707,7 @@ async function handleHttp(req, res, ctx) {
           });
         }
       }
-      json(res, 200, { party });
+      json(res, 200, { party: partyMembers(party) });
       return true;
     }
 
@@ -570,4 +719,4 @@ async function handleHttp(req, res, ctx) {
   }
 }
 
-module.exports = { handleHttp, UPLOAD_DIR };
+module.exports = { handleHttp, UPLOAD_DIR, BACKEND_VERSION };

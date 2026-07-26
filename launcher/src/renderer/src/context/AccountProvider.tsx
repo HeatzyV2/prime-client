@@ -10,6 +10,8 @@ interface AccountContextValue {
   profile: LauncherProfile | null
   launchMessage: string | null
   launchProgress: LaunchProgressDto | null
+  /** True only while the Minecraft process is alive (polled + event-driven). */
+  gameRunning: boolean
   refresh: () => Promise<void>
   loginMicrosoft: () => Promise<AuthResultDto>
   addOffline: (username: string) => Promise<AuthResultDto>
@@ -31,13 +33,48 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<LauncherProfile | null>(null)
   const [launchMessage, setLaunchMessage] = useState<string | null>(null)
   const [launchProgress, setLaunchProgress] = useState<LaunchProgressDto | null>(null)
+  const [gameRunning, setGameRunning] = useState(false)
+
+  const syncRunning = useCallback(async () => {
+    try {
+      const running = await window.primeLauncher.launch.isRunning()
+      setGameRunning(running)
+      return running
+    } catch {
+      return false
+    }
+  }, [])
 
   useEffect(() => {
     const unsubscribe = window.primeLauncher.launch.onProgress((payload) => {
+      // Ignore raw JVM log spam for Home status (logs stay on Console page).
+      if (payload.phase === 'log') {
+        return
+      }
       setLaunchProgress(payload)
+      if (payload.phase === 'running') {
+        setGameRunning(true)
+        setLaunchMessage(null)
+      } else if (
+        payload.phase === 'stopped' ||
+        payload.phase === 'crashed' ||
+        payload.phase === 'error'
+      ) {
+        setGameRunning(false)
+        void syncRunning()
+      }
     })
     return unsubscribe
-  }, [])
+  }, [syncRunning])
+
+  // Process-truth poll — prevents "In game" when Minecraft already quit (or the reverse).
+  useEffect(() => {
+    void syncRunning()
+    const id = window.setInterval(() => {
+      void syncRunning()
+    }, 2000)
+    return () => window.clearInterval(id)
+  }, [syncRunning])
 
   const refresh = useCallback(async () => {
     const [p, list, active, prof] = await Promise.all([
@@ -111,13 +148,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const launch = useCallback(
     async (instanceId: string, serverAddress?: string) => {
       const result = await window.primeLauncher.launch.game(instanceId, serverAddress)
-      setLaunchMessage(result.message)
+      setLaunchMessage(result.ok ? null : result.message)
       if (result.ok) {
         await refresh()
+        await syncRunning()
       }
       return result
     },
-    [refresh]
+    [refresh, syncRunning]
   )
 
   const value = useMemo(
@@ -129,6 +167,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       profile,
       launchMessage,
       launchProgress,
+      gameRunning,
       refresh,
       loginMicrosoft,
       addOffline,
@@ -147,6 +186,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       profile,
       launchMessage,
       launchProgress,
+      gameRunning,
       refresh,
       loginMicrosoft,
       addOffline,

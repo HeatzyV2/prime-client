@@ -40,7 +40,7 @@ public final class SocialService {
                 }
             } else if ("party_invite".equals(t)) {
                 String name = event.has("fromUsername") ? event.get("fromUsername").getAsString() : "Player";
-                notifications.info("Party", name + " invited you");
+                notifications.info("Party", name + " invited you — open Social Hub to accept");
             } else if ("party_join_server".equals(t) && event.has("serverAddress")) {
                 String addr = event.get("serverAddress").getAsString();
                 pendingPartyServer = addr;
@@ -143,7 +143,10 @@ public final class SocialService {
         if (client.connected()) {
             reconnectCooldown = 0;
             reconnectFailures = 0;
-            // UUID may appear after title → world; presence already set on join.
+            // Keepalive so the backend does not drop the game socket.
+            if ((System.currentTimeMillis() / 1000) % 25 == 0) {
+                client.sendPing();
+            }
             return;
         }
         if (client.state() == SocialClient.ConnState.CONNECTING) {

@@ -47,6 +47,7 @@ export function createTauriPrimeApi() {
     launch: {
       game: (instanceId: string, serverAddress?: string) =>
         invoke('launch_game', { instanceId, serverAddress }),
+      isRunning: (): Promise<boolean> => invoke('launch_is_running'),
       onProgress: (listener: (payload: LaunchProgressDto) => void): (() => void) => {
         let unlisten: (() => void) | undefined
         void listen<LaunchProgressDto>('launch:progress', (event) => {
@@ -226,6 +227,7 @@ export function createTauriPrimeApi() {
     },
     social: {
       connect: () => invoke('social_connect'),
+      sendTyping: (conversationId: string) => invoke('social_typing', { conversationId }),
       onEvent: (listener: (event: Record<string, unknown>) => void): (() => void) => {
         let unlisten: (() => void) | undefined
         void listen<Record<string, unknown>>('social:event', (event) => {
@@ -241,6 +243,8 @@ export function createTauriPrimeApi() {
       create: () => invoke('party_create'),
       invite: (uuid: string) => invoke('party_invite', { uuid }),
       leave: () => invoke('party_leave'),
+      accept: (inviteId: string) => invoke('party_accept', { inviteId }),
+      decline: (inviteId: string) => invoke('party_decline', { inviteId }),
       setServer: (serverAddress: string) => invoke('party_set_server', { serverAddress })
     },
     news: {

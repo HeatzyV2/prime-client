@@ -19,6 +19,8 @@ export const IPC = {
   ACCOUNT_SYNC_PRIME: 'account:sync-prime',
   LAUNCH_GAME: 'launch:game',
   BRIDGE_SYNC: 'bridge:sync',
+  /** Whether the Minecraft process is currently alive. */
+  LAUNCH_IS_RUNNING: 'launch:is-running',
   /** Main → renderer progress while downloading / launching. */
   LAUNCH_PROGRESS: 'launch:progress',
   LAUNCH_LOGS_LIST: 'launch:logs-list',
@@ -90,8 +92,11 @@ export const IPC = {
   PARTY_CREATE: 'party:create',
   PARTY_INVITE: 'party:invite',
   PARTY_LEAVE: 'party:leave',
+  PARTY_ACCEPT: 'party:accept',
+  PARTY_DECLINE: 'party:decline',
   PARTY_SET_SERVER: 'party:set-server',
   SOCIAL_CONNECT: 'social:connect',
+  SOCIAL_TYPING: 'social:typing',
   /** Main → renderer live social WebSocket events (party, presence, chat). */
   SOCIAL_EVENT: 'social:event',
   NEWS_LIST: 'news:list',

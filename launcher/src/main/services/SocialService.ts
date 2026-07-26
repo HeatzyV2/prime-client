@@ -1,5 +1,6 @@
 import { WebSocket } from 'ws'
 import type { FriendEntry } from '../../shared/content-types'
+import { microsoftAuth } from '../auth/MicrosoftAuth'
 import { accountService } from './AccountService'
 import { accountStore } from '../storage/AccountStore'
 import { ecosystemStore } from '../storage/EcosystemStore'
@@ -13,6 +14,8 @@ export interface SocialFriend {
   incoming: boolean
   uuid: string
   username: string
+  note?: string
+  serverAddress?: string | null
   presence: { status: string; activity: string; serverAddress: string | null }
 }
 
@@ -54,6 +57,7 @@ export class SocialService {
   private connecting: Promise<void> | null = null
   private reconnectFailures = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private pingTimer: ReturnType<typeof setInterval> | null = null
 
   onEvent(listener: Listener): () => void {
     this.listeners.add(listener)
@@ -69,6 +73,7 @@ export class SocialService {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
     }
+    this.stopPing()
     try {
       this.ws?.close()
     } catch {
@@ -76,6 +81,25 @@ export class SocialService {
     }
     this.ws = null
     this.connecting = null
+  }
+
+  private stopPing(): void {
+    if (this.pingTimer) {
+      clearInterval(this.pingTimer)
+      this.pingTimer = null
+    }
+  }
+
+  private startPing(): void {
+    this.stopPing()
+    this.pingTimer = setInterval(() => {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return
+      try {
+        this.ws.send(JSON.stringify({ t: 'ping', ts: Date.now() }))
+      } catch {
+        // ignore
+      }
+    }, 25_000)
   }
 
   private scheduleReconnect(): void {
@@ -109,6 +133,8 @@ export class SocialService {
     if (this.token && this.uuid === account.uuid) {
       return { token: this.token, uuid: this.uuid }
     }
+    const accessToken =
+      account.type === 'microsoft' ? microsoftAuth.peekCachedAccessToken(account.id) : null
     const res = await fetch(`${apiBase()}/v1/auth/session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -116,7 +142,8 @@ export class SocialService {
         uuid: account.uuid,
         username: account.username,
         offline: account.type === 'offline',
-        client: 'launcher'
+        client: 'launcher',
+        ...(accessToken ? { accessToken } : {})
       })
     })
     if (!res.ok) {
@@ -144,18 +171,21 @@ export class SocialService {
       ws.on('open', () => {
         this.connecting = null
         this.reconnectFailures = 0
+        this.startPing()
         this.setPresence('online', 'In launcher')
         resolve()
       })
       ws.on('message', (raw) => {
         try {
           const msg = JSON.parse(raw.toString()) as Record<string, unknown>
+          if (msg.t === 'pong') return
           this.emit(msg)
         } catch {
           // ignore
         }
       })
       ws.on('close', () => {
+        this.stopPing()
         if (this.ws === ws) {
           this.ws = null
         }
@@ -163,6 +193,7 @@ export class SocialService {
         this.scheduleReconnect()
       })
       ws.on('error', () => {
+        this.stopPing()
         this.connecting = null
         try {
           ws.close()
@@ -209,20 +240,27 @@ export class SocialService {
     const res = await this.fetchAuthed('/v1/friends')
     if (!res.ok) throw new Error('Failed to load friends')
     const data = (await res.json()) as { friends: SocialFriend[] }
-    const notes = await this.localNotes()
     return data.friends
-      .filter((f) => f.status === 'accepted' || f.incoming)
-      .map((f) => ({
-        id: f.uuid,
-        username: f.username,
-        status: mapStatus(f.presence?.status),
-        activity:
-          notes[f.uuid] ||
-          (f.status === 'pending'
-            ? 'Pending friend request'
-            : f.presence?.activity ||
-              (f.presence?.serverAddress ? `Playing ${f.presence.serverAddress}` : 'Offline'))
-      }))
+      .filter((f) => f.status === 'accepted' || f.status === 'pending' || f.incoming)
+      .map((f) => {
+        const serverAddress = f.presence?.serverAddress || f.serverAddress || null
+        const note = f.note || ''
+        return {
+          id: f.uuid,
+          username: f.username,
+          status: mapStatus(f.presence?.status),
+          activity:
+            note ||
+            (f.status === 'pending'
+              ? 'Pending friend request'
+              : f.presence?.activity ||
+                (serverAddress ? `Playing ${serverAddress}` : 'Offline')),
+          serverAddress,
+          note,
+          pending: f.status === 'pending',
+          incoming: f.incoming
+        }
+      })
   }
 
   async requestFriend(username: string, note?: string): Promise<{ ok: boolean; error?: string }> {
@@ -386,6 +424,29 @@ export class SocialService {
     await this.fetchAuthed('/v1/party/leave', { method: 'POST' })
   }
 
+  async acceptPartyInvite(inviteId: string): Promise<unknown> {
+    const res = await this.fetchAuthed('/v1/party/accept', {
+      method: 'POST',
+      body: JSON.stringify({ inviteId })
+    })
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(data.error || 'Accept invite failed')
+    }
+    return res.json()
+  }
+
+  async declinePartyInvite(inviteId: string): Promise<void> {
+    const res = await this.fetchAuthed('/v1/party/decline', {
+      method: 'POST',
+      body: JSON.stringify({ inviteId })
+    })
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(data.error || 'Decline invite failed')
+    }
+  }
+
   async getParty(): Promise<unknown> {
     const res = await this.fetchAuthed('/v1/party')
     if (!res.ok) throw new Error('Failed to load party')
@@ -427,8 +488,26 @@ export class SocialService {
     }
   }
 
+  sendTyping(conversationId: string): void {
+    if (!conversationId || !this.ws || this.ws.readyState !== WebSocket.OPEN) return
+    try {
+      this.ws.send(JSON.stringify({ t: 'typing', conversationId }))
+    } catch {
+      // ignore
+    }
+  }
+
   async updateNote(friendId: string, note: string): Promise<void> {
-    await this.saveNote(friendId, note)
+    const trimmed = note.trim()
+    const res = await this.fetchAuthed(`/v1/friends/${encodeURIComponent(friendId)}/note`, {
+      method: 'PUT',
+      body: JSON.stringify({ note: trimmed })
+    })
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(data.error || 'Failed to save note')
+    }
+    await this.saveNote(friendId, trimmed)
   }
 
   private async localNotes(): Promise<Record<string, string>> {

@@ -32,6 +32,7 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
     launch,
     launchMessage,
     launchProgress,
+    gameRunning,
     clearLaunchMessage,
     setActive
   } = useAccounts()
@@ -161,10 +162,33 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
 
   const topNews = news.slice(0, 3)
   const topServers = servers.slice(0, 4)
-  const showLaunchStrip =
+  const preparing =
     launching ||
-    (launchProgress && launchProgress.phase !== 'log' && launchProgress.phase !== 'crashed') ||
-    Boolean(launchMessage)
+    (launchProgress != null &&
+      ['start', 'fabric', 'download', 'mods', 'launch'].includes(launchProgress.phase))
+  const showLaunchStrip =
+    preparing ||
+    gameRunning ||
+    (launchProgress?.phase === 'error' && Boolean(launchMessage || launchProgress.detail))
+
+  function launchStatusLabel(): string {
+    if (gameRunning) return t('dashboard.launchStatus.running')
+    if (launchProgress?.phase === 'error') {
+      return launchMessage || launchProgress.detail || t('dashboard.launchStatus.error')
+    }
+    switch (launchProgress?.phase) {
+      case 'download':
+        return t('dashboard.launchStatus.download')
+      case 'mods':
+      case 'fabric':
+        return t('dashboard.launchStatus.mods')
+      case 'launch':
+        return t('dashboard.launchStatus.starting')
+      case 'start':
+      default:
+        return t('dashboard.launchStatus.preparing')
+    }
+  }
 
   return (
     <motion.div
@@ -185,16 +209,17 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
         </div>
       )}
 
-      {(launchMessage || launchProgress) && (
+      {(launchProgress?.phase === 'crashed' || showLaunchStrip) && (
         <div className="home__status">
           {launchProgress?.phase === 'crashed' && launchProgress.crash && !crashDismissed && (
             <CrashReportPanel crash={launchProgress.crash} onDismiss={() => setCrashDismissed(true)} />
           )}
           {showLaunchStrip && launchProgress?.phase !== 'crashed' && (
             <LaunchStrip
-              detail={launchProgress?.detail ?? launchMessage ?? t('common.launching')}
+              label={launchStatusLabel()}
               percent={launchProgress?.percent}
               phase={launchProgress?.phase}
+              running={gameRunning}
             />
           )}
         </div>
@@ -283,10 +308,14 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
               variant="primary"
               size="xl"
               icon={<Play size={22} fill="currentColor" />}
-              disabled={launching}
+              disabled={launching || gameRunning}
               onClick={() => void handlePlay()}
             >
-              {launching ? t('common.launching') : t('common.play')}
+              {gameRunning
+                ? t('dashboard.launchStatus.running')
+                : launching
+                  ? t('common.launching')
+                  : t('common.play')}
             </Button>
             <div className="home__links">
               <Link to="/instances" className="home__link">
@@ -341,10 +370,10 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
                   <Button
                     variant="secondary"
                     size="sm"
-                    disabled={launching}
+                    disabled={launching || gameRunning}
                     onClick={() => void handleJoinServer(s.address)}
                   >
-                    {t('common.join')}
+                    {gameRunning ? t('dashboard.launchStatus.inGame') : t('common.join')}
                   </Button>
                 </li>
               ))}

@@ -85,6 +85,27 @@ pub async fn post_json(session: &SocialSession, path: &str, body: Value) -> Resu
     Ok(serde_json::from_str(&text).unwrap_or(Value::Null))
 }
 
+pub async fn put_json(session: &SocialSession, path: &str, body: Value) -> Result<Value, AppError> {
+    let client = reqwest::Client::new();
+    let res = client
+        .put(format!("{}{path}", session.api_base))
+        .header("Authorization", format!("Bearer {}", session.token))
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| AppError::Message(e.to_string()))?;
+    let status = res.status();
+    let text = res.text().await.map_err(|e| AppError::Message(e.to_string()))?;
+    if !status.is_success() {
+        let err = serde_json::from_str::<Value>(&text)
+            .ok()
+            .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(str::to_string))
+            .unwrap_or(text);
+        return Err(AppError::Message(err));
+    }
+    Ok(serde_json::from_str(&text).unwrap_or(Value::Null))
+}
+
 pub async fn delete(session: &SocialSession, path: &str) -> Result<Value, AppError> {
     let client = reqwest::Client::new();
     let res = client
@@ -108,6 +129,10 @@ pub struct FriendEntry {
     pub username: String,
     pub status: String,
     pub activity: Option<String>,
+    pub server_address: Option<String>,
+    pub note: Option<String>,
+    pub pending: Option<bool>,
+    pub incoming: Option<bool>,
 }
 
 pub async fn upload_image(session: &SocialSession, file_path: String) -> Result<String, AppError> {
@@ -172,7 +197,7 @@ pub fn map_friends(payload: &Value) -> Vec<FriendEntry> {
     for f in arr {
         let status = f.get("status").and_then(|v| v.as_str()).unwrap_or("pending");
         let incoming = f.get("incoming").and_then(|v| v.as_bool()).unwrap_or(false);
-        if status != "accepted" && !incoming {
+        if status != "accepted" && status != "pending" && !incoming {
             continue;
         }
         let presence = f.get("presence");
@@ -180,19 +205,40 @@ pub fn map_friends(payload: &Value) -> Vec<FriendEntry> {
             .and_then(|p| p.get("status"))
             .and_then(|v| v.as_str())
             .unwrap_or("offline");
-        let activity = if status == "pending" {
+        let server_address = presence
+            .and_then(|p| p.get("serverAddress"))
+            .and_then(|v| v.as_str())
+            .or_else(|| f.get("serverAddress").and_then(|v| v.as_str()))
+            .map(str::to_string);
+        let note = f
+            .get("note")
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty())
+            .map(str::to_string);
+        let activity = if let Some(n) = note.clone() {
+            Some(n)
+        } else if status == "pending" {
             Some("Pending friend request".into())
         } else {
             presence
                 .and_then(|p| p.get("activity"))
                 .and_then(|v| v.as_str())
                 .map(str::to_string)
+                .or_else(|| {
+                    server_address
+                        .as_ref()
+                        .map(|addr| format!("Playing {addr}"))
+                })
         };
         out.push(FriendEntry {
             id: f.get("uuid").and_then(|v| v.as_str()).unwrap_or("").into(),
             username: f.get("username").and_then(|v| v.as_str()).unwrap_or("Player").into(),
             status: pstatus.into(),
             activity,
+            server_address,
+            note,
+            pending: Some(status == "pending"),
+            incoming: Some(incoming),
         });
     }
     out
@@ -254,10 +300,22 @@ pub fn spawn_ws(
 
                     loop {
                         tokio::select! {
+                            _ = tokio::time::sleep(Duration::from_secs(25)) => {
+                                let ping = json!({ "t": "ping", "ts": std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .map(|d| d.as_millis() as u64)
+                                    .unwrap_or(0) }).to_string();
+                                if write.send(Message::Text(ping.into())).await.is_err() {
+                                    break;
+                                }
+                            }
                             incoming = read.next() => {
                                 match incoming {
                                     Some(Ok(Message::Text(text))) => {
                                         if let Ok(value) = serde_json::from_str::<Value>(&text) {
+                                            if value.get("t").and_then(|v| v.as_str()) == Some("pong") {
+                                                continue;
+                                            }
                                             let _ = app.emit("social:event", value);
                                         }
                                     }

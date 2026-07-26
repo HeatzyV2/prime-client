@@ -79,6 +79,15 @@ export const en = {
       server: 'Server',
       singleplayer: 'Singleplayer / menu'
     },
+    launchStatus: {
+      preparing: 'Preparing…',
+      download: 'Downloading files…',
+      mods: 'Installing mods…',
+      starting: 'Starting Minecraft…',
+      running: 'Game launched',
+      inGame: 'In game',
+      error: 'Launch failed'
+    },
     timePlayed: 'Time played',
     mods: 'Mods',
     ram: 'RAM',
@@ -451,7 +460,15 @@ export const en = {
     dismiss: 'Dismiss',
     shareServer: 'Share server with party',
     shareServerPrompt: 'host:port or address…',
-    shareServerFailed: 'Could not share server (party leader only)'
+    shareServerFailed: 'Could not share server (party leader only)',
+    partyInvite: 'Party invite',
+    partyInviteUnknown: 'Someone invited you to a party',
+    acceptParty: 'Accept',
+    declineParty: 'Decline',
+    leaveParty: 'Leave party',
+    createParty: 'Create party',
+    partyMembers: 'Your party',
+    partyAlone: 'Just you'
   },
   chat: {
     refresh: 'Refresh',
@@ -469,7 +486,8 @@ export const en = {
     startBody: 'This is the beginning of your conversation with {name}.',
     composerHint: 'Enter to send · images supported',
     today: 'Today',
-    yesterday: 'Yesterday'
+    yesterday: 'Yesterday',
+    typing: '{name} is typing…'
   },
   actions: {
     import: 'Import',

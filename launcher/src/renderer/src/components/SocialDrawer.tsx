@@ -13,7 +13,7 @@ interface FriendRow {
   username: string
   status: string
   activity?: string
-  serverAddress?: string
+  serverAddress?: string | null
 }
 
 interface SocialDrawerProps {
@@ -41,12 +41,32 @@ export function SocialDrawer({ open, onClose }: SocialDrawerProps) {
   useEffect(() => {
     if (!open) return
     void refresh()
-    const id = window.setInterval(() => void refresh(), 20_000)
-    return () => window.clearInterval(id)
+    void window.primeLauncher.social.connect().catch(() => {
+      // offline
+    })
+  }, [open, refresh])
+
+  useEffect(() => {
+    if (!open) return
+    const unsub = window.primeLauncher.social.onEvent((event) => {
+      if (
+        event.t === 'presence' ||
+        event.t === 'friend_request' ||
+        event.t === 'friend_accepted' ||
+        event.t === 'friend_removed' ||
+        event.t === 'friend_update' ||
+        event.t === 'snapshot' ||
+        event.t === 'party' ||
+        event.t === 'party_invite'
+      ) {
+        void refresh()
+      }
+    })
+    return unsub
   }, [open, refresh])
 
   async function joinFriend(friend: FriendRow) {
-    const address = friend.serverAddress ?? friend.activity
+    const address = friend.serverAddress?.trim()
     if (!address || !profile?.instanceId) return
     setBusyId(friend.id)
     playUiSound('click')
@@ -94,9 +114,13 @@ export function SocialDrawer({ open, onClose }: SocialDrawerProps) {
                 <span className={`social-drawer__dot ${statusClass(f.status)}`} />
                 <div className="social-drawer__text">
                   <strong>{f.username}</strong>
-                  <span>{f.activity || f.status}</span>
+                  <span>
+                    {f.serverAddress
+                      ? `Playing ${f.serverAddress}`
+                      : f.activity || f.status}
+                  </span>
                 </div>
-                {(f.serverAddress || (f.status === 'in-game' && f.activity)) && (
+                {f.serverAddress ? (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -106,7 +130,7 @@ export function SocialDrawer({ open, onClose }: SocialDrawerProps) {
                   >
                     {t('common.join')}
                   </Button>
-                )}
+                ) : null}
               </li>
             ))}
           </ul>

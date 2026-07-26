@@ -31,6 +31,7 @@ const api = {
   },
   launch: {
     game: (instanceId: string, serverAddress?: string) => ipcRenderer.invoke(IPC.LAUNCH_GAME, instanceId, serverAddress),
+    isRunning: (): Promise<boolean> => ipcRenderer.invoke(IPC.LAUNCH_IS_RUNNING),
     onProgress: (listener: (payload: LaunchProgressDto) => void): (() => void) => {
       const handler = (_event: IpcRendererEvent, payload: LaunchProgressDto): void => {
         listener(payload)
@@ -201,6 +202,7 @@ const api = {
   },
   social: {
     connect: () => ipcRenderer.invoke(IPC.SOCIAL_CONNECT),
+    sendTyping: (conversationId: string) => ipcRenderer.invoke(IPC.SOCIAL_TYPING, conversationId),
     onEvent: (listener: (event: Record<string, unknown>) => void): (() => void) => {
       const handler = (_event: IpcRendererEvent, payload: Record<string, unknown>): void => {
         listener(payload)
@@ -214,6 +216,8 @@ const api = {
     create: () => ipcRenderer.invoke(IPC.PARTY_CREATE),
     invite: (uuid: string) => ipcRenderer.invoke(IPC.PARTY_INVITE, uuid),
     leave: () => ipcRenderer.invoke(IPC.PARTY_LEAVE),
+    accept: (inviteId: string) => ipcRenderer.invoke(IPC.PARTY_ACCEPT, inviteId),
+    decline: (inviteId: string) => ipcRenderer.invoke(IPC.PARTY_DECLINE, inviteId),
     setServer: (serverAddress: string) => ipcRenderer.invoke(IPC.PARTY_SET_SERVER, serverAddress)
   },
   news: {

@@ -127,9 +127,12 @@ export function ChatPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [live, setLive] = useState(false)
+  const [peerTyping, setPeerTyping] = useState(false)
   const activeIdRef = useRef<string | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastTypingSent = useRef(0)
 
   useEffect(() => {
     activeIdRef.current = activeId
@@ -155,8 +158,10 @@ export function ChatPage() {
   useEffect(() => {
     if (!activeId) {
       setMessages([])
+      setPeerTyping(false)
       return
     }
+    setPeerTyping(false)
     void window.primeLauncher.chat.messages(activeId).then((list) => {
       setMessages(list as ChatMessage[])
     })
@@ -166,6 +171,16 @@ export function ChatPage() {
     const unsub = window.primeLauncher.social.onEvent((event) => {
       if (event.t === 'ready' || event.t === 'snapshot') {
         setLive(true)
+      }
+      if (event.t === 'typing') {
+        const conversationId =
+          typeof event.conversationId === 'string' ? event.conversationId : null
+        if (conversationId && conversationId === activeIdRef.current) {
+          setPeerTyping(true)
+          if (typingTimer.current) clearTimeout(typingTimer.current)
+          typingTimer.current = setTimeout(() => setPeerTyping(false), 3000)
+        }
+        return
       }
       if (event.t !== 'message' || !event.message || typeof event.message !== 'object') {
         return
@@ -180,6 +195,7 @@ export function ChatPage() {
       if (incoming.conversationId !== activeIdRef.current) {
         return
       }
+      setPeerTyping(false)
       setMessages((prev) => {
         if (prev.some((m) => m.id === incoming.id)) {
           return prev
@@ -187,8 +203,20 @@ export function ChatPage() {
         return [...prev, incoming]
       })
     })
-    return unsub
+    return () => {
+      unsub()
+      if (typingTimer.current) clearTimeout(typingTimer.current)
+    }
   }, [])
+
+  function onComposerChange(value: string): void {
+    setText(value)
+    if (!activeIdRef.current || !value.trim()) return
+    const now = Date.now()
+    if (now - lastTypingSent.current < 2000) return
+    lastTypingSent.current = now
+    void window.primeLauncher.social.sendTyping(activeIdRef.current)
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -382,6 +410,12 @@ export function ChatPage() {
                   <div ref={bottomRef} />
                 </div>
 
+                {peerTyping ? (
+                  <p className="chat-composer__hint" style={{ marginBottom: 4 }}>
+                    {t('chat.typing', { name: peer.username })}
+                  </p>
+                ) : null}
+
                 <div className="chat-composer">
                   <div className="chat-composer__bar">
                     <input
@@ -390,7 +424,7 @@ export function ChatPage() {
                       value={text}
                       disabled={busy}
                       placeholder={t('chat.messagePlaceholder')}
-                      onChange={(e) => setText(e.target.value)}
+                      onChange={(e) => onComposerChange(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()

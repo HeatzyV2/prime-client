@@ -49,6 +49,11 @@ export interface FriendEntry {
   username: string
   status: 'online' | 'away' | 'offline' | 'in-game'
   activity?: string
+  /** Multiplayer host:port when the friend is in-game on a server. */
+  serverAddress?: string | null
+  note?: string
+  pending?: boolean
+  incoming?: boolean
 }
 
 export interface MediaItem {

@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -41,7 +42,12 @@ public final class SocialClient implements WebSocket.Listener {
     private static final Logger LOGGER = LoggerFactory.getLogger("Prime Social");
 
     public record Friend(String uuid, String username, String status, String activity, String serverAddress,
-                         boolean pending, boolean incoming) {}
+                         boolean pending, boolean incoming, String note) {
+        public Friend(String uuid, String username, String status, String activity, String serverAddress,
+                      boolean pending, boolean incoming) {
+            this(uuid, username, status, activity, serverAddress, pending, incoming, "");
+        }
+    }
 
     public record ChatMessage(String id, String conversationId, String senderUuid, String senderUsername,
                               String text, String imageUrl, String createdAt) {}
@@ -49,6 +55,11 @@ public final class SocialClient implements WebSocket.Listener {
     public record PartyMember(String uuid, String username, boolean leader) {}
 
     public record Party(String id, String leaderUuid, String serverAddress, List<PartyMember> members) {}
+
+    public record PartyInvite(String id, String partyId, String fromUuid, String fromUsername,
+                              String serverAddress) {}
+
+    public record Conversation(String id, String otherUuid, String otherUsername) {}
 
     private final HttpClient http = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
@@ -60,6 +71,8 @@ public final class SocialClient implements WebSocket.Listener {
     private final List<Consumer<JsonObject>> eventListeners = new CopyOnWriteArrayList<>();
     private final Map<String, Friend> friends = new ConcurrentHashMap<>();
     private final List<ChatMessage> recentMessages = new CopyOnWriteArrayList<>();
+    private final List<PartyInvite> partyInvites = new CopyOnWriteArrayList<>();
+    private final Map<String, List<ChatMessage>> messageCache = new ConcurrentHashMap<>();
     private final AtomicBoolean connectInFlight = new AtomicBoolean(false);
 
     private volatile String token;
@@ -72,6 +85,7 @@ public final class SocialClient implements WebSocket.Listener {
     private volatile String pendingPresenceActivity;
     private volatile String pendingPresenceServer;
     private volatile String pendingPartyServerPublish;
+    private volatile String typingConversationId;
     private final StringBuilder textBuffer = new StringBuilder();
 
     public SocialClient(SocialSettings settings) {
@@ -88,6 +102,14 @@ public final class SocialClient implements WebSocket.Listener {
 
     public List<ChatMessage> recentMessages() {
         return recentMessages;
+    }
+
+    public List<PartyInvite> partyInvites() {
+        return partyInvites;
+    }
+
+    public List<ChatMessage> cachedMessages(String conversationId) {
+        return messageCache.getOrDefault(conversationId, List.of());
     }
 
     public Party party() {
@@ -114,7 +136,6 @@ public final class SocialClient implements WebSocket.Listener {
         return CrashReportUploader.upload(settings, title, text, token);
     }
 
-    /** Non-blocking connect — safe to call from the Minecraft client thread. */
     public void connectAsync(String uuid, String username, boolean offline) {
         if (!settings.enabled()) {
             state = ConnState.DISCONNECTED;
@@ -146,7 +167,6 @@ public final class SocialClient implements WebSocket.Listener {
         });
     }
 
-    /** @deprecated Prefer {@link #connectAsync} — kept for call-site compatibility. */
     @Deprecated
     public void connect(String uuid, String username, boolean offline) {
         connectAsync(uuid, username, offline);
@@ -206,6 +226,7 @@ public final class SocialClient implements WebSocket.Listener {
         }
         friends.clear();
         party = null;
+        partyInvites.clear();
     }
 
     public void setPresence(String status, String activity, String serverAddress) {
@@ -232,6 +253,34 @@ public final class SocialClient implements WebSocket.Listener {
             ws.sendText(msg.toString(), true);
         } catch (Exception e) {
             LOGGER.debug("Presence send failed: {}", e.getMessage());
+        }
+    }
+
+    public void sendTyping(String conversationId) {
+        WebSocket ws = socket;
+        if (ws == null || conversationId == null || conversationId.isBlank()) {
+            return;
+        }
+        typingConversationId = conversationId;
+        JsonObject msg = new JsonObject();
+        msg.addProperty("t", "typing");
+        msg.addProperty("conversationId", conversationId);
+        try {
+            ws.sendText(msg.toString(), true);
+        } catch (Exception ignored) {
+        }
+    }
+
+    public void sendPing() {
+        WebSocket ws = socket;
+        if (ws == null) {
+            return;
+        }
+        JsonObject msg = new JsonObject();
+        msg.addProperty("t", "ping");
+        try {
+            ws.sendText(msg.toString(), true);
+        } catch (Exception ignored) {
         }
     }
 
@@ -265,32 +314,87 @@ public final class SocialClient implements WebSocket.Listener {
                 return;
             }
             for (JsonElement el : arr) {
-                JsonObject f = el.getAsJsonObject();
-                String uuid = f.get("uuid").getAsString();
-                JsonObject presence = f.has("presence") ? f.getAsJsonObject("presence") : new JsonObject();
-                String status = f.get("status").getAsString();
-                friends.put(uuid, new Friend(
-                        uuid,
-                        f.get("username").getAsString(),
-                        presence.has("status") ? presence.get("status").getAsString() : "offline",
-                        presence.has("activity") ? presence.get("activity").getAsString() : "",
-                        presence.has("serverAddress") && !presence.get("serverAddress").isJsonNull()
-                                ? presence.get("serverAddress").getAsString() : null,
-                        "pending".equals(status),
-                        f.has("incoming") && f.get("incoming").getAsBoolean()
-                ));
+                putFriendFromJson(el.getAsJsonObject());
             }
         } catch (Exception e) {
             LOGGER.debug("Friends refresh failed: {}", e.getMessage());
         }
     }
 
+    private void putFriendFromJson(JsonObject f) {
+        String uuid = f.get("uuid").getAsString();
+        JsonObject presence = f.has("presence") && f.get("presence").isJsonObject()
+                ? f.getAsJsonObject("presence") : new JsonObject();
+        String statusField = f.has("status") ? f.get("status").getAsString() : "accepted";
+        String presenceStatus = presence.has("status")
+                ? presence.get("status").getAsString()
+                : (f.has("status") && !"pending".equals(statusField) && !"blocked".equals(statusField)
+                ? f.get("status").getAsString() : "offline");
+        String activity = presence.has("activity")
+                ? presence.get("activity").getAsString()
+                : (f.has("activity") ? f.get("activity").getAsString() : "");
+        String server = null;
+        if (presence.has("serverAddress") && !presence.get("serverAddress").isJsonNull()) {
+            server = presence.get("serverAddress").getAsString();
+        } else if (f.has("serverAddress") && !f.get("serverAddress").isJsonNull()) {
+            server = f.get("serverAddress").getAsString();
+        }
+        friends.put(uuid, new Friend(
+                uuid,
+                f.has("username") ? f.get("username").getAsString() : "Player",
+                presenceStatus,
+                activity,
+                server,
+                "pending".equals(statusField),
+                f.has("incoming") && f.get("incoming").getAsBoolean(),
+                f.has("note") ? f.get("note").getAsString() : ""
+        ));
+    }
+
     public boolean requestFriend(String username) {
-        return postJson("/v1/friends/request", obj -> obj.addProperty("username", username));
+        boolean ok = postJson("/v1/friends/request", obj -> obj.addProperty("username", username));
+        if (ok) {
+            refreshFriends();
+        }
+        return ok;
     }
 
     public boolean acceptFriend(String uuid) {
-        return postJson("/v1/friends/accept", obj -> obj.addProperty("uuid", uuid));
+        boolean ok = postJson("/v1/friends/accept", obj -> obj.addProperty("uuid", uuid));
+        if (ok) {
+            refreshFriends();
+        }
+        return ok;
+    }
+
+    public boolean blockFriend(String uuid) {
+        boolean ok = postJson("/v1/friends/block", obj -> obj.addProperty("uuid", uuid));
+        if (ok) {
+            friends.remove(uuid);
+        }
+        return ok;
+    }
+
+    public boolean removeFriend(String uuid) {
+        if (token == null) {
+            return false;
+        }
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(settings.apiBase() + "/v1/friends/" + URLEncoder.encode(uuid, StandardCharsets.UTF_8)))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Authorization", "Bearer " + token)
+                    .header("User-Agent", "PrimeClient-Game")
+                    .DELETE()
+                    .build();
+            boolean ok = http.send(req, HttpResponse.BodyHandlers.ofString()).statusCode() / 100 == 2;
+            if (ok) {
+                friends.remove(uuid);
+            }
+            return ok;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public String openDm(String uuid) {
@@ -305,6 +409,7 @@ public final class SocialClient implements WebSocket.Listener {
                     .timeout(Duration.ofSeconds(10))
                     .header("Authorization", "Bearer " + token)
                     .header("Content-Type", "application/json")
+                    .header("User-Agent", "PrimeClient-Game")
                     .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                     .build();
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
@@ -315,6 +420,75 @@ public final class SocialClient implements WebSocket.Listener {
                     .getAsJsonObject("conversation").get("id").getAsString();
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    public List<ChatMessage> loadMessages(String conversationId) {
+        if (token == null || conversationId == null) {
+            return List.of();
+        }
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(settings.apiBase() + "/v1/conversations/" + conversationId + "/messages?limit=50"))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Authorization", "Bearer " + token)
+                    .header("User-Agent", "PrimeClient-Game")
+                    .GET()
+                    .build();
+            HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (res.statusCode() / 100 != 2) {
+                return List.of();
+            }
+            JsonObject json = JsonParser.parseString(res.body()).getAsJsonObject();
+            List<ChatMessage> list = new ArrayList<>();
+            JsonArray arr = json.getAsJsonArray("messages");
+            if (arr != null) {
+                for (JsonElement el : arr) {
+                    list.add(parseMessage(el.getAsJsonObject()));
+                }
+            }
+            messageCache.put(conversationId, new CopyOnWriteArrayList<>(list));
+            return list;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    public List<Conversation> listConversations() {
+        if (token == null) {
+            return List.of();
+        }
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(settings.apiBase() + "/v1/conversations"))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Authorization", "Bearer " + token)
+                    .header("User-Agent", "PrimeClient-Game")
+                    .GET()
+                    .build();
+            HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (res.statusCode() / 100 != 2) {
+                return List.of();
+            }
+            List<Conversation> out = new ArrayList<>();
+            JsonArray arr = JsonParser.parseString(res.body()).getAsJsonObject().getAsJsonArray("conversations");
+            if (arr == null) {
+                return out;
+            }
+            for (JsonElement el : arr) {
+                JsonObject c = el.getAsJsonObject();
+                String otherUuid = "";
+                String otherName = "Friend";
+                if (c.has("participants") && c.getAsJsonArray("participants").size() > 0) {
+                    JsonObject p = c.getAsJsonArray("participants").get(0).getAsJsonObject();
+                    otherUuid = p.get("uuid").getAsString();
+                    otherName = p.has("username") ? p.get("username").getAsString() : otherUuid;
+                }
+                out.add(new Conversation(c.get("id").getAsString(), otherUuid, otherName));
+            }
+            return out;
+        } catch (Exception e) {
+            return List.of();
         }
     }
 
@@ -330,9 +504,21 @@ public final class SocialClient implements WebSocket.Listener {
                     .timeout(Duration.ofSeconds(10))
                     .header("Authorization", "Bearer " + token)
                     .header("Content-Type", "application/json")
+                    .header("User-Agent", "PrimeClient-Game")
                     .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                     .build();
-            return http.send(req, HttpResponse.BodyHandlers.ofString()).statusCode() / 100 == 2;
+            HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (res.statusCode() / 100 != 2) {
+                return false;
+            }
+            if (res.body() != null && !res.body().isBlank()) {
+                JsonObject json = JsonParser.parseString(res.body()).getAsJsonObject();
+                if (json.has("message")) {
+                    ChatMessage chat = parseMessage(json.getAsJsonObject("message"));
+                    storeMessage(chat);
+                }
+            }
+            return true;
         } catch (Exception e) {
             return false;
         }
@@ -346,6 +532,23 @@ public final class SocialClient implements WebSocket.Listener {
         return postJson("/v1/party/invite", obj -> obj.addProperty("uuid", uuid));
     }
 
+    public boolean acceptPartyInvite(String inviteId) {
+        boolean ok = postJson("/v1/party/accept", obj -> obj.addProperty("inviteId", inviteId));
+        if (ok) {
+            partyInvites.removeIf(i -> i.id().equals(inviteId));
+            refreshParty();
+        }
+        return ok;
+    }
+
+    public boolean declinePartyInvite(String inviteId) {
+        boolean ok = postJson("/v1/party/decline", obj -> obj.addProperty("inviteId", inviteId));
+        if (ok) {
+            partyInvites.removeIf(i -> i.id().equals(inviteId));
+        }
+        return ok;
+    }
+
     public boolean leaveParty() {
         return postJson("/v1/party/leave", obj -> {});
     }
@@ -354,7 +557,6 @@ public final class SocialClient implements WebSocket.Listener {
         return postJson("/v1/party/server", obj -> obj.addProperty("serverAddress", serverAddress));
     }
 
-    /** Queues a party-server publish until the socket is connected (and party exists). */
     public void queuePartyServerPublish(String serverAddress) {
         if (serverAddress == null || serverAddress.isBlank()) {
             return;
@@ -372,7 +574,6 @@ public final class SocialClient implements WebSocket.Listener {
         if (server == null || !connected() || party == null) {
             return;
         }
-        // Leader-only on the backend — non-leaders fail silently and keep the queue.
         if (setPartyServer(server)) {
             pendingPartyServerPublish = null;
         }
@@ -399,6 +600,15 @@ public final class SocialClient implements WebSocket.Listener {
                 party = parseParty(json.getAsJsonObject("party"));
             } else {
                 party = null;
+            }
+            partyInvites.clear();
+            if (json.has("invites") && json.get("invites").isJsonArray()) {
+                for (JsonElement el : json.getAsJsonArray("invites")) {
+                    PartyInvite inv = parseInvite(el.getAsJsonObject());
+                    if (inv != null) {
+                        partyInvites.add(inv);
+                    }
+                }
             }
             flushPendingPartyServer();
             return true;
@@ -467,58 +677,88 @@ public final class SocialClient implements WebSocket.Listener {
 
     private void handleEvent(JsonObject msg) {
         String t = msg.has("t") ? msg.get("t").getAsString() : "";
+        if ("ping".equals(t)) {
+            JsonObject pong = new JsonObject();
+            pong.addProperty("t", "pong");
+            try {
+                if (socket != null) {
+                    socket.sendText(pong.toString(), true);
+                }
+            } catch (Exception ignored) {
+            }
+            return;
+        }
         if ("ready".equals(t)) {
             state = ConnState.CONNECTED;
             statusMessage = "Connected";
         }
-        if ("snapshot".equals(t) && msg.has("friends")) {
-            friends.clear();
-            for (JsonElement el : msg.getAsJsonArray("friends")) {
-                JsonObject f = el.getAsJsonObject();
-                String uuid = f.get("uuid").getAsString();
-                friends.put(uuid, new Friend(
-                        uuid,
-                        f.get("username").getAsString(),
-                        f.has("status") ? f.get("status").getAsString() : "offline",
-                        f.has("activity") ? f.get("activity").getAsString() : "",
-                        f.has("serverAddress") && !f.get("serverAddress").isJsonNull()
-                                ? f.get("serverAddress").getAsString() : null,
-                        false,
-                        false
-                ));
-            }
-            if (msg.has("party") && !msg.get("party").isJsonNull()) {
-                party = parseParty(msg.getAsJsonObject("party"));
-            }
+        if ("snapshot".equals(t)) {
+            applySnapshot(msg);
         }
         if ("presence".equals(t) && msg.has("uuid")) {
             String uuid = msg.get("uuid").getAsString();
             Friend prev = friends.get(uuid);
+            if (prev != null && prev.pending()) {
+                // Keep pending rows until accept/remove.
+            } else if (prev != null || friends.containsKey(uuid)
+                    || (msg.has("status") && !"offline".equals(msg.get("status").getAsString()))) {
+                friends.put(uuid, new Friend(
+                        uuid,
+                        msg.has("username") ? msg.get("username").getAsString()
+                                : (prev != null ? prev.username() : "Player"),
+                        msg.has("status") ? msg.get("status").getAsString() : "offline",
+                        msg.has("activity") ? msg.get("activity").getAsString() : "",
+                        msg.has("serverAddress") && !msg.get("serverAddress").isJsonNull()
+                                ? msg.get("serverAddress").getAsString() : null,
+                        prev != null && prev.pending(),
+                        prev != null && prev.incoming(),
+                        prev != null ? prev.note() : ""
+                ));
+            }
+        }
+        if ("friend_request".equals(t) && msg.has("fromUuid")) {
+            String uuid = msg.get("fromUuid").getAsString();
             friends.put(uuid, new Friend(
                     uuid,
-                    msg.has("username") ? msg.get("username").getAsString() : (prev != null ? prev.username() : "Player"),
-                    msg.has("status") ? msg.get("status").getAsString() : "offline",
-                    msg.has("activity") ? msg.get("activity").getAsString() : "",
-                    msg.has("serverAddress") && !msg.get("serverAddress").isJsonNull()
-                            ? msg.get("serverAddress").getAsString() : null,
-                    prev != null && prev.pending(),
-                    prev != null && prev.incoming()
+                    msg.has("fromUsername") ? msg.get("fromUsername").getAsString() : "Player",
+                    "offline",
+                    "",
+                    null,
+                    true,
+                    true,
+                    ""
             ));
         }
+        if ("friend_accepted".equals(t) && msg.has("uuid")) {
+            String uuid = msg.get("uuid").getAsString();
+            Friend prev = friends.get(uuid);
+            friends.put(uuid, new Friend(
+                    uuid,
+                    prev != null ? prev.username() : "Player",
+                    prev != null ? prev.status() : "online",
+                    prev != null ? prev.activity() : "",
+                    prev != null ? prev.serverAddress() : null,
+                    false,
+                    false,
+                    prev != null ? prev.note() : ""
+            ));
+            refreshFriends();
+        }
+        if ("friend_removed".equals(t) && msg.has("uuid")) {
+            friends.remove(msg.get("uuid").getAsString());
+        }
+        if ("friend_update".equals(t)) {
+            refreshFriends();
+        }
         if ("message".equals(t) && msg.has("message")) {
-            JsonObject m = msg.getAsJsonObject("message");
-            ChatMessage chat = new ChatMessage(
-                    m.get("id").getAsString(),
-                    m.get("conversationId").getAsString(),
-                    m.get("senderUuid").getAsString(),
-                    m.has("senderUsername") ? m.get("senderUsername").getAsString() : "",
-                    m.has("text") ? m.get("text").getAsString() : "",
-                    m.has("imageUrl") && !m.get("imageUrl").isJsonNull() ? m.get("imageUrl").getAsString() : null,
-                    m.get("createdAt").getAsString()
-            );
-            recentMessages.add(chat);
-            if (recentMessages.size() > 100) {
-                recentMessages.remove(0);
+            ChatMessage chat = parseMessage(msg.getAsJsonObject("message"));
+            storeMessage(chat);
+        }
+        if ("party_invite".equals(t)) {
+            PartyInvite inv = parseInvite(msg);
+            if (inv != null) {
+                partyInvites.removeIf(i -> i.id().equals(inv.id()) || i.partyId().equals(inv.partyId()));
+                partyInvites.add(inv);
             }
         }
         if ("party".equals(t)) {
@@ -526,6 +766,100 @@ public final class SocialClient implements WebSocket.Listener {
                     ? parseParty(msg.getAsJsonObject("party")) : null;
         }
         emit(msg);
+    }
+
+    private void applySnapshot(JsonObject msg) {
+        friends.clear();
+        if (msg.has("friends") && msg.get("friends").isJsonArray()) {
+            for (JsonElement el : msg.getAsJsonArray("friends")) {
+                JsonObject f = el.getAsJsonObject();
+                friends.put(f.get("uuid").getAsString(), new Friend(
+                        f.get("uuid").getAsString(),
+                        f.has("username") ? f.get("username").getAsString() : "Player",
+                        f.has("status") ? f.get("status").getAsString() : "offline",
+                        f.has("activity") ? f.get("activity").getAsString() : "",
+                        f.has("serverAddress") && !f.get("serverAddress").isJsonNull()
+                                ? f.get("serverAddress").getAsString() : null,
+                        false,
+                        false,
+                        f.has("note") ? f.get("note").getAsString() : ""
+                ));
+            }
+        }
+        if (msg.has("pending") && msg.get("pending").isJsonArray()) {
+            for (JsonElement el : msg.getAsJsonArray("pending")) {
+                JsonObject p = el.getAsJsonObject();
+                boolean incoming = p.has("incoming") && p.get("incoming").getAsBoolean();
+                String uuid = incoming
+                        ? p.get("fromUuid").getAsString()
+                        : p.get("toUuid").getAsString();
+                String name = incoming
+                        ? (p.has("fromUsername") ? p.get("fromUsername").getAsString() : "Player")
+                        : (p.has("toUsername") ? p.get("toUsername").getAsString() : "Player");
+                friends.put(uuid, new Friend(uuid, name, "offline", "", null, true, incoming, ""));
+            }
+        }
+        partyInvites.clear();
+        if (msg.has("partyInvites") && msg.get("partyInvites").isJsonArray()) {
+            for (JsonElement el : msg.getAsJsonArray("partyInvites")) {
+                PartyInvite inv = parseInvite(el.getAsJsonObject());
+                if (inv != null) {
+                    partyInvites.add(inv);
+                }
+            }
+        }
+        if (msg.has("party") && !msg.get("party").isJsonNull()) {
+            party = parseParty(msg.getAsJsonObject("party"));
+        } else {
+            party = null;
+        }
+    }
+
+    private void storeMessage(ChatMessage chat) {
+        recentMessages.add(chat);
+        if (recentMessages.size() > 100) {
+            recentMessages.remove(0);
+        }
+        messageCache
+                .computeIfAbsent(chat.conversationId(), k -> new CopyOnWriteArrayList<>())
+                .add(chat);
+    }
+
+    private ChatMessage parseMessage(JsonObject m) {
+        return new ChatMessage(
+                m.get("id").getAsString(),
+                m.get("conversationId").getAsString(),
+                m.get("senderUuid").getAsString(),
+                m.has("senderUsername") ? m.get("senderUsername").getAsString() : "",
+                m.has("text") ? m.get("text").getAsString() : "",
+                m.has("imageUrl") && !m.get("imageUrl").isJsonNull() ? m.get("imageUrl").getAsString() : null,
+                m.get("createdAt").getAsString()
+        );
+    }
+
+    private PartyInvite parseInvite(JsonObject msg) {
+        String inviteId = msg.has("inviteId") ? msg.get("inviteId").getAsString()
+                : (msg.has("id") ? msg.get("id").getAsString() : null);
+        String partyId = msg.has("partyId") ? msg.get("partyId").getAsString() : null;
+        if (inviteId == null || partyId == null) {
+            return null;
+        }
+        String server = null;
+        if (msg.has("serverAddress") && !msg.get("serverAddress").isJsonNull()) {
+            server = msg.get("serverAddress").getAsString();
+        } else if (msg.has("party") && msg.get("party").isJsonObject()) {
+            JsonObject p = msg.getAsJsonObject("party");
+            if (p.has("serverAddress") && !p.get("serverAddress").isJsonNull()) {
+                server = p.get("serverAddress").getAsString();
+            }
+        }
+        return new PartyInvite(
+                inviteId,
+                partyId,
+                msg.has("fromUuid") ? msg.get("fromUuid").getAsString() : "",
+                msg.has("fromUsername") ? msg.get("fromUsername").getAsString() : "Player",
+                server
+        );
     }
 
     private Party parseParty(JsonObject p) {

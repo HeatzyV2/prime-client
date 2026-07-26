@@ -20,6 +20,7 @@ import { performanceService } from '../services/PerformanceService'
 import { downloadService } from '../services/DownloadService'
 import { bootService } from '../services/BootService'
 import { listJavaInstallations } from '../minecraft/JavaService'
+import { minecraftEngine } from '../minecraft/MinecraftEngine'
 import { settingsService } from '../services/SettingsService'
 import { updateService } from '../services/UpdateService'
 import type { PerformancePreset } from '../../shared/content-types'
@@ -49,6 +50,7 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.LAUNCH_GAME, (_e, instanceId: string, serverAddress?: string) =>
     launchService.launch(instanceId, serverAddress)
   )
+  ipcMain.handle(IPC.LAUNCH_IS_RUNNING, () => minecraftEngine.isRunning())
   ipcMain.handle(IPC.LAUNCH_LOGS_LIST, () => launchLogService.list())
   ipcMain.handle(IPC.LAUNCH_LOGS_CLEAR, () => launchLogService.clear())
   ipcMain.handle(IPC.LAUNCH_LOGS_OPEN_FOLDER, () => launchLogService.openFolder())
@@ -205,7 +207,12 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.PARTY_CREATE, () => socialService.createParty())
   ipcMain.handle(IPC.PARTY_INVITE, (_e, uuid: string) => socialService.inviteToParty(uuid))
   ipcMain.handle(IPC.PARTY_LEAVE, () => socialService.leaveParty())
+  ipcMain.handle(IPC.PARTY_ACCEPT, (_e, inviteId: string) => socialService.acceptPartyInvite(inviteId))
+  ipcMain.handle(IPC.PARTY_DECLINE, (_e, inviteId: string) => socialService.declinePartyInvite(inviteId))
   ipcMain.handle(IPC.PARTY_SET_SERVER, (_e, serverAddress: string) => socialService.setPartyServer(serverAddress))
+  ipcMain.handle(IPC.SOCIAL_TYPING, (_e, conversationId: string) => {
+    socialService.sendTyping(conversationId)
+  })
 
   ipcMain.handle(IPC.BOOT_INITIALIZE, () => bootService.initialize())
   ipcMain.handle(IPC.SETTINGS_JAVA_LIST, async () => {

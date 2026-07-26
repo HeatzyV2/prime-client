@@ -195,6 +195,11 @@ pub async fn launch_game(
 }
 
 #[tauri::command]
+pub fn launch_is_running() -> bool {
+    launch::is_running()
+}
+
+#[tauri::command]
 pub async fn news_list() -> Result<Vec<Value>, AppError> {
     let api = std::env::var("PRIME_API_BASE").unwrap_or_else(|_| "http://194.9.172.102:26005".into());
     let client = reqwest::Client::builder()
@@ -364,8 +369,22 @@ pub async fn friends_remove(state: State<'_, AppState>, friend_id: String) -> Re
 }
 
 #[tauri::command]
-pub fn friends_update_note(_friend_id: String, _note: String) -> Result<OkResult, AppError> {
-    Ok(OkResult::ok())
+pub async fn friends_update_note(
+    state: State<'_, AppState>,
+    friend_id: String,
+    note: String,
+) -> Result<OkResult, AppError> {
+    let session = social_session(&state).await?;
+    match social::put_json(
+        &session,
+        &format!("/v1/friends/{friend_id}/note"),
+        json!({ "note": note }),
+    )
+    .await
+    {
+        Ok(_) => Ok(OkResult::ok()),
+        Err(e) => Ok(OkResult::err(e.to_string())),
+    }
 }
 
 #[tauri::command]
@@ -448,6 +467,28 @@ pub async fn party_leave(state: State<'_, AppState>) -> Result<Value, AppError> 
 }
 
 #[tauri::command]
+pub async fn party_accept(state: State<'_, AppState>, invite_id: String) -> Result<Value, AppError> {
+    let session = social_session(&state).await?;
+    social::post_json(
+        &session,
+        "/v1/party/accept",
+        json!({ "inviteId": invite_id }),
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn party_decline(state: State<'_, AppState>, invite_id: String) -> Result<Value, AppError> {
+    let session = social_session(&state).await?;
+    social::post_json(
+        &session,
+        "/v1/party/decline",
+        json!({ "inviteId": invite_id }),
+    )
+    .await
+}
+
+#[tauri::command]
 pub async fn party_set_server(
     state: State<'_, AppState>,
     server_address: String,
@@ -459,6 +500,20 @@ pub async fn party_set_server(
         json!({ "serverAddress": server_address }),
     )
     .await
+}
+
+#[tauri::command]
+pub async fn social_typing(
+    state: State<'_, AppState>,
+    conversation_id: String,
+) -> Result<(), AppError> {
+    let tx = state.social_ws_tx.lock().clone();
+    if let Some(sender) = tx {
+        let _ = sender.send(
+            json!({ "t": "typing", "conversationId": conversation_id }).to_string(),
+        );
+    }
+    Ok(())
 }
 
 #[tauri::command]

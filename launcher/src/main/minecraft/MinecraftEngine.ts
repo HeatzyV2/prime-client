@@ -27,16 +27,37 @@ let intentionalKill = false
 let exitHandled = false
 
 function isLikelyMinecraftProcess(command: unknown, args: unknown): boolean {
-  const cmd = String(command).toLowerCase()
   const joined = Array.isArray(args) ? args.join(' ').toLowerCase() : ''
-  return cmd.includes('java') || joined.includes('net.minecraft') || joined.includes('net.fabricmc')
+  // Require MC/Fabric markers — bare `java` matches installers and breaks running sync.
+  return (
+    joined.includes('net.minecraft') ||
+    joined.includes('net.fabricmc') ||
+    joined.includes('cpw.mods') ||
+    joined.includes('org.quiltmc')
+  )
+}
+
+function processAlive(proc: ChildProcess | null): boolean {
+  return Boolean(proc && !proc.killed && proc.exitCode == null)
 }
 
 function trackGameProcess(proc: ChildProcess): void {
+  if (processAlive(activeGameProcess) && activeGameProcess !== proc) {
+    return
+  }
   activeGameProcess = proc
+  gameRunning = true
+  if (activeInstanceId) {
+    emitLaunchProgress({
+      phase: 'running',
+      detail: 'Minecraft running',
+      percent: 100
+    })
+  }
   proc.once('exit', (code, signal) => {
     if (activeGameProcess === proc) {
       activeGameProcess = null
+      gameRunning = false
     }
     void handleGameExit(code, signal)
   })
@@ -187,7 +208,15 @@ function attachLauncherEvents(
   launcher.on('data', (line) => {
     const detail = String(line).trim()
     if (detail) {
-      emitLaunchProgress({ phase: 'log', detail })
+      const lower = detail.toLowerCase()
+      const level =
+        lower.includes(' error') || lower.includes('/error]') || lower.startsWith('error')
+          ? 'error'
+          : lower.includes(' warn') || lower.includes('/warn]')
+            ? 'warn'
+            : 'debug'
+      // Console page only — never push raw JVM lines into the Home progress strip.
+      launchLogService.append(level, detail, 'log')
     }
     if (detail.includes('Launching with arguments')) {
       onSpawn()
@@ -263,7 +292,15 @@ async function killProcessTree(proc: ChildProcess): Promise<void> {
 
 export class MinecraftEngine {
   isRunning(): boolean {
-    return gameRunning
+    if (processAlive(activeGameProcess)) {
+      return true
+    }
+    // Process handle can be missing on some JVMs — trust the session until exit is handled.
+    if (activeInstanceId != null && !exitHandled) {
+      return true
+    }
+    gameRunning = false
+    return false
   }
 
   getActiveInstanceId(): string | null {
@@ -394,6 +431,7 @@ export class MinecraftEngine {
     }
 
     try {
+      await beginGameSession(instanceId)
       await runMinecraftJavaCoreLaunch(launchOptions)
     } catch (err) {
       const message = formatLaunchError(err)
@@ -401,8 +439,7 @@ export class MinecraftEngine {
       throw new Error(message)
     }
 
-    gameRunning = true
-    await beginGameSession(instanceId)
+    gameRunning = processAlive(activeGameProcess) || gameRunning
     await instanceService.touchLastPlayed(instanceId)
 
     emitLaunchProgress({
