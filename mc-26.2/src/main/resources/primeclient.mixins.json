@@ -23,7 +23,8 @@
 		"TitleScreenMixin",
 		"PauseScreenMixin",
 		"MinecraftUserAccessor",
-		"ClientBrandRetrieverMixin"
+		"ClientBrandRetrieverMixin",
+		"ServerListMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

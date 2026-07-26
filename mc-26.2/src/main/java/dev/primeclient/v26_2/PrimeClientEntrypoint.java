@@ -3,6 +3,7 @@ package dev.primeclient.v26_2;
 import dev.primeclient.core.PrimeClient;
 import dev.primeclient.core.hook.PrimeHooks;
 import dev.primeclient.v26_2.render.GuiRenderContext;
+import dev.primeclient.v26_2.network.MainNetworking;
 import dev.primeclient.v26_2.network.PresenceNetworking;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
@@ -27,6 +28,7 @@ public final class PrimeClientEntrypoint implements ClientModInitializer {
         adapter = new VersionAdapter();
         PrimeClient.bootstrap(adapter);
         PresenceNetworking.register();
+        MainNetworking.register();
 
         ClientLifecycleEvents.CLIENT_STARTED.register(client ->
                 client.getTextureManager().getTexture(
@@ -48,6 +50,7 @@ public final class PrimeClientEntrypoint implements ClientModInitializer {
 
         ClientReceiveMessageEvents.GAME.register((message, overlay) ->
                 PrimeHooks.onChatMessage(message.getString(), false));
+        ClientSendMessageEvents.ALLOW_CHAT.register(PrimeHooks::allowOutgoingChat);
         ClientSendMessageEvents.CHAT.register(message ->
                 PrimeHooks.onChatMessage(message, true));
 

@@ -57,6 +57,8 @@ Le core est embarqué dans chaque jar via Jar-in-Jar (`include`).
 | `keybind` | Keybinds abstraits (codes GLFW, indépendants de la version) | 2 |
 | `theme` | Thèmes (palettes, polices, animations) | 2 |
 | `notification` | File de notifications HUD | 2 |
+| `serverapi` | Canal `primeclient:main` (handshake, XP, rewards, debug) | — |
+| `servers` | Serveurs partenaires épinglés (ex. Elysia SMP) | — |
 | `profile` | Profils utilisateurs (pvp.json, survival.json…) | 2 |
 | `hud` | Modèle de layout HUD (positions, ancres, échelle) — le rendu passe par `RenderAdapter` | 5 |
 | `gui` | Modèle ClickGUI (arbre de composants abstraits) | 6 |
@@ -68,7 +70,11 @@ Le core est embarqué dans chaque jar via Jar-in-Jar (`include`).
 |---|---|
 | `PrimeClientEntrypoint` | `ClientModInitializer` → `PrimeClient.bootstrap(adapter)` |
 | `VersionAdapter` | Implémentation de `MinecraftAdapter` |
-| (plus tard) `render/`, `event/`, `mixin/` | Implémentations `RenderAdapter` etc., ponts événements Fabric → event bus core, mixins ciblés |
+| `network/` | Payloads Fabric (`presence`, `main`) |
+| `mixin/` | Mixins UI / render / server list partenaires |
+| (plus tard) `render/`, `event/` | Implémentations `RenderAdapter` etc., ponts Fabric → event bus core |
+
+Doc protocole serveurs : [SERVER_API.md](SERVER_API.md).
 
 Les deux couches utilisant mojmap, une évolution d'API Minecraft se corrige
 par un diff minimal entre les deux `VersionAdapter`.

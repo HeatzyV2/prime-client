@@ -57,6 +57,10 @@ public interface MinecraftAdapter {
     default void openExternalLink(String url) {
     }
 
+    /** Shows a client-only chat line (not sent to the server). */
+    default void displayClientMessage(String message) {
+    }
+
     /** Opens the vanilla world selection screen from the title menu. */
     default void openSingleplayer() {
     }

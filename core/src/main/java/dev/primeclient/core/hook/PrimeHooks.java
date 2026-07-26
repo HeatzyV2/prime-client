@@ -159,6 +159,26 @@ public final class PrimeHooks {
         }
     }
 
+    /** JSON body from the {@code primeclient:main} custom payload channel. */
+    public static void onServerApiPayload(String json) {
+        PrimeClient client = tryGet();
+        if (client != null) {
+            client.serverApi().onPayload(json);
+        }
+    }
+
+    /**
+     * Returns {@code false} when an outgoing chat message should be blocked
+     * (client-only {@code /prime} commands).
+     */
+    public static boolean allowOutgoingChat(String message) {
+        PrimeClient client = tryGet();
+        if (client == null) {
+            return true;
+        }
+        return !client.serverApi().handleClientCommand(message);
+    }
+
     private static PrimeClient tryGet() {
         try {
             return PrimeClient.get();

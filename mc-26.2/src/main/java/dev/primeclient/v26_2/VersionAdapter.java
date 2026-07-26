@@ -154,6 +154,27 @@ public final class VersionAdapter implements MinecraftAdapter {
     }
 
     @Override
+    public void displayClientMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return;
+        }
+        // 26.2 chat API is signature-bound; surface debug/API lines as HUD toasts.
+        String plain = message.replaceAll("§.", "");
+        Minecraft.getInstance().execute(() -> {
+            try {
+                var notifications = PrimeClient.get().notifications();
+                for (String line : plain.split("\n")) {
+                    String trimmed = line.trim();
+                    if (!trimmed.isEmpty()) {
+                        notifications.info("Prime", trimmed);
+                    }
+                }
+            } catch (IllegalStateException ignored) {
+            }
+        });
+    }
+
+    @Override
     public void openSingleplayer() {
         Minecraft mc = Minecraft.getInstance();
         Screen parent = mc.gui.screen() != null ? mc.gui.screen() : null;

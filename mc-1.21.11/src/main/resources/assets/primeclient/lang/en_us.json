@@ -382,5 +382,7 @@
   "prime.module.server_notes.name": "Server Notes",
   "prime.module.server_notes.description": "Per-server notes in settings",
   "prime.module.death_replay.name": "Death Replay",
-  "prime.module.death_replay.description": "Review last death position trail"
+  "prime.module.death_replay.description": "Review last death position trail",
+  "prime.server.partner": "Partner",
+  "prime.server.partnerPinned": "Pinned partner server — cannot be removed"
 }

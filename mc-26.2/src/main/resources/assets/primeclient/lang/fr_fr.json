@@ -378,5 +378,7 @@
   "prime.module.server_notes.name": "Notes serveur",
   "prime.module.server_notes.description": "Notes par serveur dans les réglages",
   "prime.module.death_replay.name": "Replay de mort",
-  "prime.module.death_replay.description": "Revoir la trajectoire avant la mort"
+  "prime.module.death_replay.description": "Revoir la trajectoire avant la mort",
+  "prime.server.partner": "Partenaire",
+  "prime.server.partnerPinned": "Serveur partenaire épinglé — non supprimable"
 }

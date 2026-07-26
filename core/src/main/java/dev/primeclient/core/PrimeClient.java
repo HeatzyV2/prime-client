@@ -34,6 +34,7 @@ import dev.primeclient.core.module.ModuleManager;
 import dev.primeclient.core.notification.NotificationManager;
 import dev.primeclient.core.notification.NotificationPreferences;
 import dev.primeclient.core.presence.PrimePresenceService;
+import dev.primeclient.core.serverapi.ServerApiService;
 import dev.primeclient.core.social.SocialService;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.replay.ReplaySession;
@@ -85,6 +86,7 @@ public final class PrimeClient {
     private final VoiceChatService voiceChat;
     private final PrimePresenceService presence;
     private final SocialService social;
+    private final ServerApiService serverApi;
 
     private boolean debutSession;
     private int debutTicks;
@@ -116,6 +118,7 @@ public final class PrimeClient {
         this.voiceChat = new VoiceChatService();
         this.presence = new PrimePresenceService(adapter);
         this.social = new SocialService(adapter, notifications);
+        this.serverApi = new ServerApiService(adapter, notifications, social);
 
         Path modRoot = adapter.configDirectory().resolve(MOD_ID);
         LocalCloudClient localCloud = new LocalCloudClient(modRoot.resolve("cloud"));
@@ -238,6 +241,7 @@ public final class PrimeClient {
         crosshairProfiles.applyForServer(adapter.serverAddress());
         presence.onWorldJoin();
         social.onWorldJoin();
+        serverApi.onWorldJoin();
         eventBus.post(WorldJoinEvent.INSTANCE);
     }
 
@@ -248,6 +252,7 @@ public final class PrimeClient {
         }
         presence.onWorldLeave();
         social.onWorldLeave();
+        serverApi.onWorldLeave();
         eventBus.post(WorldLeaveEvent.INSTANCE);
     }
 
@@ -297,4 +302,5 @@ public final class PrimeClient {
     public VoiceChatService voiceChat() { return voiceChat; }
     public PrimePresenceService presence() { return presence; }
     public SocialService social() { return social; }
+    public ServerApiService serverApi() { return serverApi; }
 }

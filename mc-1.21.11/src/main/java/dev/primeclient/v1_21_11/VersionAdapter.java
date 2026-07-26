@@ -154,6 +154,19 @@ public final class VersionAdapter implements MinecraftAdapter {
     }
 
     @Override
+    public void displayClientMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        mc.execute(() -> {
+            if (mc.gui != null) {
+                mc.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal(message));
+            }
+        });
+    }
+
+    @Override
     public void openSingleplayer() {
         Minecraft mc = Minecraft.getInstance();
         Screen parent = mc.screen != null ? mc.screen : null;

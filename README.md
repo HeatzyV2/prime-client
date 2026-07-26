@@ -28,6 +28,8 @@ Règle d'or : le core ne touche jamais une classe Minecraft. Tout passe par les
 interfaces `dev.primeclient.core.adapter.*`, implémentées dans chaque couche.
 Détails : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+API serveurs partenaires (plugins) : [docs/SERVER_API.md](docs/SERVER_API.md).
+
 ## Build & run
 
 ```bash
