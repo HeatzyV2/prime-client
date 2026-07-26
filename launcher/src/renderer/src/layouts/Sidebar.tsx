@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { NavLink, Link } from 'react-router-dom'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 import {
   Home,
   UserCircle,
@@ -64,19 +65,64 @@ interface SidebarProps {
 
 export function Sidebar({ username, tier, uuid }: SidebarProps) {
   const { t, locale } = useI18n()
+  const location = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const moreRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setMoreOpen(false)
+  }, [location.pathname])
+
+  useLayoutEffect(() => {
+    if (!moreOpen || !buttonRef.current) {
+      setMenuPos(null)
+      return
+    }
+    const rect = buttonRef.current.getBoundingClientRect()
+    setMenuPos({
+      left: Math.round(rect.right + 10),
+      top: Math.round(rect.bottom)
+    })
+  }, [moreOpen])
 
   useEffect(() => {
     if (!moreOpen) return
+
     function onPointerDown(e: PointerEvent) {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMoreOpen(false)
+      const target = e.target as Node
+      if (moreRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return
       }
+      setMoreOpen(false)
     }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMoreOpen(false)
+    }
+
+    function onReposition() {
+      if (!buttonRef.current) return
+      const rect = buttonRef.current.getBoundingClientRect()
+      setMenuPos({
+        left: Math.round(rect.right + 10),
+        top: Math.round(rect.bottom)
+      })
+    }
+
     document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    window.addEventListener('resize', onReposition)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('resize', onReposition)
+    }
   }, [moreOpen])
+
+  const secondaryActive = SECONDARY_NAV.some((id) => location.pathname === pathFor(id))
 
   return (
     <aside className="sidebar">
@@ -103,34 +149,24 @@ export function Sidebar({ username, tier, uuid }: SidebarProps) {
       <div className="sidebar__bottom">
         <div className="sidebar__more" ref={moreRef}>
           <button
+            ref={buttonRef}
             type="button"
-            className={`sidebar__link sidebar__link--button${moreOpen ? ' is-open' : ''}`}
+            className={[
+              'sidebar__link',
+              'sidebar__link--button',
+              moreOpen ? 'is-open' : '',
+              secondaryActive ? 'sidebar__link--active' : ''
+            ]
+              .filter(Boolean)
+              .join(' ')}
             title={t('nav.more')}
             aria-expanded={moreOpen}
+            aria-haspopup="menu"
             onClick={() => setMoreOpen((v) => !v)}
           >
             <MoreHorizontal size={20} strokeWidth={1.75} />
             <span className="sidebar__tooltip">{t('nav.more')}</span>
           </button>
-          {moreOpen && (
-            <div className="sidebar__more-menu" role="menu">
-              {SECONDARY_NAV.map((id) => {
-                const Icon = ICONS[id]
-                return (
-                  <Link
-                    key={id}
-                    to={pathFor(id)}
-                    role="menuitem"
-                    className="sidebar__more-item"
-                    onClick={() => setMoreOpen(false)}
-                  >
-                    <Icon size={16} />
-                    {t(`nav.${id}`)}
-                  </Link>
-                )
-              })}
-            </div>
-          )}
         </div>
 
         <NavLink
@@ -152,6 +188,43 @@ export function Sidebar({ username, tier, uuid }: SidebarProps) {
           </div>
         </Link>
       </div>
+
+      {moreOpen &&
+        menuPos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="sidebar__more-menu"
+            role="menu"
+            aria-label={t('nav.more')}
+            style={{
+              position: 'fixed',
+              left: menuPos.left,
+              top: menuPos.top,
+              transform: 'translateY(-100%)'
+            }}
+          >
+            <div className="sidebar__more-heading">{t('nav.more')}</div>
+            {SECONDARY_NAV.map((id) => {
+              const Icon = ICONS[id]
+              const to = pathFor(id)
+              const active = location.pathname === to
+              return (
+                <Link
+                  key={id}
+                  to={to}
+                  role="menuitem"
+                  className={`sidebar__more-item${active ? ' is-active' : ''}`}
+                  onClick={() => setMoreOpen(false)}
+                >
+                  <Icon size={16} />
+                  {t(`nav.${id}`)}
+                </Link>
+              )
+            })}
+          </div>,
+          document.body
+        )}
     </aside>
   )
 }
