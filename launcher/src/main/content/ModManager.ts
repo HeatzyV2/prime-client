@@ -3,8 +3,18 @@ import { join, basename } from 'path'
 import type { ModEntry } from '../../shared/content-types'
 import { getModsDir } from './paths'
 import { patchContentMeta, readContentMeta } from './contentMeta'
-import { downloadModrinthFile, getModrinthVersion, getModrinthVersionById } from './ModrinthClient'
-import { downloadCurseForgeFile, getCurseForgeFile, getCurseForgeFileById } from './CurseForgeClient'
+import {
+  downloadModrinthFile,
+  getModrinthVersion,
+  getModrinthVersionById,
+  integrityFromModrinthFile
+} from './ModrinthClient'
+import {
+  downloadCurseForgeFile,
+  getCurseForgeFile,
+  getCurseForgeFileById,
+  integrityFromCurseForgeFile
+} from './CurseForgeClient'
 import { downloadService } from '../services/DownloadService'
 
 const DISABLED_SUFFIX = '.disabled'
@@ -134,9 +144,19 @@ export async function installModFromModrinth(
     const dest = join(modsDir, file.filename)
 
     const taskId = await downloadService.beginDownload(`Mod: ${title}`)
-    await downloadModrinthFile(file.url, dest, (percent, speed) => {
-      void downloadService.updateDownload(taskId, percent, speed)
-    })
+    try {
+      await downloadModrinthFile(
+        file.url,
+        dest,
+        (percent, speed) => {
+          void downloadService.updateDownload(taskId, percent, speed)
+        },
+        integrityFromModrinthFile(file)
+      )
+    } catch (err) {
+      await downloadService.failDownload(taskId, err instanceof Error ? err.message : 'Download failed')
+      throw err
+    }
 
     await patchContentMeta(instanceId, (meta) => {
       meta.mods[file.filename] = {
@@ -171,9 +191,20 @@ export async function installModFromCurseForge(
     const dest = join(modsDir, file.fileName)
 
     const taskId = await downloadService.beginDownload(`Mod: ${title}`)
-    await downloadCurseForgeFile(modId, file.id, dest, (percent, speed) => {
-      void downloadService.updateDownload(taskId, percent, speed)
-    })
+    try {
+      await downloadCurseForgeFile(
+        modId,
+        file.id,
+        dest,
+        (percent, speed) => {
+          void downloadService.updateDownload(taskId, percent, speed)
+        },
+        integrityFromCurseForgeFile(file)
+      )
+    } catch (err) {
+      await downloadService.failDownload(taskId, err instanceof Error ? err.message : 'Download failed')
+      throw err
+    }
 
     await patchContentMeta(instanceId, (meta) => {
       meta.mods[file.fileName] = {

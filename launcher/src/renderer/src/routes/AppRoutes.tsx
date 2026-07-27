@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { DashboardPage } from '@renderer/pages/DashboardPage'
 import { AccountsPage } from '@renderer/pages/AccountsPage'
+import { ProfilePage } from '@renderer/pages/ProfilePage'
 import { InstancesPage } from '@renderer/pages/InstancesPage'
 import { SkinsPage } from '@renderer/pages/SkinsPage'
 import { LibraryPage } from '@renderer/pages/LibraryPage'
@@ -29,6 +30,7 @@ export function AppRoutes({ news, servers }: AppRoutesProps) {
     <Routes>
       <Route index element={<DashboardPage news={news} servers={servers} />} />
       <Route path="accounts" element={<AccountsPage />} />
+      <Route path="profile" element={<ProfilePage />} />
       <Route path="instances" element={<InstancesPage />} />
       <Route path="skins" element={<SkinsPage />} />
       <Route path="library" element={<LibraryPage />} />

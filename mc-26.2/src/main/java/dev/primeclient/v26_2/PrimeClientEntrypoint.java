@@ -51,6 +51,7 @@ public final class PrimeClientEntrypoint implements ClientModInitializer {
         ClientReceiveMessageEvents.GAME.register((message, overlay) ->
                 PrimeHooks.onChatMessage(message.getString(), false));
         ClientSendMessageEvents.ALLOW_CHAT.register(PrimeHooks::allowOutgoingChat);
+        ClientSendMessageEvents.ALLOW_COMMAND.register(PrimeHooks::allowOutgoingCommand);
         ClientSendMessageEvents.CHAT.register(message ->
                 PrimeHooks.onChatMessage(message, true));
 

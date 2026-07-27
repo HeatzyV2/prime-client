@@ -1,4 +1,3 @@
-import { createWriteStream } from 'fs'
 import { copyFile, mkdir, readdir, unlink, writeFile } from 'fs/promises'
 import { app, shell } from 'electron'
 import { join } from 'path'
@@ -21,6 +20,7 @@ import { minecraftEngine } from '../minecraft/MinecraftEngine'
 import { instanceService } from './InstanceService'
 import { settingsStore } from '../storage/SettingsStore'
 import { emitUpdateProgress } from './updateProgress'
+import { downloadService } from './DownloadService'
 
 const CHECK_CACHE_MS = 60 * 60 * 1000
 
@@ -60,40 +60,19 @@ async function downloadWithProgress(
   target: UpdateProgressDto['target'],
   label: string
 ): Promise<void> {
-  const response = await fetch(url)
-  if (!response.ok || !response.body) {
-    throw new Error(`Download failed (${response.status})`)
-  }
-
-  const total = Number(response.headers.get('content-length') ?? 0)
-  let received = 0
-
-  const reader = response.body.getReader()
-  await mkdir(join(dest, '..'), { recursive: true })
-
-  const fileStream = createWriteStream(dest)
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) {
-      break
+  await downloadService.downloadFile({
+    url,
+    destPath: dest,
+    bypassCache: true,
+    onProgress: (percent, _speed, meta) => {
+      const reported = meta.total > 0 ? Math.min(99, percent) : percent
+      emitUpdateProgress({
+        target,
+        phase: 'downloading',
+        percent: reported,
+        detail: label
+      })
     }
-    received += value.byteLength
-    await new Promise<void>((resolve, reject) => {
-      fileStream.write(Buffer.from(value), (err) => (err ? reject(err) : resolve()))
-    })
-    const percent = total > 0 ? Math.min(99, Math.round((received / total) * 100)) : 0
-    emitUpdateProgress({
-      target,
-      phase: 'downloading',
-      percent,
-      detail: label
-    })
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    fileStream.end(() => resolve())
-    fileStream.on('error', reject)
   })
 }
 

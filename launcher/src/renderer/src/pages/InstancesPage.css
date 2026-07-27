@@ -10,6 +10,12 @@
   gap: 10px;
 }
 
+.instances__actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .instances__create {
   position: relative;
 }

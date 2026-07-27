@@ -11,7 +11,10 @@ public final class PrimeAccountService implements ConfigBinding {
 
     public enum Tier {
         FREE,
-        PREMIUM
+        /** Paid / Microsoft-linked Prime tier (launcher {@code prime}). */
+        PREMIUM,
+        /** Highest grade (launcher {@code prime_plus}). */
+        PRIME_PLUS
     }
 
     private String username = "";
@@ -102,10 +105,7 @@ public final class PrimeAccountService implements ConfigBinding {
             uuid = json.get("uuid").getAsString();
         }
         if (json.has("tier")) {
-            try {
-                tier = Tier.valueOf(json.get("tier").getAsString());
-            } catch (IllegalArgumentException ignored) {
-            }
+            tier = parseTier(json.get("tier").getAsString());
         }
         if (json.has("loginEpoch")) {
             loginEpochMillis = json.get("loginEpoch").getAsLong();
@@ -113,5 +113,25 @@ public final class PrimeAccountService implements ConfigBinding {
         if (json.has("loggedIn") && json.get("loggedIn").getAsBoolean() && !username.isBlank()) {
             login(username);
         }
+    }
+
+    /** Accepts enum names plus launcher ids {@code free}/{@code prime}/{@code prime_plus}. */
+    static Tier parseTier(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return Tier.FREE;
+        }
+        String key = raw.trim().toLowerCase(java.util.Locale.ROOT);
+        return switch (key) {
+            case "premium", "prime" -> Tier.PREMIUM;
+            case "prime_plus", "primeplus", "prime-plus" -> Tier.PRIME_PLUS;
+            case "free" -> Tier.FREE;
+            default -> {
+                try {
+                    yield Tier.valueOf(raw.trim().toUpperCase(java.util.Locale.ROOT));
+                } catch (IllegalArgumentException ignored) {
+                    yield Tier.FREE;
+                }
+            }
+        };
     }
 }

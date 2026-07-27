@@ -1,5 +1,5 @@
 import { settingsStore } from '../storage/SettingsStore'
-import { downloadQueue } from '../utils/DownloadQueue'
+import { downloadService, formatBytes, type DownloadIntegrity } from '../services/DownloadService'
 
 const CURSEFORGE_API = 'https://api.curseforge.com/v1'
 const MINECRAFT_GAME_ID = 432
@@ -45,12 +45,18 @@ interface CurseForgeSearchResult {
   pagination: { totalCount: number }
 }
 
+interface CurseForgeFileHash {
+  algo: number
+  value: string
+}
+
 interface CurseForgeFile {
   id: number
   fileName: string
   downloadUrl: string
   gameVersions: string[]
   modLoaders?: { id: number; name: string }[]
+  hashes?: CurseForgeFileHash[]
 }
 
 async function apiKey(): Promise<string> {
@@ -120,7 +126,7 @@ export async function searchCurseForge(
   }
 
   const result = await curseForgeFetch<CurseForgeSearchResult>('/mods/search', params)
-  return result.data.map((mod) => toHit(mod, projectType))
+  return (result.data ?? []).map((mod) => toHit(mod, projectType))
 }
 
 export async function listCurseForgeFiles(
@@ -142,7 +148,7 @@ export async function listCurseForgeFiles(
     `/mods/${modId}/files`,
     params
   )
-  return result.data
+  return result.data ?? []
 }
 
 export async function getCurseForgeFileById(modId: string, fileId: number): Promise<CurseForgeFile> {
@@ -163,11 +169,21 @@ export async function getCurseForgeFile(
   return file
 }
 
+/** CurseForge hash algo: 1 = Sha1, 2 = Md5. Prefer Sha1 when present. */
+export function integrityFromCurseForgeFile(file: CurseForgeFile): DownloadIntegrity | undefined {
+  const sha1 = file.hashes?.find((h) => h.algo === 1)?.value
+  if (sha1) {
+    return { algorithm: 'sha1', hash: sha1 }
+  }
+  return undefined
+}
+
 export async function downloadCurseForgeFile(
   modId: string,
   fileId: number,
   destPath: string,
-  onProgress?: (percent: number, speed: string) => void
+  onProgress?: (percent: number, speed: string) => void,
+  integrity?: DownloadIntegrity
 ): Promise<void> {
   const result = await curseForgeFetch<CurseForgeResponse<string>>(
     `/mods/${modId}/files/${fileId}/download-url`
@@ -177,37 +193,29 @@ export async function downloadCurseForgeFile(
     throw new Error('CurseForge did not return a download URL.')
   }
 
-  await downloadQueue.run(async () => {
-    const response = await fetch(url)
-    if (!response.ok || !response.body) {
-      throw new Error(`CurseForge download failed (${response.status}).`)
+  let resolvedIntegrity = integrity
+  if (!resolvedIntegrity) {
+    try {
+      const file = await getCurseForgeFileById(modId, fileId)
+      resolvedIntegrity = integrityFromCurseForgeFile(file)
+    } catch {
+      resolvedIntegrity = undefined
     }
+  }
 
-    const total = Number(response.headers.get('content-length') || 0)
-    const reader = response.body.getReader()
-    const chunks: Uint8Array[] = []
-    let received = 0
-    const start = Date.now()
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) {
-        break
+  await downloadService.downloadFile({
+    url,
+    destPath,
+    integrity: resolvedIntegrity,
+    onProgress: (percent, speed, meta) => {
+      if (!onProgress) {
+        return
       }
-      if (value) {
-        chunks.push(value)
-        received += value.length
-        if (total > 0 && onProgress) {
-          const elapsed = Math.max(1, Date.now() - start) / 1000
-          const speed = `${(received / elapsed / 1024).toFixed(1)} KB/s`
-          onProgress(Math.round((received / total) * 100), speed)
-        }
+      if (meta.total > 0) {
+        onProgress(percent, `${speed} · ${formatBytes(meta.received)} / ${formatBytes(meta.total)}`)
+      } else {
+        onProgress(percent, speed)
       }
     }
-
-    const buffer = Buffer.concat(chunks)
-    const { writeFile } = await import('fs/promises')
-    await writeFile(destPath, buffer)
-    onProgress?.(100, 'Done')
   })
 }

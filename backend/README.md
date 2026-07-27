@@ -1,8 +1,8 @@
 # Prime Backend
 
-Unified **social + voice** server for Prime Client (friends / DM / party / presence).
+Unified **social + voice** server for Prime Client (friends / DM / party / presence), plus cloud-sync helpers for profiles, store, cosmetics, and settings.
 
-**Version:** `2.0.0` — SQLite persistence, MS profile verify (optional), party invites, friend notes, block list.
+**Version:** `2.1.0` — SQLite persistence, MS profile verify (optional), party invites, friend notes, block list, profiles, Prime Coins store, cosmetics/settings sync, crash index.
 
 ## Run locally
 
@@ -24,17 +24,33 @@ PORT=26005 npm start
 
 Public example: `http://194.9.172.102:26005` — keep `/voice` unchanged for proximity voice.
 
-After pulling `2.0.0`, restart the process once so SQLite migrates.
+### AI (Groq proxy)
+
+Set the key **only on the server** — never ship it to clients:
+
+```bash
+GROQ_API_KEY=gsk_... PORT=26005 npm start
+```
+
+| Route | Role |
+|-------|------|
+| `GET /v1/ai/status` | `{ available, models }` — no secrets |
+| `POST /v1/ai/chat` | Proxies chat completions (+ tools) to Groq (rate-limited) |
+
+Launcher + in-game `/ai` call this proxy. Users never see the API key.
+
+After pulling `2.1.0`, restart the process once so SQLite migrates (`ALTER` + new tables).
 
 ## Data & migration
 
 | Path | Role |
 |------|------|
-| `data/prime.db` | SQLite store (users, sessions, friends, messages, parties, notes) |
+| `data/prime.db` | SQLite store (users, sessions, friends, messages, parties, notes, store, crashes) |
 | `data/prime.json` | Legacy JSON — **one-shot migrated** into SQLite on first boot if DB is empty, then kept as backup |
 | `uploads/` | Chat image uploads |
+| `uploads/crashes/` | Crash logs (+ DB index on POST) |
 
-No manual migrate step: start the server; if `prime.json` exists and `prime.db` has no users, migration runs automatically.
+No manual migrate step: start the server; missing user columns / tables are added safely with `ALTER TABLE` / `CREATE IF NOT EXISTS`. If `prime.json` exists and `prime.db` has no users, legacy JSON migration runs automatically.
 
 ## Auth
 
@@ -54,12 +70,24 @@ No manual migrate step: start the server; if `prime.json` exists and `prime.db` 
 - Without token: still allowed (compat) as `unverified` with tighter rate limits.
 - Sessions are bound per `client`; logging in again from the same client revokes the previous session.
 
-## Endpoints (v2 highlights)
+## Endpoints
 
 | Path | Role |
 |------|------|
-| `GET /health` | `{ version: "2.0.0", db, ws }` |
+| `GET /health` | `{ version: "2.1.0", db, ws }` |
 | `POST /v1/auth/session` | Session token |
+| `GET /v1/me` | Self + profile fields (`createdAt`, `playtimeMinutes`, `tier`, `badges`, `bio`, `primeCoins`) |
+| `GET /v1/profile/:uuid` | Public profile snapshot |
+| `GET /v1/store/catalog` | Static catalog (mirrors launcher ecosystem categories) + owned flags |
+| `GET /v1/store/balance` | `prime_coins` balance |
+| `POST /v1/store/purchase` | `{ itemId }` — deduct coins, record ownership + history |
+| `GET /v1/store/history` | Purchase / redeem history |
+| `POST /v1/store/redeem` | `{ code }` — promo codes (`WELCOME100`, `PRIME500`, `ELYSIA250`, `FOUNDER1000`) |
+| `GET /v1/cosmetics` | Owned + equipped cosmetic ids |
+| `PUT /v1/cosmetics/equip` | `{ ids: string[] }` |
+| `GET /v1/settings` · `PUT /v1/settings` | JSON blob cloud sync |
+| `POST /v1/crash` · `GET /v1/crash` | Upload crash log / list recent meta |
+| `POST /v1/network/event` | Plugin bridge stub → `{ ok: true }` |
 | `GET/POST /v1/friends…` | Friends + requests |
 | `POST /v1/friends/block` · `DELETE …/block` | Block / unblock |
 | `PUT /v1/friends/:uuid/note` | Server-persisted friend note |
@@ -69,6 +97,8 @@ No manual migrate step: start the server; if `prime.json` exists and `prime.db` 
 | `WS /social?token=` | Presence, live chat, typing, party events; client `ping` every ~25s |
 | `WS /voice` | Existing proximity voice (unchanged) |
 
+Store sync is optional / local-first: launcher can keep working offline; cloud routes mirror catalog + coin ledger when online.
+
 ## Smoke checklist
 
 1. **Launcher DM ↔ in-game chat** — send from launcher Chat, see in Social Hub Chat tab (and reverse).
@@ -77,4 +107,6 @@ No manual migrate step: start the server; if `prime.json` exists and `prime.db` 
 4. **Join from drawer** — friend in-game with `serverAddress` → Join uses that address (not the note text).
 5. **Block** — block a user → cannot DM / party-invite them.
 6. **Notes** — save a friend note in launcher → persists after restart (SQLite).
-7. **Health** — `curl http://127.0.0.1:26005/health` → `version` `2.0.0`, `db.ok` true.
+7. **Health** — `curl http://127.0.0.1:26005/health` → `version` `2.1.0`, `db.ok` true.
+8. **Store** — redeem `WELCOME100` → purchase a paid catalog item → history lists both.
+9. **Crash list** — POST a crash → GET `/v1/crash` returns `{ id, createdAt, version }`.

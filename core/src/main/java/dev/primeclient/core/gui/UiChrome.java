@@ -32,6 +32,21 @@ public final class UiChrome {
         }
     }
 
+    /**
+     * Flat panel for high-frequency screens (HUD editor): no soft shadow,
+     * no scanline gradients — a few fill calls instead of thousands.
+     */
+    public static void editorPanel(RenderContext ctx, Theme theme, int x, int y, int w, int h) {
+        int radius = PrimeDesign.RADIUS_MD;
+        RoundedRect.border(ctx, x, y, w, h, radius, 1,
+                ColorUtil.withAlpha(theme.border(), 0.55f),
+                ColorUtil.withAlpha(theme.background(), 0.92f));
+        int accentW = Math.max(0, w - radius * 2);
+        if (accentW > 0) {
+            ctx.fillRect(x + radius, y, accentW, 2, theme.accent());
+        }
+    }
+
     public static void cardLite(RenderContext ctx, Theme theme, int x, int y, int w, int h, boolean selected) {
         int radius = PrimeDesign.RADIUS_SM;
         float fillAlpha = BlurBackdrop.isActive()

@@ -380,6 +380,40 @@ public interface MinecraftAdapter {
         return 0;
     }
 
+    /** Absolute world day index (day 0 = first day). */
+    default long worldDayNumber() {
+        return 0;
+    }
+
+    /**
+     * Horizontal speed in metres per second (blocks/s), derived from velocity.
+     * Vertical motion is ignored.
+     */
+    default double playerHorizontalSpeed() {
+        return 0;
+    }
+
+    /** Vanilla auto-jump option. */
+    default boolean autoJump() {
+        return false;
+    }
+
+    default void setAutoJump(boolean enabled) {
+    }
+
+    /**
+     * Fuse remaining on the nearest primed TNT within range, in seconds.
+     * Returns {@code -1} when none are nearby or entity access is unavailable.
+     */
+    default float nearestPrimedTntFuseSeconds() {
+        return -1f;
+    }
+
+    /** Count of primed TNT entities near the player, or {@code -1} when unsupported. */
+    default int nearbyPrimedTntCount() {
+        return -1;
+    }
+
     default boolean worldRaining() {
         return false;
     }

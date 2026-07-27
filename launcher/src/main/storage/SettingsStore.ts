@@ -41,6 +41,8 @@ export interface LauncherSettings {
   uiSounds: boolean
   /** First-run onboarding completed. */
   onboardingDone: boolean
+  /** Custom root for instance folders (null = userData/instances). */
+  instancesRoot: string | null
   /** Last launcher version for which What's New was shown. */
   lastSeenLauncherVersion?: string
   /** Active custom skin from local library (null = account/default). */
@@ -71,6 +73,7 @@ const DEFAULT_SETTINGS = (): LauncherSettings => ({
   accentColor: null,
   uiSounds: true,
   onboardingDone: false,
+  instancesRoot: null,
   activeSkinId: null
 })
 

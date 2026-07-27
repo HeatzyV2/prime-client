@@ -20,6 +20,7 @@ import {
   Gauge,
   Download,
   Terminal,
+  IdCard,
   Settings,
   MoreHorizontal
 } from 'lucide-react'
@@ -33,6 +34,7 @@ import './Sidebar.css'
 const ICONS: Record<NavSection, LucideIcon> = {
   dashboard: Home,
   accounts: UserCircle,
+  profile: IdCard,
   instances: Box,
   skins: Shirt,
   library: Library,

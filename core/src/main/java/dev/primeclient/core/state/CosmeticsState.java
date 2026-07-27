@@ -113,5 +113,6 @@ public final class CosmeticsState {
         localLoadout = CosmeticLoadout.EMPTY;
         peers.clear();
         announceDirty.set(false);
+        CapePhysicsState.reset();
     }
 }

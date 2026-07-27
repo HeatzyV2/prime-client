@@ -17,6 +17,12 @@ public abstract class ServerListMixin {
         PartnerServerList.ensurePartners((ServerList) (Object) this);
     }
 
+    /** Re-pin after user reorder / edit so partners stay at indices 0..n-1. */
+    @Inject(method = {"swap", "replace", "add"}, at = @At("RETURN"))
+    private void prime$repinPartners(CallbackInfo ci) {
+        PartnerServerList.ensurePartners((ServerList) (Object) this);
+    }
+
     @Inject(method = "remove", at = @At("HEAD"), cancellable = true)
     private void prime$blockPartnerRemove(ServerData data, CallbackInfo ci) {
         if (data != null && PartnerServers.isPartnerAddress(data.ip)) {

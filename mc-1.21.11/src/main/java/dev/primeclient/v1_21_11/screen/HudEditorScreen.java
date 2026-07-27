@@ -53,10 +53,12 @@ public final class HudEditorScreen extends Screen {
         if (minecraft.level != null && minecraft.player != null) {
             HudEditorState.runVanillaHudRender(
                     () -> VanillaHudLayerRenderer.renderVisibleLayers(graphics, minecraft.getDeltaTracker()));
-            client.hud().layout(renderContext, true);
         }
 
-        client.hud().render(renderContext);
+        // One layout pass (incl. hidden for hit-testing), then draw without re-measuring.
+        client.hud().layout(renderContext, true);
+        client.hud().render(renderContext, false);
+        client.hudEditor().tickAutosave();
         client.hudEditor().renderOverlay(renderContext, mouseX, mouseY);
     }
 
@@ -106,6 +108,7 @@ public final class HudEditorScreen extends Screen {
     public void onClose() {
         HudEditorState.setActive(false);
         PanelBlur.end(minecraft);
+        PrimeClient.get().hudEditor().flushAutosave();
         PrimeClient.get().profiles().saveActive();
         super.onClose();
     }

@@ -97,6 +97,63 @@ CREATE TABLE IF NOT EXISTS party_invites (
 CREATE INDEX IF NOT EXISTS idx_party_invites_to ON party_invites(to_uuid);
 `);
 
+const { DEFAULT_OWNED, DEFAULT_EQUIPPED, getCatalogItem, PROMO_CODES } = require('./storeCatalog');
+
+function columnExists(table, column) {
+  return sql.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+}
+
+function addColumnIfMissing(table, column, typedef) {
+  if (!columnExists(table, column)) {
+    sql.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${typedef}`);
+  }
+}
+
+/** Safe additive migrations for existing prime.db installs. */
+function migrateSchema() {
+  addColumnIfMissing('users', 'playtime_minutes', 'INTEGER');
+  addColumnIfMissing('users', 'tier', "TEXT NOT NULL DEFAULT 'free'");
+  addColumnIfMissing('users', 'badges', "TEXT NOT NULL DEFAULT '[]'");
+  addColumnIfMissing('users', 'bio', 'TEXT');
+  addColumnIfMissing('users', 'prime_coins', 'INTEGER NOT NULL DEFAULT 0');
+  addColumnIfMissing('users', 'cosmetics_equipped', "TEXT NOT NULL DEFAULT '[]'");
+  addColumnIfMissing('users', 'settings_json', "TEXT NOT NULL DEFAULT '{}'");
+
+  sql.exec(`
+CREATE TABLE IF NOT EXISTS store_ownership (
+  user_uuid TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  purchased_at TEXT NOT NULL,
+  PRIMARY KEY (user_uuid, item_id)
+);
+CREATE INDEX IF NOT EXISTS idx_store_ownership_user ON store_ownership(user_uuid);
+
+CREATE TABLE IF NOT EXISTS store_history (
+  id TEXT PRIMARY KEY,
+  user_uuid TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  item_id TEXT,
+  amount INTEGER NOT NULL DEFAULT 0,
+  code TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_store_history_user ON store_history(user_uuid, created_at);
+
+CREATE TABLE IF NOT EXISTS crashes (
+  id TEXT PRIMARY KEY,
+  user_uuid TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT 'crash',
+  version TEXT,
+  client TEXT,
+  file_name TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_crashes_user ON crashes(user_uuid, created_at);
+`);
+}
+
+migrateSchema();
+
 function id() {
   return crypto.randomUUID();
 }
@@ -105,14 +162,60 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function parseJsonArray(raw, fallback = []) {
+  if (!raw) return [...fallback];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(String) : [...fallback];
+  } catch {
+    return [...fallback];
+  }
+}
+
+function parseJsonObject(raw, fallback = {}) {
+  if (!raw) return { ...fallback };
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : { ...fallback };
+  } catch {
+    return { ...fallback };
+  }
+}
+
+function normalizeTier(tier) {
+  const t = String(tier || 'free').toLowerCase();
+  if (t === 'prime' || t === 'prime_plus') return t;
+  return 'free';
+}
+
 function mapUser(row) {
   if (!row) return null;
+  const badges = parseJsonArray(row.badges, []);
   return {
     uuid: row.uuid,
     username: row.username,
     offline: !!row.offline,
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
+    playtimeMinutes: row.playtime_minutes == null ? null : Number(row.playtime_minutes) || 0,
+    tier: normalizeTier(row.tier),
+    badges,
+    bio: row.bio || null,
+    primeCoins: Number(row.prime_coins) || 0,
+  };
+}
+
+function mapProfile(row) {
+  const user = mapUser(row);
+  if (!user) return null;
+  return {
+    uuid: user.uuid,
+    username: user.username,
+    createdAt: user.createdAt,
+    playtimeMinutes: user.playtimeMinutes,
+    tier: user.tier,
+    badges: user.badges,
+    bio: user.bio,
   };
 }
 
@@ -653,6 +756,236 @@ function setPartyServer(uuid, serverAddress) {
   return saveParty(party);
 }
 
+function getProfile(uuid) {
+  return mapProfile(sql.prepare('SELECT * FROM users WHERE uuid = ?').get(uuid));
+}
+
+function updateProfileFields(uuid, fields = {}) {
+  const row = sql.prepare('SELECT * FROM users WHERE uuid = ?').get(uuid);
+  if (!row) throw new Error('User not found');
+  let playtime = row.playtime_minutes;
+  let tier = row.tier || 'free';
+  let badges = row.badges || '[]';
+  let bio = row.bio;
+  if (fields.playtimeMinutes !== undefined) {
+    playtime = fields.playtimeMinutes == null ? null : Math.max(0, Math.floor(Number(fields.playtimeMinutes) || 0));
+  }
+  if (fields.tier !== undefined) tier = normalizeTier(fields.tier);
+  if (fields.badges !== undefined) {
+    const list = Array.isArray(fields.badges) ? fields.badges.map(String).slice(0, 32) : [];
+    badges = JSON.stringify(list);
+  }
+  if (fields.bio !== undefined) {
+    bio = fields.bio == null ? null : String(fields.bio).slice(0, 280);
+  }
+  sql.prepare(
+    `UPDATE users SET playtime_minutes = ?, tier = ?, badges = ?, bio = ? WHERE uuid = ?`
+  ).run(playtime, tier, badges, bio, uuid);
+  return getProfile(uuid);
+}
+
+function ensureDefaultOwnership(uuid) {
+  const count = sql.prepare('SELECT COUNT(*) AS c FROM store_ownership WHERE user_uuid = ?').get(uuid).c;
+  if (count > 0) return;
+  const purchasedAt = nowIso();
+  const insert = sql.prepare(
+    `INSERT OR IGNORE INTO store_ownership (user_uuid, item_id, purchased_at) VALUES (?, ?, ?)`
+  );
+  const tx = sql.transaction(() => {
+    for (const itemId of DEFAULT_OWNED) {
+      insert.run(uuid, itemId, purchasedAt);
+    }
+    const equippedRow = sql.prepare('SELECT cosmetics_equipped FROM users WHERE uuid = ?').get(uuid);
+    const equipped = parseJsonArray(equippedRow?.cosmetics_equipped, []);
+    if (equipped.length === 0) {
+      sql.prepare(`UPDATE users SET cosmetics_equipped = ? WHERE uuid = ?`).run(
+        JSON.stringify(DEFAULT_EQUIPPED),
+        uuid
+      );
+    }
+  });
+  tx();
+}
+
+function listOwnedItems(uuid) {
+  ensureDefaultOwnership(uuid);
+  return sql
+    .prepare('SELECT item_id FROM store_ownership WHERE user_uuid = ? ORDER BY purchased_at ASC')
+    .all(uuid)
+    .map((r) => r.item_id);
+}
+
+function getBalance(uuid) {
+  const row = sql.prepare('SELECT prime_coins FROM users WHERE uuid = ?').get(uuid);
+  if (!row) throw new Error('User not found');
+  ensureDefaultOwnership(uuid);
+  return Number(row.prime_coins) || 0;
+}
+
+function purchaseItem(uuid, itemId) {
+  const item = getCatalogItem(itemId);
+  if (!item) throw new Error('Unknown item');
+  ensureDefaultOwnership(uuid);
+  const owned = sql
+    .prepare('SELECT 1 AS ok FROM store_ownership WHERE user_uuid = ? AND item_id = ?')
+    .get(uuid, itemId);
+  if (owned) throw new Error('Already owned');
+  const balance = getBalance(uuid);
+  if (balance < item.price) throw new Error('Insufficient coins');
+  const createdAt = nowIso();
+  const historyId = id();
+  const tx = sql.transaction(() => {
+    sql.prepare(`UPDATE users SET prime_coins = prime_coins - ? WHERE uuid = ?`).run(item.price, uuid);
+    sql.prepare(
+      `INSERT INTO store_ownership (user_uuid, item_id, purchased_at) VALUES (?, ?, ?)`
+    ).run(uuid, itemId, createdAt);
+    sql.prepare(
+      `INSERT INTO store_history (id, user_uuid, kind, item_id, amount, code, created_at)
+       VALUES (?, ?, 'purchase', ?, ?, NULL, ?)`
+    ).run(historyId, uuid, itemId, -item.price, createdAt);
+    if (item.category === 'badge') {
+      const userRow = sql.prepare('SELECT badges FROM users WHERE uuid = ?').get(uuid);
+      const badges = parseJsonArray(userRow?.badges, []);
+      if (!badges.includes(itemId)) {
+        badges.push(itemId);
+        sql.prepare(`UPDATE users SET badges = ? WHERE uuid = ?`).run(JSON.stringify(badges), uuid);
+      }
+    }
+  });
+  tx();
+  return {
+    itemId,
+    price: item.price,
+    balance: getBalance(uuid),
+    owned: listOwnedItems(uuid),
+  };
+}
+
+function listStoreHistory(uuid, limit = 50) {
+  const lim = Math.min(100, Math.max(1, Number(limit) || 50));
+  return sql
+    .prepare(
+      `SELECT id, kind, item_id, amount, code, created_at
+       FROM store_history WHERE user_uuid = ?
+       ORDER BY created_at DESC LIMIT ?`
+    )
+    .all(uuid, lim)
+    .map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      itemId: r.item_id || null,
+      amount: Number(r.amount) || 0,
+      code: r.code || null,
+      createdAt: r.created_at,
+    }));
+}
+
+function redeemCode(uuid, rawCode) {
+  const code = String(rawCode || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, '');
+  if (!code) throw new Error('code required');
+  const promo = PROMO_CODES[code];
+  if (!promo) throw new Error('Invalid code');
+  const used = sql
+    .prepare(
+      `SELECT 1 AS ok FROM store_history WHERE user_uuid = ? AND kind = 'redeem' AND code = ? LIMIT 1`
+    )
+    .get(uuid, code);
+  if (used) throw new Error('Code already redeemed');
+  const createdAt = nowIso();
+  const historyId = id();
+  const tx = sql.transaction(() => {
+    sql.prepare(`UPDATE users SET prime_coins = prime_coins + ? WHERE uuid = ?`).run(promo.coins, uuid);
+    sql.prepare(
+      `INSERT INTO store_history (id, user_uuid, kind, item_id, amount, code, created_at)
+       VALUES (?, ?, 'redeem', NULL, ?, ?, ?)`
+    ).run(historyId, uuid, promo.coins, code, createdAt);
+  });
+  tx();
+  return {
+    code,
+    coins: promo.coins,
+    label: promo.label,
+    balance: getBalance(uuid),
+  };
+}
+
+function getCosmetics(uuid) {
+  ensureDefaultOwnership(uuid);
+  const owned = listOwnedItems(uuid);
+  const row = sql.prepare('SELECT cosmetics_equipped FROM users WHERE uuid = ?').get(uuid);
+  let equipped = parseJsonArray(row?.cosmetics_equipped, DEFAULT_EQUIPPED);
+  const ownedSet = new Set(owned);
+  equipped = equipped.filter((id) => ownedSet.has(id));
+  return { owned, equipped };
+}
+
+function equipCosmetics(uuid, ids) {
+  if (!Array.isArray(ids)) throw new Error('ids must be an array');
+  ensureDefaultOwnership(uuid);
+  const ownedSet = new Set(listOwnedItems(uuid));
+  const cleaned = [...new Set(ids.map(String))].filter((id) => ownedSet.has(id)).slice(0, 16);
+  sql.prepare(`UPDATE users SET cosmetics_equipped = ? WHERE uuid = ?`).run(JSON.stringify(cleaned), uuid);
+  return getCosmetics(uuid);
+}
+
+function getSettings(uuid) {
+  const row = sql.prepare('SELECT settings_json FROM users WHERE uuid = ?').get(uuid);
+  if (!row) throw new Error('User not found');
+  return parseJsonObject(row.settings_json, {});
+}
+
+function putSettings(uuid, blob) {
+  if (!blob || typeof blob !== 'object' || Array.isArray(blob)) {
+    throw new Error('json object required');
+  }
+  const raw = JSON.stringify(blob);
+  if (raw.length > 200_000) throw new Error('Settings too large');
+  sql.prepare(`UPDATE users SET settings_json = ? WHERE uuid = ?`).run(raw, uuid);
+  return parseJsonObject(raw, {});
+}
+
+function recordCrash({ id: crashId, uuid, title, version, client, fileName, createdAt }) {
+  sql.prepare(
+    `INSERT OR REPLACE INTO crashes (id, user_uuid, title, version, client, file_name, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    crashId,
+    uuid,
+    String(title || 'crash').slice(0, 120),
+    version ? String(version).slice(0, 64) : null,
+    client ? String(client).slice(0, 32) : null,
+    fileName || null,
+    createdAt || nowIso()
+  );
+  return {
+    id: crashId,
+    createdAt: createdAt || nowIso(),
+    version: version || null,
+    title: String(title || 'crash').slice(0, 120),
+  };
+}
+
+function listCrashes(uuid, limit = 25) {
+  const lim = Math.min(100, Math.max(1, Number(limit) || 25));
+  return sql
+    .prepare(
+      `SELECT id, title, version, client, created_at
+       FROM crashes WHERE user_uuid = ?
+       ORDER BY created_at DESC LIMIT ?`
+    )
+    .all(uuid, lim)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      version: r.version || null,
+      client: r.client || null,
+      createdAt: r.created_at,
+    }));
+}
+
 function dbStats() {
   return {
     ok: true,
@@ -661,6 +994,7 @@ function dbStats() {
     friendships: sql.prepare('SELECT COUNT(*) AS c FROM friendships').get().c,
     messages: sql.prepare('SELECT COUNT(*) AS c FROM messages').get().c,
     parties: sql.prepare('SELECT COUNT(*) AS c FROM parties').get().c,
+    crashes: sql.prepare('SELECT COUNT(*) AS c FROM crashes').get().c,
   };
 }
 
@@ -683,6 +1017,8 @@ module.exports = {
   SQLITE_PATH,
   upsertUser,
   getUser,
+  getProfile,
+  updateProfileFields,
   findUserByName,
   createSession,
   resolveSession,
@@ -714,6 +1050,17 @@ module.exports = {
   leaveParty,
   kickFromParty,
   setPartyServer,
+  listOwnedItems,
+  getBalance,
+  purchaseItem,
+  listStoreHistory,
+  redeemCode,
+  getCosmetics,
+  equipCosmetics,
+  getSettings,
+  putSettings,
+  recordCrash,
+  listCrashes,
   dbStats,
   flushNow,
   id,

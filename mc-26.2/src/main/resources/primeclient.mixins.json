@@ -20,6 +20,7 @@
 		"AvatarRenderStateMixin",
 		"CapeLayerMixin",
 		"LivingEntityRendererAccessor",
+		"PlayerInfoMixin",
 		"TitleScreenMixin",
 		"PauseScreenMixin",
 		"MinecraftUserAccessor",

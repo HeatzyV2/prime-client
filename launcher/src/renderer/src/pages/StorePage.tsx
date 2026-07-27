@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ShoppingBag, X } from 'lucide-react'
+import { ShoppingBag, Ticket, X } from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button, Tabs } from '@renderer/design-system/components'
 import type { StoreItem } from '@shared/content-types'
@@ -13,13 +13,35 @@ import { EmptyState } from '@renderer/components/EmptyState'
 import { playUiSound } from '@renderer/lib/uiSounds'
 import './StorePage.css'
 
+type StoreTab = 'catalog' | 'history' | 'promos'
+
+interface HistoryRow {
+  id: string
+  itemId: string
+  itemName: string
+  price: number
+  purchasedAt: string
+}
+
+interface PromoRow {
+  code: string
+  label: string
+  coins: number
+  redeemed: boolean
+}
+
 export function StorePage() {
   const { t } = useI18n()
   const { refreshTheme } = useTheme()
   const { activeAccount } = useAccounts()
+  const [tab, setTab] = useState<StoreTab>('catalog')
   const [category, setCategory] = useState('all')
   const [items, setItems] = useState<StoreItem[]>([])
+  const [history, setHistory] = useState<HistoryRow[]>([])
+  const [promos, setPromos] = useState<PromoRow[]>([])
+  const [promoCode, setPromoCode] = useState('')
   const [balance, setBalance] = useState(0)
+  const [syncMode, setSyncMode] = useState<'synced' | 'local'>('local')
   const [message, setMessage] = useState<string | null>(null)
   const [preview, setPreview] = useState<StoreItem | null>(null)
 
@@ -34,13 +56,28 @@ export function StorePage() {
     [t]
   )
 
+  const mainTabs = useMemo(
+    () => [
+      { id: 'catalog', label: t('store.tabs.catalog') },
+      { id: 'history', label: t('store.tabs.history') },
+      { id: 'promos', label: t('store.tabs.promos') }
+    ],
+    [t]
+  )
+
   const refresh = useCallback(async () => {
-    const [catalog, coins] = await Promise.all([
+    const [catalog, coins, hist, promoList] = await Promise.all([
       window.primeLauncher.store.catalog(),
-      window.primeLauncher.store.balance()
+      window.primeLauncher.store.balance(),
+      window.primeLauncher.store.history(),
+      window.primeLauncher.store.promos()
     ])
+    const mode = await window.primeLauncher.store.syncMode()
     setItems(catalog)
     setBalance(coins)
+    setHistory(hist)
+    setPromos(promoList)
+    setSyncMode(mode)
   }, [])
 
   useEffect(() => {
@@ -72,6 +109,20 @@ export function StorePage() {
     }
   }
 
+  async function handleRedeem() {
+    setMessage(null)
+    const result = await window.primeLauncher.store.redeem(promoCode)
+    if (result.ok) {
+      playUiSound('success')
+      setMessage(t('store.promoOk', { coins: result.coins ?? 0 }))
+      setPromoCode('')
+      await refresh()
+    } else {
+      playUiSound('error')
+      setMessage(result.error ?? t('store.promoFailed'))
+    }
+  }
+
   const filtered = items.filter((i) => category === 'all' || i.category === category)
   const username = activeAccount?.username ?? 'Steve'
   const capeUrl = playerCapeUrl(activeAccount?.uuid, username, activeAccount?.capeUrl)
@@ -80,7 +131,14 @@ export function StorePage() {
     <PageShell
       title={t('pages.store.title')}
       subtitle={t('pages.store.subtitle')}
-      actions={<Badge variant="prime">{t('store.coins', { balance })}</Badge>}
+      actions={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Badge variant={syncMode === 'synced' ? 'success' : 'default'}>
+            {syncMode === 'synced' ? t('store.syncSynced') : t('store.syncLocal')}
+          </Badge>
+          <Badge variant="prime">{t('store.coins', { balance })}</Badge>
+        </div>
+      }
     >
       {message && (
         <p className="text-caption" style={{ marginBottom: 16, color: 'var(--prime-muted)' }}>
@@ -88,47 +146,127 @@ export function StorePage() {
         </p>
       )}
 
-      <Tabs tabs={categories} active={category} onChange={setCategory} />
+      <Tabs tabs={mainTabs} active={tab} onChange={(id) => setTab(id as StoreTab)} />
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={<ShoppingBag size={24} />}
-          title={t('store.emptyTitle')}
-          description={t('store.emptyDesc')}
-        />
-      ) : (
-        <div className="page-grid page-grid--3" style={{ marginTop: 24 }}>
-          {filtered.map((item) => (
-            <div key={item.id} className="tile">
-              <button type="button" className="tile__preview store-tile__preview" onClick={() => setPreview(item)}>
-                <ShoppingBag size={28} />
-                <span>{t('store.preview')}</span>
-              </button>
-              <div className="tile__name">{item.name}</div>
-              <div className="tile__desc">{item.description}</div>
-              <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                {item.owned ? (
-                  <Badge variant="success">{t('actions.owned')}</Badge>
-                ) : (
-                  <span style={{ fontWeight: 700, color: 'var(--prime-red-bright)' }}>
-                    {item.price === 0 ? t('actions.free') : t('store.coinsPrice', { price: item.price })}
-                  </span>
-                )}
-                <Button
-                  variant={item.owned ? 'secondary' : 'primary'}
-                  size="sm"
-                  disabled={item.owned}
-                  onClick={() => void handlePurchase(item)}
-                >
-                  {item.owned
-                    ? t('actions.owned')
-                    : item.price === 0
-                      ? t('actions.claim')
-                      : t('actions.buy')}
-                </Button>
-              </div>
+      {tab === 'catalog' && (
+        <>
+          <div style={{ marginTop: 16 }}>
+            <Tabs tabs={categories} active={category} onChange={setCategory} />
+          </div>
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={<ShoppingBag size={24} />}
+              title={t('store.emptyTitle')}
+              description={t('store.emptyDesc')}
+            />
+          ) : (
+            <div className="page-grid page-grid--3" style={{ marginTop: 24 }}>
+              {filtered.map((item) => (
+                <div key={item.id} className="tile">
+                  <button
+                    type="button"
+                    className="tile__preview store-tile__preview"
+                    onClick={() => setPreview(item)}
+                  >
+                    <ShoppingBag size={28} />
+                    <span>{t('store.preview')}</span>
+                  </button>
+                  <div className="tile__name">{item.name}</div>
+                  <div className="tile__desc">{item.description}</div>
+                  <div
+                    style={{
+                      marginTop: 16,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    {item.owned ? (
+                      <Badge variant="success">{t('actions.owned')}</Badge>
+                    ) : (
+                      <span style={{ fontWeight: 700, color: 'var(--prime-red-bright)' }}>
+                        {item.price === 0
+                          ? t('actions.free')
+                          : t('store.coinsPrice', { price: item.price })}
+                      </span>
+                    )}
+                    <Button
+                      variant={item.owned ? 'secondary' : 'primary'}
+                      size="sm"
+                      disabled={item.owned}
+                      onClick={() => void handlePurchase(item)}
+                    >
+                      {item.owned
+                        ? t('actions.owned')
+                        : item.price === 0
+                          ? t('actions.claim')
+                          : t('actions.buy')}
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+        </>
+      )}
+
+      {tab === 'history' && (
+        <div className="page-list" style={{ marginTop: 20 }}>
+          {history.length === 0 ? (
+            <EmptyState
+              icon={<ShoppingBag size={24} />}
+              title={t('store.historyEmptyTitle')}
+              description={t('store.historyEmptyDesc')}
+            />
+          ) : (
+            history.map((row) => (
+              <div key={row.id} className="list-row">
+                <div className="list-row__body">
+                  <div className="list-row__title">{row.itemName}</div>
+                  <div className="list-row__desc">{new Date(row.purchasedAt).toLocaleString()}</div>
+                </div>
+                <div className="list-row__meta text-mono">
+                  {row.price === 0 ? t('actions.free') : t('store.coinsPrice', { price: row.price })}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {tab === 'promos' && (
+        <div style={{ marginTop: 20 }}>
+          <div className="servers-add" style={{ maxWidth: 480 }}>
+            <input
+              className="modal__field"
+              placeholder={t('store.promoPlaceholder')}
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+            />
+            <Button
+              variant="primary"
+              icon={<Ticket size={16} />}
+              disabled={promoCode.trim().length < 3}
+              onClick={() => void handleRedeem()}
+            >
+              {t('store.redeem')}
+            </Button>
+          </div>
+          <div className="page-list" style={{ marginTop: 16 }}>
+            {promos.map((p) => (
+              <div key={p.code} className="list-row">
+                <div className="list-row__body">
+                  <div className="list-row__title">{p.label}</div>
+                  <div className="list-row__desc text-mono">{p.code}</div>
+                </div>
+                <div className="list-row__meta">
+                  <Badge variant={p.redeemed ? 'success' : 'prime'}>
+                    {p.redeemed ? t('store.redeemed') : t('store.coinsPrice', { price: p.coins })}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -142,7 +280,7 @@ export function StorePage() {
             <SkinViewer3D
               uuid={activeAccount?.uuid}
               username={username}
-              capeUrl={preview.category === 'cosmetic' ? capeUrl : capeUrl}
+              capeUrl={capeUrl}
               pose="walk"
               width={240}
               height={320}

@@ -5,13 +5,15 @@ const { URL } = require('url');
 const db = require('./db');
 const rateLimit = require('./rateLimit');
 const { loadNews, versionsManifest } = require('./news');
+const ai = require('./ai');
+const { catalogForUser } = require('./storeCatalog');
 
 const UPLOAD_DIR = process.env.PRIME_UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
 const CRASH_DIR = process.env.PRIME_CRASH_DIR || path.join(UPLOAD_DIR, 'crashes');
 const MAX_UPLOAD = 5 * 1024 * 1024;
 const MAX_CRASH = 2 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
-const BACKEND_VERSION = '2.0.0';
+const BACKEND_VERSION = '2.1.0';
 
 function ensureUploadDir() {
   if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -217,6 +219,37 @@ async function handleHttp(req, res, ctx) {
     return true;
   }
 
+  if (req.method === 'GET' && pathname === '/v1/ai/status') {
+    json(res, 200, {
+      available: ai.isAvailable(),
+      defaultModel: ai.DEFAULT_MODEL,
+      models: [...ai.ALLOWED_MODELS],
+    });
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/v1/ai/chat') {
+    if (!enforceRate(req, res, 'ai-chat', { limit: 20, windowMs: 60_000 })) return true;
+    if (!ai.isAvailable()) {
+      json(res, 503, { error: 'AI unavailable (server key not configured)' });
+      return true;
+    }
+    let body;
+    try {
+      body = JSON.parse((await readBody(req, 512 * 1024)).toString('utf8') || '{}');
+    } catch {
+      json(res, 400, { error: 'Invalid JSON' });
+      return true;
+    }
+    const result = await ai.proxyChat(body);
+    if (!result.ok) {
+      json(res, result.status || 502, { error: result.error || 'AI failed' });
+      return true;
+    }
+    json(res, 200, { ok: true, message: result.message });
+    return true;
+  }
+
   if (req.method === 'GET' && pathname.startsWith('/uploads/')) {
     ensureUploadDir();
     const file = path.basename(pathname);
@@ -299,11 +332,136 @@ async function handleHttp(req, res, ctx) {
     if (req.method === 'GET' && pathname === '/v1/me') {
       const session = requireAuth(req, res);
       if (!session) return true;
+      const user = db.getUser(session.uuid);
       json(res, 200, {
-        user: db.getUser(session.uuid),
+        user,
+        profile: db.getProfile(session.uuid),
         presence: ctx.social.presence.get(session.uuid) || null,
         verified: !!session.verified,
       });
+      return true;
+    }
+
+    if (req.method === 'GET' && pathname.startsWith('/v1/profile/')) {
+      const targetUuid = dashUuid(pathname.slice('/v1/profile/'.length));
+      if (!targetUuid || targetUuid.includes('/')) {
+        json(res, 404, { error: 'Not found' });
+        return true;
+      }
+      const profile = db.getProfile(targetUuid);
+      if (!profile) {
+        json(res, 404, { error: 'Not found' });
+        return true;
+      }
+      json(res, 200, { profile });
+      return true;
+    }
+
+    // Store / currency
+    if (req.method === 'GET' && pathname === '/v1/store/catalog') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const owned = db.listOwnedItems(session.uuid);
+      json(res, 200, { items: catalogForUser(owned), balance: db.getBalance(session.uuid) });
+      return true;
+    }
+
+    if (req.method === 'GET' && pathname === '/v1/store/balance') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      json(res, 200, { balance: db.getBalance(session.uuid), currency: 'prime_coins' });
+      return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/v1/store/purchase') {
+      if (!enforceRate(req, res, 'store-purchase', { limit: 30, windowMs: 60_000 })) return true;
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+      const itemId = String(body.itemId || '').trim();
+      if (!itemId) {
+        json(res, 400, { error: 'itemId required' });
+        return true;
+      }
+      const result = db.purchaseItem(session.uuid, itemId);
+      json(res, 200, { ok: true, ...result });
+      return true;
+    }
+
+    if (req.method === 'GET' && pathname === '/v1/store/history') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+      json(res, 200, { history: db.listStoreHistory(session.uuid, limit) });
+      return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/v1/store/redeem') {
+      if (!enforceRate(req, res, 'store-redeem', { limit: 10, windowMs: 60_000 })) return true;
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+      const result = db.redeemCode(session.uuid, body.code);
+      json(res, 200, { ok: true, ...result });
+      return true;
+    }
+
+    // Cosmetics sync
+    if (req.method === 'GET' && pathname === '/v1/cosmetics') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      json(res, 200, db.getCosmetics(session.uuid));
+      return true;
+    }
+
+    if (req.method === 'PUT' && pathname === '/v1/cosmetics/equip') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+      const result = db.equipCosmetics(session.uuid, body.ids || []);
+      json(res, 200, { ok: true, ...result });
+      return true;
+    }
+
+    // Settings sync
+    if (req.method === 'GET' && pathname === '/v1/settings') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      json(res, 200, { settings: db.getSettings(session.uuid) });
+      return true;
+    }
+
+    if (req.method === 'PUT' && pathname === '/v1/settings') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const body = JSON.parse((await readBody(req, 256 * 1024)).toString('utf8') || '{}');
+      const blob = body.settings && typeof body.settings === 'object' ? body.settings : body;
+      const settings = db.putSettings(session.uuid, blob);
+      json(res, 200, { ok: true, settings });
+      return true;
+    }
+
+    // Crash list
+    if (req.method === 'GET' && pathname === '/v1/crash') {
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      const limit = parseInt(url.searchParams.get('limit') || '25', 10);
+      json(res, 200, { crashes: db.listCrashes(session.uuid, limit) });
+      return true;
+    }
+
+    // Plugin bridge stub
+    if (req.method === 'POST' && pathname === '/v1/network/event') {
+      if (!enforceRate(req, res, 'network-event', { limit: 60, windowMs: 60_000 })) return true;
+      const session = requireAuth(req, res);
+      if (!session) return true;
+      try {
+        JSON.parse((await readBody(req, 64 * 1024)).toString('utf8') || '{}');
+      } catch {
+        json(res, 400, { error: 'Invalid JSON' });
+        return true;
+      }
+      json(res, 200, { ok: true });
       return true;
     }
 
@@ -561,6 +719,7 @@ async function handleHttp(req, res, ctx) {
       const body = JSON.parse((await readBody(req, MAX_CRASH + 64 * 1024)).toString('utf8') || '{}');
       const text = String(body.text || body.report || '').slice(0, MAX_CRASH);
       const title = String(body.title || 'crash').slice(0, 120);
+      const version = body.version ? String(body.version).slice(0, 64) : null;
       if (!text.trim()) {
         json(res, 400, { error: 'text required' });
         return true;
@@ -568,16 +727,27 @@ async function handleHttp(req, res, ctx) {
       ensureCrashDir();
       const crashId = require('crypto').randomUUID();
       const fileName = `${crashId}.log`;
+      const createdAt = new Date().toISOString();
       const meta = {
         id: crashId,
         uuid: session.uuid,
         username: db.getUser(session.uuid)?.username || 'Player',
         title,
-        createdAt: new Date().toISOString(),
+        version,
+        createdAt,
         client: session.client,
       };
       fs.writeFileSync(path.join(CRASH_DIR, fileName), text, 'utf8');
       fs.writeFileSync(path.join(CRASH_DIR, `${crashId}.json`), JSON.stringify(meta, null, 2));
+      db.recordCrash({
+        id: crashId,
+        uuid: session.uuid,
+        title,
+        version,
+        client: session.client,
+        fileName,
+        createdAt,
+      });
       json(res, 200, { ok: true, id: crashId, fileName });
       return true;
     }

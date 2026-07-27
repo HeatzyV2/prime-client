@@ -74,7 +74,7 @@ export interface DownloadTask {
   speed: string
   size: string
   eta: string
-  status: 'downloading' | 'paused' | 'completed' | 'queued'
+  status: 'downloading' | 'paused' | 'completed' | 'queued' | 'failed'
 }
 
 export interface HardwareProfile {

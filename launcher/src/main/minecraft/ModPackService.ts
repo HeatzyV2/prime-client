@@ -1,8 +1,6 @@
-import { createWriteStream } from 'fs'
 import { copyFile, mkdir, readdir, readFile, stat, unlink, writeFile } from 'fs/promises'
 import { app } from 'electron'
 import { basename, join } from 'path'
-import { pipeline } from 'stream/promises'
 import {
   fetchLatestGitHubRelease,
   isPrimeModJarAsset,
@@ -18,6 +16,7 @@ import {
 import { getInstanceModsDir, getRepoRoot } from './paths'
 import { emitLaunchProgress } from './launchProgress'
 import type { InstanceLaunchConfig } from './constants'
+import { downloadService } from '../services/DownloadService'
 
 const FABRIC_API_PROJECT = 'P7dR8mSH'
 
@@ -41,11 +40,10 @@ interface JarCandidate {
 }
 
 async function downloadFile(url: string, dest: string): Promise<void> {
-  const response = await fetch(url)
-  if (!response.ok || !response.body) {
-    throw new Error(`Download failed (${response.status}): ${url}`)
-  }
-  await pipeline(response.body as unknown as NodeJS.ReadableStream, createWriteStream(dest))
+  await downloadService.downloadFile({
+    url,
+    destPath: dest
+  })
 }
 
 function modCacheDir(): string {

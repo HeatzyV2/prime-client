@@ -25,7 +25,9 @@ import dev.primeclient.core.modules.performance.MemorySpikeAlertModule;
 import dev.primeclient.core.modules.performance.ParticleOptimizerModule;
 import dev.primeclient.core.modules.performance.PerformanceProfilesModule;
 import dev.primeclient.core.modules.performance.RamCleanerModule;
+import dev.primeclient.core.modules.prime.AiAssistantModule;
 import dev.primeclient.core.modules.prime.ClientBadgeModule;
+import dev.primeclient.core.modules.prime.CustomSkinModule;
 import dev.primeclient.core.modules.prime.SocialHubModule;
 import dev.primeclient.core.modules.prime.DiscordRichPresenceModule;
 import dev.primeclient.core.modules.prime.GameplayDnaModule;
@@ -72,12 +74,15 @@ import dev.primeclient.core.modules.pvp.ReachHudModule;
 import dev.primeclient.core.modules.pvp.ShieldBreakAlertModule;
 import dev.primeclient.core.modules.pvp.ShieldDurabilityModule;
 import dev.primeclient.core.modules.pvp.ShieldStatusModule;
+import dev.primeclient.core.modules.pvp.SpeedHudModule;
 import dev.primeclient.core.modules.pvp.StreakCounterModule;
 import dev.primeclient.core.modules.pvp.TargetHudModule;
+import dev.primeclient.core.modules.pvp.TntTimerModule;
 import dev.primeclient.core.modules.pvp.TotemAlertModule;
 import dev.primeclient.core.modules.pvp.TotemCounterModule;
 import dev.primeclient.core.modules.pvp.WindChargeCooldownModule;
 import dev.primeclient.core.modules.qol.AutoGgModule;
+import dev.primeclient.core.modules.qol.AutoJumpModule;
 import dev.primeclient.core.modules.qol.AutoRespawnModule;
 import dev.primeclient.core.modules.qol.BetterChatModule;
 import dev.primeclient.core.modules.qol.BetterTooltipsModule;
@@ -87,6 +92,7 @@ import dev.primeclient.core.modules.qol.DeathReplayModule;
 import dev.primeclient.core.modules.qol.DeathWaypointModule;
 import dev.primeclient.core.modules.qol.AlwaysDayModule;
 import dev.primeclient.core.modules.qol.FullbrightModule;
+import dev.primeclient.core.modules.qol.HandShaderModule;
 import dev.primeclient.core.modules.qol.LowFireModule;
 import dev.primeclient.core.modules.qol.NoRainModule;
 import dev.primeclient.core.modules.qol.InventorySearchModule;
@@ -95,6 +101,7 @@ import dev.primeclient.core.modules.qol.MentionHighlightModule;
 import dev.primeclient.core.modules.qol.ServerSwitcherModule;
 import dev.primeclient.core.modules.qol.SessionRecapModule;
 import dev.primeclient.core.modules.qol.ShulkerPreviewModule;
+import dev.primeclient.core.modules.qol.TabAnimationModule;
 import dev.primeclient.core.modules.qol.ToggleSneakModule;
 import dev.primeclient.core.modules.qol.ToggleSprintModule;
 import dev.primeclient.core.modules.qol.WaypointsModule;
@@ -102,6 +109,8 @@ import dev.primeclient.core.modules.qol.ZoomModule;
 import dev.primeclient.core.modules.survival.BaseRadiusModule;
 import dev.primeclient.core.modules.survival.BedReminderModule;
 import dev.primeclient.core.modules.survival.CropGrowthHudModule;
+import dev.primeclient.core.modules.survival.DateHudModule;
+import dev.primeclient.core.modules.survival.DayCounterHudModule;
 import dev.primeclient.core.modules.survival.DayTimeModule;
 import dev.primeclient.core.modules.survival.DeathCounterModule;
 import dev.primeclient.core.modules.survival.DepthHudModule;
@@ -146,7 +155,7 @@ final class Modules {
         var themes = client.themes();
         var adapter = client.adapter();
 
-        // PvP (38)
+        // PvP (40)
         modules.register(new KeystrokesModule(hud, themes, adapter));
         modules.register(new CpsCounterModule(hud, themes, adapter));
         modules.register(new FpsCounterModule(hud, themes, adapter));
@@ -165,6 +174,7 @@ final class Modules {
         modules.register(new DamageIndicatorModule(hud, themes, adapter));
         modules.register(new DirectionHudModule(hud, themes, adapter));
         modules.register(new CoordinatesModule(hud, themes, adapter));
+        modules.register(new SpeedHudModule(hud, themes, adapter));
         modules.register(new MaceSmashModule(hud, themes, adapter));
         modules.register(new ShieldStatusModule(hud, themes, adapter));
         modules.register(new ShieldDurabilityModule(hud, themes, adapter));
@@ -187,9 +197,12 @@ final class Modules {
         modules.register(new ElytraStatusModule(hud, themes, adapter));
         modules.register(new HealthAlertModule(adapter, client.notifications()));
         modules.register(new TotemAlertModule(adapter, client.notifications()));
+        modules.register(new TntTimerModule(hud, themes, adapter));
 
-        // Survival (30)
+        // Survival (32)
         modules.register(new DayTimeModule(hud, themes, adapter));
+        modules.register(new DayCounterHudModule(hud, themes, adapter));
+        modules.register(new DateHudModule(hud, themes));
         modules.register(new WeatherHudModule(hud, themes, adapter));
         modules.register(new LightLevelModule(hud, themes, adapter));
         modules.register(new MobSpawnSafeModule(hud, themes, adapter));
@@ -234,12 +247,14 @@ final class Modules {
         modules.register(new FastLoadingModule(adapter));
         modules.register(new PerformanceProfilesModule(adapter));
 
-        // QoL (20)
+        // QoL (23)
         modules.register(new ZoomModule(adapter));
         modules.register(new FullbrightModule(adapter));
         modules.register(new NoRainModule());
         modules.register(new AlwaysDayModule());
         modules.register(new LowFireModule());
+        modules.register(new HandShaderModule());
+        modules.register(new AutoJumpModule(adapter));
         modules.register(new ToggleSprintModule(adapter));
         modules.register(new ToggleSneakModule(adapter));
         modules.register(new AutoRespawnModule(adapter));
@@ -250,6 +265,7 @@ final class Modules {
         modules.register(new ChatTimestampModule());
         modules.register(new BetterChatModule());
         modules.register(new ChatFilterModule());
+        modules.register(new TabAnimationModule());
         modules.register(new ItemCounterModule(hud, themes, adapter));
         modules.register(new ShulkerPreviewModule(hud, themes, adapter));
         modules.register(new BetterTooltipsModule(hud, themes, adapter));
@@ -275,7 +291,7 @@ final class Modules {
         modules.register(new ClipBookmarkModule(client.clipRecorder(), client.replaySession(),
                 client.keybinds(), client.notifications()));
 
-        // Prime (10)
+        // Prime
         modules.register(new PrimeProfilesModule(client.profiles()));
         modules.register(new ModuleBundlesModule(modules, client.notifications()));
         modules.register(new SmartProfileModule(adapter, client.profiles(), client.notifications()));
@@ -284,8 +300,10 @@ final class Modules {
         modules.register(new PrimeConfigCloudModule(client.cloudSync(), client.profiles()));
         modules.register(new PrimeCosmeticsModule(client.cosmetics()));
         modules.register(new PrimeAccountModule(hud, themes, adapter, client.account()));
-        modules.register(new ClientBadgeModule(client.presence()));
+        modules.register(new ClientBadgeModule(client.presence(), client.account()));
         modules.register(new SocialHubModule(client.social()));
+        modules.register(new AiAssistantModule(client.ai()));
+        modules.register(new CustomSkinModule(client.customSkins()));
         modules.register(new DiscordRichPresenceModule(client.discordRpc(), adapter, modules, client.account()));
         modules.register(new VoiceChatModule(client.voiceChat(), hud, themes, adapter,
                 client.notifications(), client.keybinds()));

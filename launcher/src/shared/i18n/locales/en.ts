@@ -7,6 +7,7 @@ export const en = {
     more: 'More',
     dashboard: 'Home',
     accounts: 'Accounts',
+    profile: 'Profile',
     instances: 'Instances',
     skins: 'Skins',
     library: 'Library',
@@ -46,6 +47,7 @@ export const en = {
     add: 'Add',
     manage: 'Manage',
     signIn: 'Sign in',
+    close: 'Close',
     checkNow: 'Check now',
     downloadUpdate: 'Download update',
     automatic: 'Automatic',
@@ -70,6 +72,12 @@ export const en = {
     news: 'News',
     moreNews: 'All news',
     favoriteServers: 'Favorite Servers',
+    friendsActivity: 'Friends activity',
+    noFriendsOnline: 'No friends online',
+    noFriendsOnlineHint: 'Add friends to see their activity here.',
+    friendOnline: 'Online',
+    friendAway: 'Away',
+    friendInGame: 'In game',
     noServers: 'No favorite servers yet.',
     noServersHint: 'Add a server to jump in from Home.',
     addServer: 'Add server',
@@ -227,7 +235,43 @@ export const en = {
       label: 'Developer mode',
       toggle: 'Developer mode'
     },
+    groqKey: {
+      label: 'Groq API key (optional override)',
+      hint: 'Leave empty — everyone uses the shared Prime backend proxy. Local key only for self-host / offline.',
+      placeholder: 'gsk_…',
+      save: 'Save key',
+      clear: 'Clear',
+      statusOk: 'Local override ({masked})',
+      statusMissing: 'Using shared Prime AI (no personal key)',
+      statusProxy: 'Shared Prime AI online',
+      statusDown: 'Shared AI offline — add a local key or retry later'
+    },
     updateNotes: 'v{current} → latest v{latest} — {notes}'
+  },
+  ai: {
+    title: 'Prime Assistant',
+    subtitle: 'Install mods & get advice for your instance',
+    placeholder: 'e.g. Install Sodium, Lithium and Iris…',
+    send: 'Send',
+    thinking: 'Thinking…',
+    install: 'Install',
+    installing: 'Installing…',
+    installed: 'Installed',
+    installFailed: 'Install failed',
+    emptyTitle: 'Ask anything',
+    emptyDesc:
+      'Install mods, get FPS tips, or troubleshoot crashes via latest.log & crash-reports.',
+    needKey: 'Shared AI offline. Retry later, or add a local key (optional).',
+    saveKey: 'Save',
+    keyPlaceholder: 'gsk_… (optional)',
+    instance: 'Instance: {name} ({version})',
+    sourceModrinth: 'Modrinth',
+    sourceCurseforge: 'CurseForge',
+    clearChat: 'Clear chat',
+    errorGeneric: 'Something went wrong',
+    quickDiagnose: 'Diagnose crash',
+    quickLatestLog: 'Read latest.log',
+    quickLauncherLog: 'Launcher log'
   },
   updates: {
     modal: {
@@ -268,6 +312,10 @@ export const en = {
       title: 'Accounts',
       subtitle: 'Active profile, Microsoft & offline accounts.'
     },
+    profile: {
+      title: 'Profile',
+      subtitle: 'Skin, tier, playtime, and friends at a glance.'
+    },
     instances: {
       title: 'Instances',
       subtitle: 'Your Minecraft installs — play, configure, keep it simple.'
@@ -286,7 +334,7 @@ export const en = {
     },
     store: {
       title: 'Prime Store',
-      subtitle: 'Unlock cosmetics and themes with Prime Coins — all local, no payment server.'
+      subtitle: 'Unlock cosmetics and themes with Prime Coins — cloud sync when online.'
     },
     skins: {
       title: 'Skins',
@@ -302,7 +350,7 @@ export const en = {
     },
     servers: {
       title: 'Server Hub',
-      subtitle: 'Favorite servers with live player count, ping, and quick join.'
+      subtitle: 'Banners, live players, ping, and full server info sheets.'
     },
     friends: {
       title: 'Friends',
@@ -403,6 +451,16 @@ export const en = {
       close: 'Close'
     }
   },
+  profile: {
+    memberSince: 'Member since',
+    playtime: 'Playtime',
+    playtimeValue: '{hours}h {minutes}m',
+    accounts: 'Accounts',
+    friends: 'Friends',
+    recentFriends: 'Friends',
+    noFriends: 'No friends yet',
+    noFriendsHint: 'Add friends from the Friends page.'
+  },
   accounts: {
     addAccount: 'Add account',
     activeProfile: 'Active profile',
@@ -438,7 +496,25 @@ export const en = {
     empty: 'No favorite servers yet.',
     joinNeedsAccount: 'Sign in to join a server.',
     added: 'Server added.',
-    addFailed: 'Could not add server.'
+    addFailed: 'Could not add server.',
+    removeFailed: 'Could not remove server.',
+    info: 'Info',
+    partner: 'Partner',
+    online: 'Online',
+    offlineCached: 'Cached',
+    noDescription: 'No description yet.',
+    versionUnknown: 'Unknown version',
+    social: {
+      discord: 'Discord',
+      store: 'Store',
+      website: 'Website',
+      vote: 'Vote',
+      youtube: 'YouTube',
+      tiktok: 'TikTok',
+      instagram: 'Instagram',
+      facebook: 'Facebook',
+      x: 'X'
+    }
   },
   friends: {
     addFriend: 'Add Friend',
@@ -567,6 +643,20 @@ export const en = {
     preview: 'Preview',
     emptyTitle: 'Nothing here',
     emptyDesc: 'Try another category or check back later.',
+    historyEmptyTitle: 'No purchases yet',
+    historyEmptyDesc: 'Unlocked items will appear here.',
+    promoPlaceholder: 'Promo code',
+    redeem: 'Redeem',
+    redeemed: 'Redeemed',
+    promoOk: '+{coins} Prime Coins added.',
+    promoFailed: 'Could not redeem promo.',
+    syncSynced: 'Synced',
+    syncLocal: 'Local',
+    tabs: {
+      catalog: 'Catalog',
+      history: 'History',
+      promos: 'Promos'
+    },
     categories: {
       all: 'All',
       cosmetic: 'Cosmetics',
@@ -607,28 +697,63 @@ export const en = {
     emptyCosmeticsHint: 'Unlock cosmetics in the Store, then equip them here.'
   },
   onboarding: {
-    eyebrow: '60-second setup',
+    eyebrow: 'First-run setup',
+    subtitle: 'A few preferences, then you’re ready to launch.',
     next: 'Continue',
+    back: 'Back',
     finish: 'Let’s play',
     skip: 'Skip for now',
+    browseFolder: 'Choose folder',
+    useDefaultFolder: 'Use default',
+    folderHint: 'Instances and game files will be stored here. Leave the default unless you need a custom drive.',
+    signedIn: 'Ready to launch',
     steps: {
+      language: {
+        short: 'Language',
+        title: 'Choose your language',
+        body: 'English or Français — you can change this later in Settings.'
+      },
+      theme: {
+        short: 'Theme',
+        title: 'Pick a look',
+        body: 'Applies to the launcher and syncs into your Prime game profile.'
+      },
+      ram: {
+        short: 'RAM',
+        title: 'Default memory',
+        body: 'How much RAM new instances get by default. You can override per instance.'
+      },
+      folder: {
+        short: 'Folder',
+        title: 'Instances folder',
+        body: 'Where Prime stores Minecraft instances on disk.'
+      },
       account: {
-        title: 'Add your account',
-        body: 'Sign in with Microsoft or create an offline profile to launch.'
-      },
-      instance: {
-        title: 'Pick an instance',
-        body: 'Prime Client ships ready for 1.21.11 and 26.2 — choose one on Home.'
-      },
-      skin: {
-        title: 'Customize your look',
-        body: 'Import a PNG skin or browse capes in the Skins hub.'
-      },
-      play: {
-        title: 'Hit Play',
-        body: 'Account, instance and optional server — one Play button on Home.'
+        short: 'Account',
+        title: 'Sign in',
+        body: 'Microsoft login is recommended. Offline profiles work for local play.'
       }
     }
+  },
+  import: {
+    title: 'Import instances',
+    subtitle: 'Detect installs from other launchers and copy mods, packs, screenshots, and options.',
+    scanning: 'Scanning common launcher folders…',
+    foundCount: '{count} found',
+    notFound: 'Not detected',
+    selectInstances: 'Select instances to import',
+    selectAll: 'Select all',
+    deselectAll: 'Deselect all',
+    loadingInstances: 'Loading instances…',
+    emptySource: 'No instances found for this launcher.',
+    importing: 'Importing…',
+    importSelected: 'Import ({count})',
+    success: 'Imported {count} instance(s).',
+    errorDetect: 'Could not scan for other launchers.',
+    errorList: 'Could not list instances.',
+    errorImport: 'Import failed.',
+    tagMods: 'mods',
+    tagPacks: 'resource packs'
   },
   social: {
     title: 'Friends',
@@ -649,6 +774,7 @@ export const en = {
     primeClient: 'Prime Client',
     primeBadge: 'Prime',
     newInstance: 'New instance',
+    import: 'Import',
     createPrime26: 'Prime 26.2',
     createPrime121: 'Prime 1.21.11',
     play: 'Play',
@@ -691,6 +817,7 @@ export const en = {
     openReport: 'Open crash report',
     openLogs: 'Open logs',
     sendReport: 'Send to Prime',
+    askAi: 'Ask AI',
     dismiss: 'Dismiss',
     fix: {
       blurOnce:

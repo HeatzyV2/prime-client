@@ -592,6 +592,78 @@ public final class VersionAdapter implements MinecraftAdapter {
     }
 
     @Override
+    public long worldDayNumber() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) {
+            return 0L;
+        }
+        return mc.level.getLevelData().getDayTime() / 24000L;
+    }
+
+    @Override
+    public double playerHorizontalSpeed() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return 0;
+        }
+        var velocity = player.getDeltaMovement();
+        return Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z) * 20.0;
+    }
+
+    @Override
+    public boolean autoJump() {
+        return Boolean.TRUE.equals(Minecraft.getInstance().options.autoJump().get());
+    }
+
+    @Override
+    public void setAutoJump(boolean enabled) {
+        Minecraft.getInstance().options.autoJump().set(enabled);
+    }
+
+    @Override
+    public float nearestPrimedTntFuseSeconds() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) {
+            return -1f;
+        }
+        float best = -1f;
+        double maxDistSq = 32.0 * 32.0;
+        for (var entity : mc.level.entitiesForRendering()) {
+            if (!(entity instanceof net.minecraft.world.entity.item.PrimedTnt tnt)) {
+                continue;
+            }
+            double distSq = tnt.distanceToSqr(mc.player);
+            if (distSq > maxDistSq) {
+                continue;
+            }
+            float fuse = tnt.getFuse() / 20f;
+            if (best < 0f || fuse < best) {
+                best = fuse;
+            }
+        }
+        return best;
+    }
+
+    @Override
+    public int nearbyPrimedTntCount() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) {
+            return 0;
+        }
+        int count = 0;
+        double maxDistSq = 32.0 * 32.0;
+        for (var entity : mc.level.entitiesForRendering()) {
+            if (!(entity instanceof net.minecraft.world.entity.item.PrimedTnt tnt)) {
+                continue;
+            }
+            if (tnt.distanceToSqr(mc.player) <= maxDistSq) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @Override
     public boolean worldRaining() {
         Minecraft mc = Minecraft.getInstance();
         return mc.level != null && mc.level.getLevelData().isRaining();

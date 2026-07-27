@@ -2,6 +2,7 @@ package dev.primeclient.core;
 
 import dev.primeclient.core.account.PrimeAccountService;
 import dev.primeclient.core.adapter.MinecraftAdapter;
+import dev.primeclient.core.ai.AiAssistantService;
 import dev.primeclient.core.cloud.CloudSyncManager;
 import dev.primeclient.core.cloud.LocalCloudClient;
 import dev.primeclient.core.config.ConfigManager;
@@ -35,6 +36,7 @@ import dev.primeclient.core.notification.NotificationManager;
 import dev.primeclient.core.notification.NotificationPreferences;
 import dev.primeclient.core.presence.PrimePresenceService;
 import dev.primeclient.core.serverapi.ServerApiService;
+import dev.primeclient.core.skin.CustomSkinService;
 import dev.primeclient.core.social.SocialService;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.replay.ReplaySession;
@@ -87,6 +89,8 @@ public final class PrimeClient {
     private final PrimePresenceService presence;
     private final SocialService social;
     private final ServerApiService serverApi;
+    private final AiAssistantService ai;
+    private final CustomSkinService customSkins;
 
     private boolean debutSession;
     private int debutTicks;
@@ -121,12 +125,15 @@ public final class PrimeClient {
         this.serverApi = new ServerApiService(adapter, notifications, social);
 
         Path modRoot = adapter.configDirectory().resolve(MOD_ID);
+        this.ai = new AiAssistantService(adapter, modules, modRoot, () -> social.settings().apiBase());
+        this.customSkins = new CustomSkinService(adapter, modRoot);
         LocalCloudClient localCloud = new LocalCloudClient(modRoot.resolve("cloud"));
         this.cloudSync = new CloudSyncManager(localCloud, configManager, notifications);
         this.replayStorage = new ReplayStorage(modRoot);
         this.clipStorage = new ClipStorage(modRoot);
         this.clipRecorder = new ClipRecorder(clipStorage, notifications);
         this.profiles = new ProfileManager(configManager, modRoot);
+        this.hudEditor.setAutosaveHandler(profiles::saveActive);
         this.clickGui = new ClickGui(modules, themes, favorites, adapter, onboarding,
                 cloudSync, cosmetics, profiles, keybinds, tooltips);
         this.clickGui.setOnboardingCompleteHandler(() -> OnboardingFlow.applyChoices(this));
@@ -182,6 +189,14 @@ public final class PrimeClient {
         var socialHub = client.modules.get("social-hub");
         if (socialHub != null && !socialHub.isEnabled()) {
             socialHub.setEnabled(true);
+        }
+        var aiAssistant = client.modules.get("ai-assistant");
+        if (aiAssistant != null && !aiAssistant.isEnabled()) {
+            aiAssistant.setEnabled(true);
+        }
+        var customSkin = client.modules.get("custom-skin");
+        if (customSkin != null && !customSkin.isEnabled()) {
+            customSkin.setEnabled(true);
         }
         client.loadingOverlay.setStage(PrimeLang.get("prime.gui.loading.ready", "Prime Client ready"), 1f);
         LOGGER.info("{} v{} bootstrapped (Minecraft {}, {} modules, profile '{}'{})",
@@ -303,4 +318,6 @@ public final class PrimeClient {
     public PrimePresenceService presence() { return presence; }
     public SocialService social() { return social; }
     public ServerApiService serverApi() { return serverApi; }
+    public AiAssistantService ai() { return ai; }
+    public CustomSkinService customSkins() { return customSkins; }
 }

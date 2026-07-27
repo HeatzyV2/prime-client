@@ -56,6 +56,8 @@ instances.json
 ecosystem.json
 settings.json
 downloads.json
+**/secrets.json
+secrets.json
 
 backend/.zip
 *.zip

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Play, UserCog, Box, Shirt, ChevronRight, Globe } from 'lucide-react'
+import { Play, UserCog, Box, Shirt, ChevronRight, Globe, Users } from 'lucide-react'
 import { Badge, Button, Select } from '@renderer/design-system/components'
 import { useAccounts } from '@renderer/context/AccountProvider'
 import { useI18n } from '@renderer/context/I18nProvider'
@@ -13,6 +13,7 @@ import { EmptyState } from '@renderer/components/EmptyState'
 import type { UpdateStatusDto } from '@shared/ipc'
 import { formatLoader, formatTier, playerCapeUrl } from '@shared/format'
 import type { FavoriteServer, GameInstance, NewsItem } from '@shared/types'
+import type { FriendEntry } from '@shared/content-types'
 import { SkinViewer3D } from '@renderer/components/SkinViewer3D'
 import { playUiSound } from '@renderer/lib/uiSounds'
 import './DashboardPage.css'
@@ -45,6 +46,11 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
   const [crashDismissed, setCrashDismissed] = useState(false)
   const [updateStatus, setUpdateStatus] = useState<UpdateStatusDto | null>(null)
   const [showUpdate, setShowUpdate] = useState(false)
+  const [friends, setFriends] = useState<FriendEntry[]>([])
+
+  useEffect(() => {
+    void window.primeLauncher.friends.list().then(setFriends).catch(() => setFriends([]))
+  }, [])
 
   useEffect(() => {
     void (async () => {
@@ -162,6 +168,9 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
 
   const topNews = news.slice(0, 3)
   const topServers = servers.slice(0, 4)
+  const activeFriends = friends
+    .filter((f) => f.status === 'online' || f.status === 'in-game' || f.status === 'away')
+    .slice(0, 5)
   const preparing =
     launching ||
     (launchProgress != null &&
@@ -326,7 +335,7 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
                 <Shirt size={15} />
                 {t('nav.skins')}
               </Link>
-              <Link to="/accounts" className="home__link">
+              <Link to="/profile" className="home__link">
                 <UserCog size={15} />
                 {t('dashboard.profile')}
               </Link>
@@ -375,6 +384,49 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
                   >
                     {gameRunning ? t('dashboard.launchStatus.inGame') : t('common.join')}
                   </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="home__panel">
+          <div className="home__panel-head">
+            <h2>{t('dashboard.friendsActivity')}</h2>
+            <Link to="/friends" className="home__panel-more">
+              <ChevronRight size={16} />
+            </Link>
+          </div>
+          {activeFriends.length === 0 ? (
+            <EmptyState
+              icon={<Users size={20} />}
+              title={t('dashboard.noFriendsOnline')}
+              description={t('dashboard.noFriendsOnlineHint')}
+              action={
+                <Link to="/friends">
+                  <Button variant="secondary" size="sm">
+                    {t('nav.friends')}
+                  </Button>
+                </Link>
+              }
+            />
+          ) : (
+            <ul className="home__list">
+              {activeFriends.map((f) => (
+                <li key={f.id} className="home__row">
+                  <div className="home__row-icon">
+                    <Users size={16} />
+                  </div>
+                  <div className="home__row-text">
+                    <strong>{f.username}</strong>
+                    <span>
+                      {f.status === 'in-game'
+                        ? f.serverAddress || f.activity || t('dashboard.friendInGame')
+                        : f.status === 'away'
+                          ? t('dashboard.friendAway')
+                          : t('dashboard.friendOnline')}
+                    </span>
+                  </div>
                 </li>
               ))}
             </ul>

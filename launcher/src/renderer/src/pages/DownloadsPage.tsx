@@ -9,7 +9,8 @@ const STATUS_VARIANT: Record<string, 'default' | 'red' | 'success' | 'prime'> = 
   downloading: 'red',
   paused: 'default',
   completed: 'success',
-  queued: 'default'
+  queued: 'default',
+  failed: 'red'
 }
 
 export function DownloadsPage() {

@@ -9,11 +9,13 @@ import {
   Trash2,
   Star,
   Settings2,
-  ChevronDown
+  ChevronDown,
+  Import
 } from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button } from '@renderer/design-system/components'
 import { InstanceModal, type InstancePreset } from '@renderer/components/InstanceModal'
+import { ImportInstancesModal } from '@renderer/components/ImportInstancesModal'
 import { LoginModal } from '@renderer/components/LoginModal'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { Skeleton } from '@renderer/components/Skeleton'
@@ -43,6 +45,7 @@ export function InstancesPage() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalState | null>(null)
   const [showLogin, setShowLogin] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const createRef = useRef<HTMLDivElement>(null)
@@ -123,35 +126,44 @@ export function InstancesPage() {
       title={t('pages.instances.title')}
       subtitle={t('pages.instances.subtitle')}
       actions={
-        <div className="instances__create" ref={createRef}>
+        <div className="instances__actions-bar">
           <Button
-            variant="primary"
-            icon={<Plus size={16} />}
-            onClick={() => setCreateOpen((v) => !v)}
+            variant="secondary"
+            icon={<Import size={16} />}
+            onClick={() => setShowImport(true)}
           >
-            {t('instances.newInstance')}
-            <ChevronDown size={14} />
+            {t('instances.import')}
           </Button>
-          {createOpen && (
-            <div className="instances__create-menu">
-              <button type="button" onClick={() => openCreate('prime', '26.2')}>
-                <strong>{t('instances.createPrime26')}</strong>
-                <span>Minecraft 26.2 · Prime</span>
-              </button>
-              <button type="button" onClick={() => openCreate('prime', '1.21.11')}>
-                <strong>{t('instances.createPrime121')}</strong>
-                <span>Minecraft 1.21.11 · Prime</span>
-              </button>
-              <button type="button" onClick={() => openCreate('fabric', '26.2')}>
-                <strong>{t('instances.fabric')}</strong>
-                <span>Minecraft 26.2 · Fabric</span>
-              </button>
-              <button type="button" onClick={() => openCreate('vanilla', '26.2')}>
-                <strong>{t('instances.vanilla')}</strong>
-                <span>Minecraft 26.2 · Vanilla</span>
-              </button>
-            </div>
-          )}
+          <div className="instances__create" ref={createRef}>
+            <Button
+              variant="primary"
+              icon={<Plus size={16} />}
+              onClick={() => setCreateOpen((v) => !v)}
+            >
+              {t('instances.newInstance')}
+              <ChevronDown size={14} />
+            </Button>
+            {createOpen && (
+              <div className="instances__create-menu">
+                <button type="button" onClick={() => openCreate('prime', '26.2')}>
+                  <strong>{t('instances.createPrime26')}</strong>
+                  <span>Minecraft 26.2 · Prime</span>
+                </button>
+                <button type="button" onClick={() => openCreate('prime', '1.21.11')}>
+                  <strong>{t('instances.createPrime121')}</strong>
+                  <span>Minecraft 1.21.11 · Prime</span>
+                </button>
+                <button type="button" onClick={() => openCreate('fabric', '26.2')}>
+                  <strong>{t('instances.fabric')}</strong>
+                  <span>Minecraft 26.2 · Fabric</span>
+                </button>
+                <button type="button" onClick={() => openCreate('vanilla', '26.2')}>
+                  <strong>{t('instances.vanilla')}</strong>
+                  <span>Minecraft 26.2 · Vanilla</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       }
     >
@@ -278,6 +290,12 @@ export function InstancesPage() {
           />
         )}
         {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+        {showImport && (
+          <ImportInstancesModal
+            onClose={() => setShowImport(false)}
+            onImported={() => void refresh()}
+          />
+        )}
       </AnimatePresence>
     </PageShell>
   )

@@ -71,7 +71,21 @@ const api = {
       ipcRenderer.invoke(IPC.INSTANCE_DELETE, id, deleteFiles),
     duplicate: (id: string) => ipcRenderer.invoke(IPC.INSTANCE_DUPLICATE, id),
     setDefault: (id: string) => ipcRenderer.invoke(IPC.INSTANCE_SET_DEFAULT, id),
-    openFolder: (id: string) => ipcRenderer.invoke(IPC.INSTANCE_OPEN_FOLDER, id)
+    openFolder: (id: string) => ipcRenderer.invoke(IPC.INSTANCE_OPEN_FOLDER, id),
+    importDetect: () =>
+      ipcRenderer.invoke(IPC.INSTANCE_IMPORT_DETECT) as Promise<
+        import('../shared/ipc').DetectedImportLauncherDto[]
+      >,
+    importList: (source: import('../shared/ipc').ImportLauncherId) =>
+      ipcRenderer.invoke(IPC.INSTANCE_IMPORT_LIST, source) as Promise<
+        import('../shared/ipc').DetectedImportInstanceDto[]
+      >,
+    importRun: (source: import('../shared/ipc').ImportLauncherId, instanceIds: string[]) =>
+      ipcRenderer.invoke(IPC.INSTANCE_IMPORT_RUN, source, instanceIds) as Promise<{
+        ok: boolean
+        imported: import('../shared/ipc').ImportInstanceResultDto[]
+        error?: string
+      }>
   },
   minecraft: {
     getInstances: () => ipcRenderer.invoke('minecraft:get-instances'),
@@ -168,7 +182,11 @@ const api = {
   store: {
     catalog: () => ipcRenderer.invoke(IPC.STORE_CATALOG),
     balance: () => ipcRenderer.invoke(IPC.STORE_BALANCE),
-    purchase: (itemId: string) => ipcRenderer.invoke(IPC.STORE_PURCHASE, itemId)
+    purchase: (itemId: string) => ipcRenderer.invoke(IPC.STORE_PURCHASE, itemId),
+    history: () => ipcRenderer.invoke(IPC.STORE_HISTORY),
+    promos: () => ipcRenderer.invoke(IPC.STORE_PROMOS),
+    redeem: (code: string) => ipcRenderer.invoke(IPC.STORE_REDEEM, code),
+    syncMode: () => ipcRenderer.invoke(IPC.STORE_SYNC_MODE) as Promise<'synced' | 'local'>
   },
   cosmetic: {
     list: () => ipcRenderer.invoke(IPC.COSMETIC_LIST),
@@ -255,7 +273,13 @@ const api = {
     addJavaPath: (javaPath: string) => ipcRenderer.invoke(IPC.SETTINGS_JAVA_ADD, javaPath),
     browseWallpaper: () => ipcRenderer.invoke(IPC.SETTINGS_WALLPAPER_BROWSE),
     clearWallpaper: () => ipcRenderer.invoke(IPC.SETTINGS_WALLPAPER_CLEAR),
-    wallpaperData: () => ipcRenderer.invoke(IPC.SETTINGS_WALLPAPER_DATA)
+    wallpaperData: () => ipcRenderer.invoke(IPC.SETTINGS_WALLPAPER_DATA),
+    browseInstancesRoot: () =>
+      ipcRenderer.invoke(IPC.SETTINGS_BROWSE_INSTANCES_ROOT) as Promise<{
+        ok: boolean
+        path?: string
+        error?: string
+      }>
   },
   update: {
     check: (force?: boolean) => ipcRenderer.invoke(IPC.UPDATE_CHECK, force),
@@ -271,6 +295,60 @@ const api = {
       ipcRenderer.on(IPC.UPDATE_PROGRESS, handler)
       return () => ipcRenderer.removeListener(IPC.UPDATE_PROGRESS, handler)
     }
+  },
+  ai: {
+    keyStatus: () => ipcRenderer.invoke(IPC.AI_KEY_STATUS) as Promise<{
+      hasKey: boolean
+      maskedKey: string | null
+      viaProxy: boolean
+    }>,
+    hasKey: () => ipcRenderer.invoke(IPC.AI_HAS_KEY) as Promise<boolean>,
+    setKey: (key: string) =>
+      ipcRenderer.invoke(IPC.AI_SET_KEY, key) as Promise<{
+        hasKey: boolean
+        maskedKey: string | null
+        viaProxy: boolean
+      }>,
+    clearKey: () =>
+      ipcRenderer.invoke(IPC.AI_CLEAR_KEY) as Promise<{
+        hasKey: boolean
+        maskedKey: string | null
+        viaProxy: boolean
+      }>,
+    chat: (payload: {
+      message: string
+      instanceId?: string
+      history?: Array<{ role: 'user' | 'assistant'; content: string }>
+    }) =>
+      ipcRenderer.invoke(IPC.AI_CHAT, payload) as Promise<{
+        ok: boolean
+        reply: string
+        proposals: Array<{
+          projectId: string
+          title: string
+          source: 'modrinth' | 'curseforge'
+          type: 'mod' | 'resourcepack' | 'shader'
+          description?: string
+          downloads?: number
+          iconUrl?: string
+          slug?: string
+        }>
+        error?: string
+        hasKey: boolean
+      }>,
+    confirmInstall: (payload: {
+      projectId: string
+      title: string
+      source: 'modrinth' | 'curseforge'
+      type: 'mod' | 'resourcepack' | 'shader'
+      instanceId?: string
+      versionId?: string
+    }) =>
+      ipcRenderer.invoke(IPC.AI_CONFIRM_INSTALL, payload) as Promise<{
+        ok: boolean
+        error?: string
+        fileName?: string
+      }>
   }
 }
 

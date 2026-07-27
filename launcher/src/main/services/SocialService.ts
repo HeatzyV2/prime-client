@@ -236,6 +236,11 @@ export class SocialService {
     return res
   }
 
+  /** Authenticated HTTP against the Prime API (same Bearer session as friends/social). */
+  async apiFetch(path: string, init?: RequestInit): Promise<Response> {
+    return this.fetchAuthed(path, init)
+  }
+
   async listFriends(): Promise<FriendEntry[]> {
     const res = await this.fetchAuthed('/v1/friends')
     if (!res.ok) throw new Error('Failed to load friends')

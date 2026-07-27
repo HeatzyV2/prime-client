@@ -1,9 +1,19 @@
 import { settingsStore } from '../storage/SettingsStore'
 
-/** Limits parallel Modrinth / file downloads based on settings.concurrentDownloads. */
+/** Limits parallel file downloads based on settings.concurrentDownloads. */
 class DownloadQueue {
   private active = 0
   private waiters: Array<() => void> = []
+
+  /** Current in-flight download slots (for diagnostics). */
+  get activeCount(): number {
+    return this.active
+  }
+
+  /** Waiting callers blocked on concurrency. */
+  get pendingCount(): number {
+    return this.waiters.length
+  }
 
   private async acquire(): Promise<void> {
     const settings = await settingsStore.load()

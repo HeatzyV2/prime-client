@@ -1,5 +1,4 @@
-import { writeFile } from 'fs/promises'
-import { downloadQueue } from '../utils/DownloadQueue'
+import { downloadService, formatBytes, type DownloadIntegrity } from '../services/DownloadService'
 
 const MODRINTH_API = 'https://api.modrinth.com/v2'
 
@@ -24,6 +23,11 @@ export interface ModrinthVersionFile {
   url: string
   filename: string
   primary: boolean
+  hashes?: {
+    sha1?: string
+    sha512?: string
+    sha256?: string
+  }
 }
 
 export interface ModrinthVersion {
@@ -59,7 +63,7 @@ export async function searchModrinth(
   }
 
   const data = (await response.json()) as ModrinthSearchResult
-  return data.hits
+  return Array.isArray(data.hits) ? data.hits : []
 }
 
 export async function listModrinthVersions(
@@ -103,42 +107,41 @@ export async function getModrinthVersion(
   return version
 }
 
+function integrityFromModrinthFile(file: ModrinthVersionFile): DownloadIntegrity | undefined {
+  if (file.hashes?.sha256) {
+    return { algorithm: 'sha256', hash: file.hashes.sha256 }
+  }
+  if (file.hashes?.sha512) {
+    return { algorithm: 'sha512', hash: file.hashes.sha512 }
+  }
+  if (file.hashes?.sha1) {
+    return { algorithm: 'sha1', hash: file.hashes.sha1 }
+  }
+  return undefined
+}
+
 export async function downloadModrinthFile(
   url: string,
   destPath: string,
-  onProgress?: (percent: number, speed: string) => void
+  onProgress?: (percent: number, speed: string) => void,
+  integrity?: DownloadIntegrity
 ): Promise<void> {
-  await downloadQueue.run(async () => {
-    const response = await fetch(url)
-    if (!response.ok || !response.body) {
-      throw new Error(`Download failed (${response.status}).`)
-    }
-
-    const total = Number(response.headers.get('content-length') || 0)
-    const reader = response.body.getReader()
-    const chunks: Uint8Array[] = []
-    let received = 0
-    const start = Date.now()
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) {
-        break
+  await downloadService.downloadFile({
+    url,
+    destPath,
+    integrity,
+    onProgress: (percent, speed, meta) => {
+      if (!onProgress) {
+        return
       }
-      if (value) {
-        chunks.push(value)
-        received += value.length
-        if (total > 0 && onProgress) {
-          const elapsed = Math.max(1, Date.now() - start) / 1000
-          const speed = `${(received / elapsed / 1024).toFixed(1)} KB/s`
-          onProgress(Math.round((received / total) * 100), speed)
-        }
+      if (meta.total > 0) {
+        const elapsedHint = meta.received > 0 ? speed : '—'
+        onProgress(percent, `${elapsedHint} · ${formatBytes(meta.received)} / ${formatBytes(meta.total)}`)
+      } else {
+        onProgress(percent, speed)
       }
     }
-
-    const buffer = Buffer.concat(chunks)
-    const { writeFile } = await import('fs/promises')
-    await writeFile(destPath, buffer)
-    onProgress?.(100, 'Done')
   })
 }
+
+export { integrityFromModrinthFile }

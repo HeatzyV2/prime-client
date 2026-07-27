@@ -72,10 +72,50 @@ public final class HudEditor {
     private LayoutSnapshot pendingSnapshot;
     private long lastCoalescedSnapshotMs;
 
+    private Runnable autosaveHandler = () -> {};
+    private boolean layoutDirty;
+    private long layoutDirtyAtMs;
+    private static final long AUTOSAVE_DEBOUNCE_MS = 750;
+
     public HudEditor(HudManager hud, ThemeManager themes) {
         this.hud = hud;
         this.themes = themes;
         this.ui = new HudEditorUi(this);
+    }
+
+    /** Invoked after debounced layout changes (profile save). */
+    public void setAutosaveHandler(Runnable handler) {
+        this.autosaveHandler = handler != null ? handler : () -> {};
+    }
+
+    /**
+     * Flushes a pending autosave when the debounce window elapsed.
+     * Call once per frame from the HUD editor screen.
+     */
+    public void tickAutosave() {
+        if (!layoutDirty) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - layoutDirtyAtMs < AUTOSAVE_DEBOUNCE_MS) {
+            return;
+        }
+        layoutDirty = false;
+        autosaveHandler.run();
+    }
+
+    /** Forces any pending debounced save immediately (e.g. on screen close). */
+    public void flushAutosave() {
+        if (!layoutDirty) {
+            return;
+        }
+        layoutDirty = false;
+        autosaveHandler.run();
+    }
+
+    private void markLayoutDirty() {
+        layoutDirty = true;
+        layoutDirtyAtMs = System.currentTimeMillis();
     }
 
     public HudElement selected() {
@@ -473,11 +513,13 @@ public final class HudEditor {
             commit(pendingSnapshot);
             pendingSnapshot = null;
         }
+        markLayoutDirty();
     }
 
     /** Immediate snapshot for one-shot operations (buttons, key toggles). */
     void snapshotNow() {
         commit(LayoutSnapshot.capture(hud));
+        markLayoutDirty();
     }
 
     /** Snapshot for rapid repeated inputs (scroll, held arrow keys): one entry per burst. */
@@ -485,6 +527,8 @@ public final class HudEditor {
         long now = System.currentTimeMillis();
         if (now - lastCoalescedSnapshotMs > SNAPSHOT_COALESCE_MS) {
             snapshotNow();
+        } else {
+            markLayoutDirty();
         }
         lastCoalescedSnapshotMs = now;
     }
@@ -512,6 +556,7 @@ public final class HudEditor {
         }
         redoStack.addLast(LayoutSnapshot.capture(hud));
         snapshot.restore();
+        markLayoutDirty();
         return true;
     }
 
@@ -522,6 +567,7 @@ public final class HudEditor {
         }
         undoStack.addLast(LayoutSnapshot.capture(hud));
         snapshot.restore();
+        markLayoutDirty();
         return true;
     }
 

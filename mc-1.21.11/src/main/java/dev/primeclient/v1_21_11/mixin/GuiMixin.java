@@ -25,6 +25,21 @@ public abstract class GuiMixin {
         }
     }
 
+    @Inject(method = "render", at = @At("RETURN"))
+    private void primeclient$handShaderWash(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (!PrimeHooks.handShaderActive()) {
+            return;
+        }
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.options.getCameraType().isFirstPerson()) {
+            int w = minecraft.getWindow().getGuiScaledWidth();
+            int h = minecraft.getWindow().getGuiScaledHeight();
+            int color = PrimeHooks.handShaderOverlayArgb();
+            // Soft wash over the lower HUD where first-person hands sit.
+            graphics.fill(0, (int) (h * 0.62f), w, h, color);
+        }
+    }
+
     @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
     private void primeclient$hideVanillaCrosshair(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
         if (PrimeHooks.hideVanillaCrosshair()) {

@@ -1,5 +1,6 @@
-import { mkdir, readFile, writeFile } from 'fs/promises'
+import { mkdir, readFile, writeFile, copyFile, unlink } from 'fs/promises'
 import { join, dirname } from 'path'
+import { app } from 'electron'
 import { getInstanceGameDir } from '../minecraft/paths'
 import { ecosystemStore } from '../storage/EcosystemStore'
 import { settingsStore } from '../storage/SettingsStore'
@@ -17,6 +18,15 @@ const MOD_COSMETIC_MAP: Record<string, { slot: string; modId: string }> = {
   'wings-aurora': { slot: 'WINGS', modId: 'wings-aurora' }
 }
 
+interface SkinManifest {
+  version: 1
+  skins: Array<{ id: string; name: string; fileName: string; createdAt: string }>
+}
+
+function launcherSkinsDir(): string {
+  return join(app.getPath('userData'), 'skins')
+}
+
 /**
  * Writes launcher state into the instance game dir so Prime Client mod picks it up
  * on next launch (`config/primeclient/profiles/default.json`).
@@ -25,7 +35,10 @@ export class LauncherBridgeService {
   async syncToInstance(instanceId: string): Promise<{ ok: boolean; error?: string }> {
     try {
       const [db, settings] = await Promise.all([ecosystemStore.load(), settingsStore.load()])
-      const profilePath = join(getInstanceGameDir(instanceId), 'config', 'primeclient', 'profiles', 'default.json')
+      const gameDir = getInstanceGameDir(instanceId)
+      const primeDir = join(gameDir, 'config', 'primeclient')
+      const profilePath = join(primeDir, 'profiles', 'default.json')
+      const customSkinPath = join(primeDir, 'custom_skin.png')
 
       let root: Record<string, unknown> = {}
       try {
@@ -49,16 +62,39 @@ export class LauncherBridgeService {
       let modules = (root.modules as Record<string, Record<string, unknown>> | undefined) ?? {}
       modules = { ...modules }
       modules['discord-rpc'] = { ...(modules['discord-rpc'] ?? {}), enabled: settings.discordRpc }
+      modules['custom-skin'] = { ...(modules['custom-skin'] ?? {}), enabled: true }
       modules = applyPerfPresetToModules(modules, settings.performancePreset as PerformancePreset)
       root.modules = modules
 
       await mkdir(dirname(profilePath), { recursive: true })
       await writeFile(profilePath, JSON.stringify(root, null, 2), 'utf8')
 
+      await this.syncActiveSkin(customSkinPath, settings.activeSkinId ?? null)
+
       return { ok: true }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Bridge sync failed.'
       return { ok: false, error: message }
+    }
+  }
+
+  private async syncActiveSkin(destPath: string, activeSkinId: string | null): Promise<void> {
+    await mkdir(dirname(destPath), { recursive: true })
+    if (!activeSkinId) {
+      await unlink(destPath).catch(() => undefined)
+      return
+    }
+    try {
+      const raw = await readFile(join(launcherSkinsDir(), 'manifest.json'), 'utf8')
+      const manifest = JSON.parse(raw) as SkinManifest
+      const entry = manifest.skins.find((s) => s.id === activeSkinId)
+      if (!entry) {
+        await unlink(destPath).catch(() => undefined)
+        return
+      }
+      await copyFile(join(launcherSkinsDir(), entry.fileName), destPath)
+    } catch {
+      await unlink(destPath).catch(() => undefined)
     }
   }
 }

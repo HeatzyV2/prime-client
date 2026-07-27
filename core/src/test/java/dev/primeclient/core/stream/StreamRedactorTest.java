@@ -63,6 +63,15 @@ class StreamRedactorTest {
     }
 
     @Test
+    void redactsGroqApiKeysEvenWithoutPrivacyToggles() {
+        StreamerPrivacyState.reset();
+        String key = "gsk_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH";
+        String result = StreamRedactor.redact("/ai setkey " + key);
+        assertFalse(result.contains(key));
+        assertTrue(result.contains("[hidden]"));
+    }
+
+    @Test
     void redactComponentMatchesRedact() {
         String input = "Teleport to [10, 64, -20]";
         assertEquals(StreamRedactor.redact(input), StreamRedactor.redactComponent(input));

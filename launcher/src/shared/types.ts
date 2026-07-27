@@ -52,13 +52,43 @@ export interface NewsItem {
   tag: 'update' | 'event' | 'announcement' | 'launcher'
 }
 
+/** Optional social / marketing links shown on the server info sheet. */
+export interface ServerSocialLinks {
+  discord?: string
+  store?: string
+  website?: string
+  vote?: string
+  youtube?: string
+  tiktok?: string
+  instagram?: string
+  facebook?: string
+  x?: string
+}
+
 export interface FavoriteServer {
   id: string
   name: string
   address: string
+  /** Live / last-known player counts — kept when a refresh fails to avoid Offline flicker. */
   players?: number
   maxPlayers?: number
   ping?: number
+  online?: boolean
+  version?: string
+  description?: string
+  /** Short blurb from catalog or MOTD. */
+  motd?: string
+  /** Full description for the info sheet. */
+  fullDescription?: string
+  /** Server list icon (data URI or https). */
+  iconUrl?: string
+  /** Wide banner for cards / info sheet. */
+  bannerUrl?: string
+  social?: ServerSocialLinks
+  /** Epoch ms of last successful online probe. */
+  lastOnlineAt?: number
+  /** True when this entry was seeded from the partner catalog. */
+  partner?: boolean
 }
 
 export interface BootStep {
@@ -76,6 +106,7 @@ export const BOOT_STEPS: BootStep[] = [
 export type NavSection =
   | 'dashboard'
   | 'accounts'
+  | 'profile'
   | 'instances'
   | 'skins'
   | 'library'
@@ -113,6 +144,7 @@ export const PRIMARY_NAV: NavSection[] = [
 
 /** Overflow / “More” destinations — still routed, just not on the main rail. */
 export const SECONDARY_NAV: NavSection[] = [
+  'profile',
   'accounts',
   'chat',
   'media',
@@ -131,6 +163,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'library', label: 'Library', phase: 3 },
   { id: 'servers', label: 'Servers', phase: 3 },
   { id: 'friends', label: 'Friends', phase: 3 },
+  { id: 'profile', label: 'Profile', phase: 3 },
   { id: 'accounts', label: 'Accounts', phase: 3 },
   { id: 'mods', label: 'Mods', phase: 3 },
   { id: 'resources', label: 'Resource Packs', phase: 3 },

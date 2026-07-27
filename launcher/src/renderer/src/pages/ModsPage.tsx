@@ -143,6 +143,7 @@ export function ModsPage() {
       <AnimatePresence>
         {showBrowse && (
           <ContentBrowseModal
+            key="content-browse-mod"
             type="mod"
             instanceId={instanceId}
             onClose={() => setShowBrowse(false)}

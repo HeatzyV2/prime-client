@@ -34,6 +34,8 @@ public final class StreamRedactor {
             Pattern.compile("(?i)(?:seed|world\\s+seed)\\s*[:=]\\s*\\S+");
     private static final Pattern WHISPER =
             Pattern.compile("(?i)(?:whispers?|msg|tell)\\s+(?:to\\s+)?\\S+\\s*:\\s*.+");
+    private static final Pattern GROQ_KEY =
+            Pattern.compile("\\bgsk_[A-Za-z0-9]{20,}\\b");
 
     private StreamRedactor() {
     }
@@ -43,6 +45,7 @@ public final class StreamRedactor {
             return input;
         }
         String out = input;
+        out = GROQ_KEY.matcher(out).replaceAll("[hidden]");
         if (StreamerPrivacyState.redactCoords()) {
             out = PAREN_COORDS.matcher(out).replaceAll("(" + HIDDEN + ")");
             out = BRACKET_COORDS.matcher(out).replaceAll("[" + HIDDEN + "]");

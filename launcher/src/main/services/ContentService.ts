@@ -66,43 +66,51 @@ export class ContentService {
   }
 
   async installModFromModrinth(projectId: string, title: string, instanceId?: string, versionId?: string) {
-    const id = await resolveInstanceId(instanceId)
-    const stored = await instanceService.getStoredById(id)
-    if (!stored) {
-      return { ok: false, error: 'Instance not found.' }
+    try {
+      const id = await resolveInstanceId(instanceId)
+      const stored = await instanceService.getStoredById(id)
+      if (!stored) {
+        return { ok: false, error: 'Instance not found.' }
+      }
+      const result = await ModManager.installModFromModrinth(
+        id,
+        projectId,
+        title,
+        stored.minecraftVersion,
+        await loaderForInstance(id),
+        versionId
+      )
+      if (result.ok) {
+        await downloadService.trackContentInstall(`Mod: ${title}`)
+      }
+      return result
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Install failed.' }
     }
-    const result = await ModManager.installModFromModrinth(
-      id,
-      projectId,
-      title,
-      stored.minecraftVersion,
-      await loaderForInstance(id),
-      versionId
-    )
-    if (result.ok) {
-      await downloadService.trackContentInstall(`Mod: ${title}`)
-    }
-    return result
   }
 
   async installModFromCurseForge(projectId: string, title: string, instanceId?: string, fileId?: string) {
-    const id = await resolveInstanceId(instanceId)
-    const stored = await instanceService.getStoredById(id)
-    if (!stored) {
-      return { ok: false, error: 'Instance not found.' }
+    try {
+      const id = await resolveInstanceId(instanceId)
+      const stored = await instanceService.getStoredById(id)
+      if (!stored) {
+        return { ok: false, error: 'Instance not found.' }
+      }
+      const result = await ModManager.installModFromCurseForge(
+        id,
+        projectId,
+        title,
+        stored.minecraftVersion,
+        await loaderForInstance(id),
+        fileId
+      )
+      if (result.ok) {
+        await downloadService.trackContentInstall(`Mod: ${title}`)
+      }
+      return result
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Install failed.' }
     }
-    const result = await ModManager.installModFromCurseForge(
-      id,
-      projectId,
-      title,
-      stored.minecraftVersion,
-      await loaderForInstance(id),
-      fileId
-    )
-    if (result.ok) {
-      await downloadService.trackContentInstall(`Mod: ${title}`)
-    }
-    return result
   }
 
   async listResourcePacks(instanceId?: string): Promise<ResourcePackEntry[]> {
@@ -131,41 +139,49 @@ export class ContentService {
   }
 
   async installResourcePackFromModrinth(projectId: string, title: string, instanceId?: string, versionId?: string) {
-    const id = await resolveInstanceId(instanceId)
-    const stored = await instanceService.getStoredById(id)
-    if (!stored) {
-      return { ok: false, error: 'Instance not found.' }
+    try {
+      const id = await resolveInstanceId(instanceId)
+      const stored = await instanceService.getStoredById(id)
+      if (!stored) {
+        return { ok: false, error: 'Instance not found.' }
+      }
+      const result = await ResourcePackManager.installResourcePackFromModrinth(
+        id,
+        projectId,
+        title,
+        stored.minecraftVersion,
+        versionId
+      )
+      if (result.ok) {
+        await downloadService.trackContentInstall(`Resource pack: ${title}`)
+      }
+      return result
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Install failed.' }
     }
-    const result = await ResourcePackManager.installResourcePackFromModrinth(
-      id,
-      projectId,
-      title,
-      stored.minecraftVersion,
-      versionId
-    )
-    if (result.ok) {
-      await downloadService.trackContentInstall(`Resource pack: ${title}`)
-    }
-    return result
   }
 
   async installResourcePackFromCurseForge(projectId: string, title: string, instanceId?: string, fileId?: string) {
-    const id = await resolveInstanceId(instanceId)
-    const stored = await instanceService.getStoredById(id)
-    if (!stored) {
-      return { ok: false, error: 'Instance not found.' }
+    try {
+      const id = await resolveInstanceId(instanceId)
+      const stored = await instanceService.getStoredById(id)
+      if (!stored) {
+        return { ok: false, error: 'Instance not found.' }
+      }
+      const result = await ResourcePackManager.installResourcePackFromCurseForge(
+        id,
+        projectId,
+        title,
+        stored.minecraftVersion,
+        fileId
+      )
+      if (result.ok) {
+        await downloadService.trackContentInstall(`Resource pack: ${title}`)
+      }
+      return result
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Install failed.' }
     }
-    const result = await ResourcePackManager.installResourcePackFromCurseForge(
-      id,
-      projectId,
-      title,
-      stored.minecraftVersion,
-      fileId
-    )
-    if (result.ok) {
-      await downloadService.trackContentInstall(`Resource pack: ${title}`)
-    }
-    return result
   }
 
   async listShaders(instanceId?: string): Promise<ShaderEntry[]> {
@@ -194,35 +210,49 @@ export class ContentService {
   }
 
   async installShaderFromModrinth(projectId: string, title: string, instanceId?: string, versionId?: string) {
-    const id = await resolveInstanceId(instanceId)
-    const stored = await instanceService.getStoredById(id)
-    if (!stored) {
-      return { ok: false, error: 'Instance not found.' }
+    try {
+      const id = await resolveInstanceId(instanceId)
+      const stored = await instanceService.getStoredById(id)
+      if (!stored) {
+        return { ok: false, error: 'Instance not found.' }
+      }
+      const result = await ShaderManager.installShaderFromModrinth(
+        id,
+        projectId,
+        title,
+        stored.minecraftVersion,
+        versionId
+      )
+      if (result.ok) {
+        await downloadService.trackContentInstall(`Shader: ${title}`)
+      }
+      return result
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Install failed.' }
     }
-    const result = await ShaderManager.installShaderFromModrinth(id, projectId, title, stored.minecraftVersion, versionId)
-    if (result.ok) {
-      await downloadService.trackContentInstall(`Shader: ${title}`)
-    }
-    return result
   }
 
   async installShaderFromCurseForge(projectId: string, title: string, instanceId?: string, fileId?: string) {
-    const id = await resolveInstanceId(instanceId)
-    const stored = await instanceService.getStoredById(id)
-    if (!stored) {
-      return { ok: false, error: 'Instance not found.' }
+    try {
+      const id = await resolveInstanceId(instanceId)
+      const stored = await instanceService.getStoredById(id)
+      if (!stored) {
+        return { ok: false, error: 'Instance not found.' }
+      }
+      const result = await ShaderManager.installShaderFromCurseForge(
+        id,
+        projectId,
+        title,
+        stored.minecraftVersion,
+        fileId
+      )
+      if (result.ok) {
+        await downloadService.trackContentInstall(`Shader: ${title}`)
+      }
+      return result
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Install failed.' }
     }
-    const result = await ShaderManager.installShaderFromCurseForge(
-      id,
-      projectId,
-      title,
-      stored.minecraftVersion,
-      fileId
-    )
-    if (result.ok) {
-      await downloadService.trackContentInstall(`Shader: ${title}`)
-    }
-    return result
   }
 
   async searchModrinth(
@@ -230,13 +260,17 @@ export class ContentService {
     type: 'mod' | 'resourcepack' | 'shader',
     instanceId?: string
   ): Promise<ModrinthSearchHit[]> {
-    const id = await resolveInstanceId(instanceId)
-    const stored = await instanceService.getStoredById(id)
-    if (!stored) {
-      return []
+    try {
+      const id = await resolveInstanceId(instanceId)
+      const stored = await instanceService.getStoredById(id)
+      if (!stored) {
+        return []
+      }
+      const loader = type === 'mod' ? await loaderForInstance(id) : undefined
+      return searchModrinth(query, type, stored.minecraftVersion, loader)
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Search failed.')
     }
-    const loader = type === 'mod' ? await loaderForInstance(id) : undefined
-    return searchModrinth(query, type, stored.minecraftVersion, loader)
   }
 
   async searchCurseForge(
@@ -244,13 +278,17 @@ export class ContentService {
     type: 'mod' | 'resourcepack' | 'shader',
     instanceId?: string
   ): Promise<CurseForgeSearchHit[]> {
-    const id = await resolveInstanceId(instanceId)
-    const stored = await instanceService.getStoredById(id)
-    if (!stored) {
-      return []
+    try {
+      const id = await resolveInstanceId(instanceId)
+      const stored = await instanceService.getStoredById(id)
+      if (!stored) {
+        return []
+      }
+      const loader = type === 'mod' ? await loaderForInstance(id) : undefined
+      return searchCurseForge(query, type, stored.minecraftVersion, loader)
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Search failed.')
     }
-    const loader = type === 'mod' ? await loaderForInstance(id) : undefined
-    return searchCurseForge(query, type, stored.minecraftVersion, loader)
   }
 
   async listContentVersions(
@@ -259,38 +297,43 @@ export class ContentService {
     source: 'modrinth' | 'curseforge',
     instanceId?: string
   ): Promise<ContentVersionDto[]> {
-    const id = await resolveInstanceId(instanceId)
-    const stored = await instanceService.getStoredById(id)
-    if (!stored) {
-      return []
+    try {
+      const id = await resolveInstanceId(instanceId)
+      const stored = await instanceService.getStoredById(id)
+      if (!stored) {
+        return []
+      }
+
+      const loader = type === 'mod' ? await loaderForInstance(id) : undefined
+
+      if (source === 'modrinth') {
+        const versions = await listModrinthVersions(projectId, stored.minecraftVersion, loader)
+        return (Array.isArray(versions) ? versions : []).map((version, index) => {
+          const files = Array.isArray(version.files) ? version.files : []
+          const file = files.find((f) => f.primary) ?? files[0]
+          return {
+            id: version.id,
+            versionNumber: version.version_number ?? version.id,
+            gameVersions: Array.isArray(version.game_versions) ? version.game_versions : [],
+            loaders: Array.isArray(version.loaders) ? version.loaders : [],
+            fileName: file?.filename,
+            recommended: index === 0
+          }
+        })
+      }
+
+      const files = await listCurseForgeFiles(projectId, stored.minecraftVersion, loader)
+      return (Array.isArray(files) ? files : []).map((file, index) => ({
+        id: String(file.id),
+        versionNumber: (file.fileName ?? String(file.id)).replace(/\.jar$|\.zip$/i, ''),
+        gameVersions: Array.isArray(file.gameVersions) ? file.gameVersions : [stored.minecraftVersion],
+        loaders: file.modLoaders?.map((entry) => entry.name.toLowerCase()) ?? [],
+        fileName: file.fileName,
+        recommended: index === 0
+      }))
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Could not load versions.')
     }
-
-    const loader = type === 'mod' ? await loaderForInstance(id) : undefined
-
-    if (source === 'modrinth') {
-      const versions = await listModrinthVersions(projectId, stored.minecraftVersion, loader)
-      return versions.map((version, index) => {
-        const file = version.files.find((f) => f.primary) ?? version.files[0]
-        return {
-          id: version.id,
-          versionNumber: version.version_number,
-          gameVersions: version.game_versions,
-          loaders: version.loaders,
-          fileName: file?.filename,
-          recommended: index === 0
-        }
-      })
-    }
-
-    const files = await listCurseForgeFiles(projectId, stored.minecraftVersion, loader)
-    return files.map((file, index) => ({
-      id: String(file.id),
-      versionNumber: file.fileName.replace(/\.jar$|\.zip$/i, ''),
-      gameVersions: file.gameVersions ?? [stored.minecraftVersion],
-      loaders: file.modLoaders?.map((entry) => entry.name.toLowerCase()) ?? [],
-      fileName: file.fileName,
-      recommended: index === 0
-    }))
   }
 }
 

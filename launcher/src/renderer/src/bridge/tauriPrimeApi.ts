@@ -95,7 +95,12 @@ export function createTauriPrimeApi() {
         invoke('instance_remove', { id, deleteFiles }),
       duplicate: (id: string) => invoke('instance_duplicate', { id }),
       setDefault: (id: string) => invoke('instance_set_default', { id }),
-      openFolder: (id: string) => invoke('instance_open_folder', { id })
+      openFolder: (id: string) => invoke('instance_open_folder', { id }),
+      importDetect: () => invoke('instance_import_detect'),
+      importList: (source: import('@shared/ipc').ImportLauncherId) =>
+        invoke('instance_import_list', { source }),
+      importRun: (source: import('@shared/ipc').ImportLauncherId, instanceIds: string[]) =>
+        invoke('instance_import_run', { source, instanceIds })
     },
     minecraft: {
       getInstances: () => invoke('instance_list'),
@@ -200,7 +205,11 @@ export function createTauriPrimeApi() {
     store: {
       catalog: () => invoke('store_catalog'),
       balance: () => invoke('store_balance'),
-      purchase: (itemId: string) => invoke('store_purchase', { itemId })
+      purchase: (itemId: string) => invoke('store_purchase', { itemId }),
+      history: async () => [],
+      promos: async () => [],
+      redeem: async () => ({ ok: false, error: 'Not available in Tauri build yet.' }),
+      syncMode: async () => 'local' as const
     },
     cosmetic: {
       list: () => invoke('cosmetic_list'),
@@ -279,7 +288,11 @@ export function createTauriPrimeApi() {
       update: (patch: Record<string, unknown>) => invoke('settings_update', { patch }),
       listJava: () => invoke('settings_java_list'),
       browseJava: () => invoke('settings_java_browse'),
-      addJavaPath: (javaPath: string) => invoke('settings_java_add', { javaPath })
+      addJavaPath: (javaPath: string) => invoke('settings_java_add', { javaPath }),
+      browseWallpaper: () => invoke('settings_wallpaper_browse'),
+      clearWallpaper: () => invoke('settings_wallpaper_clear'),
+      wallpaperData: () => invoke('settings_wallpaper_data'),
+      browseInstancesRoot: () => invoke('settings_browse_instances_root')
     },
     update: {
       check: (_force?: boolean) => invoke('update_check'),

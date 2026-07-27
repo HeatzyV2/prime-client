@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { Download } from 'lucide-react'
 import { Button, SearchInput, Tabs } from '@renderer/design-system/components'
 import { useI18n } from '@renderer/context/I18nProvider'
-import type { ContentVersionDto, ModrinthSearchHitDto } from '@shared/ipc'
+import type { ContentMutationDto, ContentVersionDto, ModrinthSearchHitDto } from '@shared/ipc'
 import '@renderer/components/LoginModal.css'
 
 type ContentSource = 'modrinth' | 'curseforge'
@@ -19,6 +20,10 @@ interface VersionPickState {
   hit: ModrinthSearchHitDto
   versions: ContentVersionDto[]
   selectedId: string
+}
+
+function safeJoin(values: string[] | null | undefined): string {
+  return Array.isArray(values) && values.length > 0 ? values.join(', ') : '—'
 }
 
 export function ContentBrowseModal({ type, instanceId, onClose, onInstalled }: ContentBrowseModalProps) {
@@ -47,8 +52,9 @@ export function ContentBrowseModal({ type, instanceId, onClose, onInstalled }: C
             source === 'modrinth'
               ? await window.primeLauncher.content.searchModrinth(query.trim(), type, instanceId ?? undefined)
               : await window.primeLauncher.content.searchCurseForge(query.trim(), type, instanceId ?? undefined)
-          setResults(hits)
+          setResults(Array.isArray(hits) ? hits : [])
         } catch (err) {
+          setResults([])
           setError(err instanceof Error ? err.message : t('modals.browse.searchFailed'))
         } finally {
           setSearching(false)
@@ -63,39 +69,44 @@ export function ContentBrowseModal({ type, instanceId, onClose, onInstalled }: C
     setInstallingId(hit.project_id)
     setError(null)
 
-    let result
-    if (type === 'mod') {
-      result = await window.primeLauncher.content.installMod(
-        hit.project_id,
-        hit.title,
-        instanceId ?? undefined,
-        source,
-        versionId
-      )
-    } else if (type === 'resourcepack') {
-      result = await window.primeLauncher.content.installResourcePack(
-        hit.project_id,
-        hit.title,
-        instanceId ?? undefined,
-        source,
-        versionId
-      )
-    } else {
-      result = await window.primeLauncher.content.installShader(
-        hit.project_id,
-        hit.title,
-        instanceId ?? undefined,
-        source,
-        versionId
-      )
-    }
+    try {
+      let result: ContentMutationDto
+      if (type === 'mod') {
+        result = await window.primeLauncher.content.installMod(
+          hit.project_id,
+          hit.title,
+          instanceId ?? undefined,
+          source,
+          versionId
+        )
+      } else if (type === 'resourcepack') {
+        result = await window.primeLauncher.content.installResourcePack(
+          hit.project_id,
+          hit.title,
+          instanceId ?? undefined,
+          source,
+          versionId
+        )
+      } else {
+        result = await window.primeLauncher.content.installShader(
+          hit.project_id,
+          hit.title,
+          instanceId ?? undefined,
+          source,
+          versionId
+        )
+      }
 
-    setInstallingId(null)
-    if (result.ok) {
-      onInstalled()
-      onClose()
-    } else if (result.error !== 'Cancelled.') {
-      setError(result.error ?? t('modals.browse.installFailed'))
+      if (result?.ok) {
+        onInstalled()
+        onClose()
+      } else if (result?.error !== 'Cancelled.') {
+        setError(result?.error ?? t('modals.browse.installFailed'))
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('modals.browse.installFailed'))
+    } finally {
+      setInstallingId(null)
     }
   }
 
@@ -109,14 +120,15 @@ export function ContentBrowseModal({ type, instanceId, onClose, onInstalled }: C
         source,
         instanceId ?? undefined
       )
-      if (versions.length === 0) {
+      const list = Array.isArray(versions) ? versions : []
+      if (list.length === 0) {
         setError(t('modals.browse.noVersions'))
         return
       }
-      const recommended = versions.find((version: ContentVersionDto) => version.recommended) ?? versions[0]!
+      const recommended = list.find((version) => version.recommended) ?? list[0]!
       setVersionPick({
         hit,
-        versions,
+        versions: list,
         selectedId: recommended.id
       })
     } catch (err) {
@@ -133,7 +145,7 @@ export function ContentBrowseModal({ type, instanceId, onClose, onInstalled }: C
         ? t('modals.browse.resourcePacksTitle')
         : t('modals.browse.shadersTitle')
 
-  return (
+  return createPortal(
     <motion.div
       className="modal-backdrop"
       initial={{ opacity: 0 }}
@@ -142,8 +154,7 @@ export function ContentBrowseModal({ type, instanceId, onClose, onInstalled }: C
       onClick={onClose}
     >
       <motion.div
-        className="modal"
-        style={{ width: 'min(640px, 100%)', maxHeight: '80vh', overflow: 'auto' }}
+        className="modal modal--browse"
         initial={{ opacity: 0, scale: 0.95, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 12 }}
@@ -156,7 +167,7 @@ export function ContentBrowseModal({ type, instanceId, onClose, onInstalled }: C
               {versionPick.hit.title} — {t('modals.browse.chooseVersionHint')}
             </p>
 
-            <div className="page-list" style={{ marginTop: 16 }}>
+            <div className="modal__scroll page-list">
               {versionPick.versions.map((version) => (
                 <label key={version.id} className="list-row" style={{ cursor: 'pointer' }}>
                   <input
@@ -176,8 +187,8 @@ export function ContentBrowseModal({ type, instanceId, onClose, onInstalled }: C
                       {version.recommended ? ` (${t('modals.browse.recommended')})` : ''}
                     </div>
                     <div className="list-row__desc">
-                      {t('modals.browse.gameVersions')}: {version.gameVersions.join(', ') || '—'}
-                      {version.loaders.length > 0
+                      {t('modals.browse.gameVersions')}: {safeJoin(version.gameVersions)}
+                      {Array.isArray(version.loaders) && version.loaders.length > 0
                         ? ` · ${t('modals.browse.loaders')}: ${version.loaders.join(', ')}`
                         : ''}
                       {version.fileName ? ` · ${version.fileName}` : ''}
@@ -229,7 +240,7 @@ export function ContentBrowseModal({ type, instanceId, onClose, onInstalled }: C
             {searching && <p className="text-caption">{t('modals.browse.searching')}</p>}
             {error && <div className="modal__error">{error}</div>}
 
-            <div className="page-list" style={{ marginTop: 16 }}>
+            <div className="modal__scroll page-list">
               {results.map((hit) => (
                 <div key={`${source}-${hit.project_id}`} className="list-row">
                   {hit.icon_url ? (
@@ -273,6 +284,7 @@ export function ContentBrowseModal({ type, instanceId, onClose, onInstalled }: C
           </>
         )}
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   )
 }

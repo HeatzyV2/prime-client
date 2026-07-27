@@ -34,34 +34,50 @@ public final class RoundedRect {
                 Math.max(0, radius - thickness), innerArgb);
     }
 
+    /**
+     * Cheap drop shadow: two flat offset rects.
+     * Avoids multi-layer rounded fills (thousands of draw calls on tall panels).
+     *
+     * @param radius unused — kept for call-site compatibility with rounded panel API
+     */
     public static void softShadow(RenderContext ctx, int x, int y, int width, int height,
                                   int radius, int shadowArgb) {
         int baseAlpha = (shadowArgb >>> 24) & 0xFF;
-        if (baseAlpha <= 0) {
+        if (baseAlpha <= 0 || width <= 0 || height <= 0) {
             return;
         }
-        for (int spread = 5; spread >= 1; spread--) {
-            float falloff = 1f - spread / 6f;
-            int alpha = Math.round(baseAlpha * falloff * 0.35f);
-            if (alpha <= 0) {
-                continue;
-            }
-            int color = (alpha << 24) | (shadowArgb & 0x00FFFFFF);
-            fill(ctx, x - spread, y - spread + 2, width + spread * 2, height + spread * 2,
-                    radius + 1, color);
+        int rgb = shadowArgb & 0x00FFFFFF;
+        int aOuter = Math.round(baseAlpha * 0.14f);
+        int aInner = Math.round(baseAlpha * 0.28f);
+        if (aOuter > 0) {
+            ctx.fillRect(x - 3, y + 2, width + 6, height + 4, (aOuter << 24) | rgb);
+        }
+        if (aInner > 0) {
+            ctx.fillRect(x - 1, y + 1, width + 2, height + 2, (aInner << 24) | rgb);
         }
     }
 
+    /** One horizontal span per row — not 1×1 pixels (radius² draw calls). */
     private static void fillCorner(RenderContext ctx, int left, int top, int radius, int argb,
                                    boolean leftArc, boolean topArc) {
+        float r2 = (float) radius * radius;
         for (int dy = 0; dy < radius; dy++) {
-            for (int dx = 0; dx < radius; dx++) {
-                float px = leftArc ? (radius - dx - 0.5f) : (dx + 0.5f);
-                float py = topArc ? (radius - dy - 0.5f) : (dy + 0.5f);
-                if (px * px + py * py > radius * radius) {
-                    continue;
+            float py = topArc ? (radius - dy - 0.5f) : (dy + 0.5f);
+            float py2 = py * py;
+            if (py2 > r2) {
+                continue;
+            }
+            float maxPx = (float) Math.sqrt(r2 - py2);
+            if (leftArc) {
+                int dx0 = Math.max(0, (int) Math.ceil(radius - 0.5f - maxPx));
+                if (dx0 < radius) {
+                    ctx.fillRect(left + dx0, top + dy, radius - dx0, 1, argb);
                 }
-                ctx.fillRect(left + dx, top + dy, 1, 1, argb);
+            } else {
+                int dx1 = Math.min(radius - 1, (int) Math.floor(maxPx - 0.5f));
+                if (dx1 >= 0) {
+                    ctx.fillRect(left, top + dy, dx1 + 1, 1, argb);
+                }
             }
         }
     }

@@ -2,7 +2,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  animation: prime-fade-in var(--duration-slow) var(--ease-out) both;
+  /* Opacity-only: transform creates a containing block that breaks position:fixed modals */
+  animation: page-shell-fade-in var(--duration-slow) var(--ease-out) both;
+}
+
+@keyframes page-shell-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .page-shell__header {

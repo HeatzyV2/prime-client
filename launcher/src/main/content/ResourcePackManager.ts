@@ -4,8 +4,18 @@ import type { ResourcePackEntry } from '../../shared/content-types'
 import { getResourcePacksDir } from './paths'
 import { getActiveResourcePackFile, setActiveResourcePack } from './options'
 import { patchContentMeta, readContentMeta } from './contentMeta'
-import { downloadModrinthFile, getModrinthVersion, getModrinthVersionById } from './ModrinthClient'
-import { downloadCurseForgeFile, getCurseForgeFile, getCurseForgeFileById } from './CurseForgeClient'
+import {
+  downloadModrinthFile,
+  getModrinthVersion,
+  getModrinthVersionById,
+  integrityFromModrinthFile
+} from './ModrinthClient'
+import {
+  downloadCurseForgeFile,
+  getCurseForgeFile,
+  getCurseForgeFileById,
+  integrityFromCurseForgeFile
+} from './CurseForgeClient'
 import { downloadService } from '../services/DownloadService'
 
 function packId(fileName: string): string {
@@ -107,9 +117,19 @@ export async function installResourcePackFromModrinth(
     await mkdir(dir, { recursive: true })
     const dest = join(dir, file.filename)
     const taskId = await downloadService.beginDownload(`Resource pack: ${title}`)
-    await downloadModrinthFile(file.url, dest, (percent, speed) => {
-      void downloadService.updateDownload(taskId, percent, speed)
-    })
+    try {
+      await downloadModrinthFile(
+        file.url,
+        dest,
+        (percent, speed) => {
+          void downloadService.updateDownload(taskId, percent, speed)
+        },
+        integrityFromModrinthFile(file)
+      )
+    } catch (err) {
+      await downloadService.failDownload(taskId, err instanceof Error ? err.message : 'Download failed')
+      throw err
+    }
 
     await patchContentMeta(instanceId, (meta) => {
       meta.resourcePacks[file.filename] = {
@@ -141,9 +161,20 @@ export async function installResourcePackFromCurseForge(
     await mkdir(dir, { recursive: true })
     const dest = join(dir, file.fileName)
     const taskId = await downloadService.beginDownload(`Resource pack: ${title}`)
-    await downloadCurseForgeFile(modId, file.id, dest, (percent, speed) => {
-      void downloadService.updateDownload(taskId, percent, speed)
-    })
+    try {
+      await downloadCurseForgeFile(
+        modId,
+        file.id,
+        dest,
+        (percent, speed) => {
+          void downloadService.updateDownload(taskId, percent, speed)
+        },
+        integrityFromCurseForgeFile(file)
+      )
+    } catch (err) {
+      await downloadService.failDownload(taskId, err instanceof Error ? err.message : 'Download failed')
+      throw err
+    }
 
     await patchContentMeta(instanceId, (meta) => {
       meta.resourcePacks[file.fileName] = {

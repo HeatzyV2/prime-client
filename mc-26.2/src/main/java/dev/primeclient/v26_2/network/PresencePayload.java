@@ -9,8 +9,9 @@ import net.minecraft.resources.Identifier;
 
 import java.util.UUID;
 
-/** Fabric payload announcing a Prime Client player + cosmetic loadout on LAN / integrated servers. */
-public record PresencePayload(UUID playerId, String capeId, String wingsId) implements CustomPacketPayload {
+/** Fabric payload announcing a Prime Client player + cosmetic loadout + skin hash. */
+public record PresencePayload(UUID playerId, String capeId, String wingsId, String skinHash)
+        implements CustomPacketPayload {
 
     public static final Identifier ID =
             Identifier.fromNamespaceAndPath(PrimeClient.MOD_ID, "presence");
@@ -25,10 +26,17 @@ public record PresencePayload(UUID playerId, String capeId, String wingsId) impl
                     PresencePayload::capeId,
                     ByteBufCodecs.STRING_UTF8,
                     PresencePayload::wingsId,
-                    (msb, lsb, capeId, wingsId) -> new PresencePayload(new UUID(msb, lsb), capeId, wingsId));
+                    ByteBufCodecs.STRING_UTF8,
+                    PresencePayload::skinHash,
+                    (msb, lsb, capeId, wingsId, skinHash) ->
+                            new PresencePayload(new UUID(msb, lsb), capeId, wingsId, skinHash));
 
     public PresencePayload(UUID playerId) {
-        this(playerId, "", "");
+        this(playerId, "", "", "");
+    }
+
+    public PresencePayload(UUID playerId, String capeId, String wingsId) {
+        this(playerId, capeId, wingsId, "");
     }
 
     @Override

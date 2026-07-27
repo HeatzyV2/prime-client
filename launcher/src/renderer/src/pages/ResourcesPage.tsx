@@ -106,6 +106,7 @@ export function ResourcesPage() {
       <AnimatePresence>
         {showBrowse && (
           <ContentBrowseModal
+            key="content-browse-resourcepack"
             type="resourcepack"
             instanceId={instanceId}
             onClose={() => setShowBrowse(false)}

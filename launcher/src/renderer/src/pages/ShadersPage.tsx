@@ -104,6 +104,7 @@ export function ShadersPage() {
       <AnimatePresence>
         {showBrowse && (
           <ContentBrowseModal
+            key="content-browse-shader"
             type="shader"
             instanceId={instanceId}
             onClose={() => setShowBrowse(false)}

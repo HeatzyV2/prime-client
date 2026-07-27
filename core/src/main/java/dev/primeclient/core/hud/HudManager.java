@@ -45,7 +45,17 @@ public final class HudManager implements ConfigBinding {
     }
 
     public void render(RenderContext ctx) {
-        layout(ctx, false);
+        render(ctx, true);
+    }
+
+    /**
+     * @param doLayout when {@code false}, draws using bounds from a prior {@link #layout} call
+     *                 (HUD editor lays out once with hidden elements, then renders).
+     */
+    public void render(RenderContext ctx, boolean doLayout) {
+        if (doLayout) {
+            layout(ctx, false);
+        }
         long now = System.currentTimeMillis();
         HudElement[] elements = this.renderList;
         for (int i = 0; i < elements.length; i++) {

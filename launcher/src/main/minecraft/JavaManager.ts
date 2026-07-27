@@ -1,11 +1,12 @@
 import { execFile } from 'child_process'
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'fs'
-import { rename, rm, unlink, writeFile } from 'fs/promises'
+import { rename, rm, unlink } from 'fs/promises'
 import { join } from 'path'
 import { promisify } from 'util'
 import { app } from 'electron'
 import AdmZip from 'adm-zip'
 import { emitLaunchProgress } from './launchProgress'
+import { downloadService } from '../services/DownloadService'
 
 const execFileAsync = promisify(execFile)
 const SUPPORTED_VERSIONS = [21] as const
@@ -38,31 +39,15 @@ async function downloadJreArchive(version: number, onProgress?: (received: numbe
   const runtimeDir = getRuntimeDir(version)
   const tempFile = join(join(runtimeDir, '..'), `jre-${version}.download`)
 
-  const response = await fetch(getAdoptiumDownloadUrl(version))
-  if (!response.ok) {
-    throw new Error(`Adoptium download failed: HTTP ${response.status}`)
-  }
-
-  const total = Number.parseInt(response.headers.get('content-length') ?? '0', 10)
-  let received = 0
-  const chunks: Buffer[] = []
-  const reader = response.body?.getReader()
-  if (!reader) {
-    throw new Error('Adoptium download failed: empty response body.')
-  }
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) {
-      break
+  await downloadService.downloadFile({
+    url: getAdoptiumDownloadUrl(version),
+    destPath: tempFile,
+    bypassCache: true,
+    onProgress: (_percent, _speed, meta) => {
+      onProgress?.(meta.received, meta.total)
     }
-    const chunk = Buffer.from(value)
-    chunks.push(chunk)
-    received += chunk.length
-    onProgress?.(received, total)
-  }
+  })
 
-  await writeFile(tempFile, Buffer.concat(chunks))
   return tempFile
 }
 

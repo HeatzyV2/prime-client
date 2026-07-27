@@ -41,6 +41,9 @@ export const IPC = {
   INSTANCE_DUPLICATE: 'instance:duplicate',
   INSTANCE_SET_DEFAULT: 'instance:set-default',
   INSTANCE_OPEN_FOLDER: 'instance:open-folder',
+  INSTANCE_IMPORT_DETECT: 'instance:import-detect',
+  INSTANCE_IMPORT_LIST: 'instance:import-list',
+  INSTANCE_IMPORT_RUN: 'instance:import-run',
 
   PROFILE_SET_INSTANCE: 'profile:set-instance',
 
@@ -69,6 +72,10 @@ export const IPC = {
   STORE_CATALOG: 'store:catalog',
   STORE_BALANCE: 'store:balance',
   STORE_PURCHASE: 'store:purchase',
+  STORE_HISTORY: 'store:history',
+  STORE_PROMOS: 'store:promos',
+  STORE_REDEEM: 'store:redeem',
+  STORE_SYNC_MODE: 'store:sync-mode',
   COSMETIC_LIST: 'cosmetic:list',
   COSMETIC_TOGGLE: 'cosmetic:toggle',
   SKIN_LIST: 'skin:list',
@@ -118,11 +125,19 @@ export const IPC = {
   SETTINGS_GET: 'settings:get',
   SETTINGS_UPDATE: 'settings:update',
   SETTINGS_JAVA_LIST: 'settings:java-list',
+
+  AI_CHAT: 'ai:chat',
+  AI_CONFIRM_INSTALL: 'ai:confirm-install',
+  AI_HAS_KEY: 'ai:has-key',
+  AI_SET_KEY: 'ai:set-key',
+  AI_CLEAR_KEY: 'ai:clear',
+  AI_KEY_STATUS: 'ai:key-status',
   SETTINGS_JAVA_BROWSE: 'settings:java-browse',
   SETTINGS_JAVA_ADD: 'settings:java-add',
   SETTINGS_WALLPAPER_BROWSE: 'settings:wallpaper-browse',
   SETTINGS_WALLPAPER_CLEAR: 'settings:wallpaper-clear',
   SETTINGS_WALLPAPER_DATA: 'settings:wallpaper-data',
+  SETTINGS_BROWSE_INSTANCES_ROOT: 'settings:browse-instances-root',
   UPDATE_CHECK: 'update:check',
   UPDATE_GET_STATUS: 'update:get-status',
   UPDATE_INSTALL_LAUNCHER: 'update:install-launcher',
@@ -243,6 +258,37 @@ export interface InstanceMutationDto {
   error?: string
 }
 
+export type ImportLauncherId = 'prism' | 'multimc' | 'lunar' | 'feather' | 'dawn'
+
+export interface DetectedImportLauncherDto {
+  id: ImportLauncherId
+  label: string
+  rootPath: string
+  instanceCount: number
+  available: boolean
+}
+
+export interface DetectedImportInstanceDto {
+  id: string
+  source: ImportLauncherId
+  name: string
+  minecraftVersion: string
+  loader: 'vanilla' | 'fabric'
+  fabricLoaderVersion?: string
+  gameDir: string
+  ramMb?: number
+  hasMods: boolean
+  hasResourcePacks: boolean
+  hasScreenshots: boolean
+  hasOptions: boolean
+}
+
+export interface ImportInstanceResultDto {
+  ok: boolean
+  error?: string
+  instanceId?: string
+}
+
 export interface ModrinthSearchHitDto {
   project_id: string
   slug: string
@@ -316,6 +362,9 @@ export interface LauncherSettingsDto {
   accentColor?: string | null
   uiSounds: boolean
   onboardingDone: boolean
+  instancesRoot: string | null
+  /** Computed default when instancesRoot is null. */
+  defaultInstancesRoot?: string
   lastSeenLauncherVersion?: string
   activeSkinId?: string | null
 }

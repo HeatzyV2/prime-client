@@ -1,15 +1,19 @@
 import { BrowserWindow, dialog } from 'electron'
 import type { LauncherSettings } from '../storage/SettingsStore'
 import { settingsStore } from '../storage/SettingsStore'
+import { getDefaultInstancesRoot } from '../minecraft/paths'
 import { instanceService } from './InstanceService'
 import { launcherBridgeService } from './LauncherBridgeService'
 import { performanceService } from './PerformanceService'
 import { launcherDiscordService } from './LauncherDiscordService'
 import { validateJavaExecutable, type JavaInstallation } from '../minecraft/JavaService'
 
+export type SettingsView = LauncherSettings & { defaultInstancesRoot: string }
+
 export class SettingsService {
-  async get(): Promise<LauncherSettings> {
-    return settingsStore.load()
+  async get(): Promise<SettingsView> {
+    const settings = await settingsStore.load()
+    return { ...settings, defaultInstancesRoot: getDefaultInstancesRoot() }
   }
 
   async update(partial: Partial<LauncherSettings>): Promise<{ settings: LauncherSettings; restartRequired?: boolean }> {
@@ -107,6 +111,18 @@ export class SettingsService {
 
   async clearWallpaper(): Promise<{ settings: LauncherSettings; restartRequired?: boolean }> {
     return this.update({ wallpaperPath: null })
+  }
+
+  async browseInstancesRoot(): Promise<{ ok: boolean; path?: string; error?: string }> {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Select instances folder',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (canceled || !filePaths[0]) {
+      return { ok: false, error: 'Cancelled.' }
+    }
+    await this.update({ instancesRoot: filePaths[0] })
+    return { ok: true, path: filePaths[0] }
   }
 
   async getWallpaperDataUrl(): Promise<string | null> {

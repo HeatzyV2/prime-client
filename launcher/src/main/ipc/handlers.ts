@@ -3,6 +3,7 @@ import { IPC } from '../../shared/ipc'
 import { accountService } from '../services/AccountService'
 import { profileService } from '../services/ProfileService'
 import { instanceService } from '../services/InstanceService'
+import { instanceImportService } from '../services/InstanceImportService'
 import { serverService } from '../services/ServerService'
 import { contentService } from '../services/ContentService'
 import { cloudService } from '../services/CloudService'
@@ -23,6 +24,7 @@ import { listJavaInstallations } from '../minecraft/JavaService'
 import { minecraftEngine } from '../minecraft/MinecraftEngine'
 import { settingsService } from '../services/SettingsService'
 import { updateService } from '../services/UpdateService'
+import { aiAssistantService } from '../services/AiAssistantService'
 import type { PerformancePreset } from '../../shared/content-types'
 import type { LauncherSettings } from '../storage/SettingsStore'
 import { settingsStore } from '../storage/SettingsStore'
@@ -74,6 +76,15 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.INSTANCE_DUPLICATE, (_e, id: string) => instanceService.duplicate(id))
   ipcMain.handle(IPC.INSTANCE_SET_DEFAULT, (_e, id: string) => instanceService.setDefault(id))
   ipcMain.handle(IPC.INSTANCE_OPEN_FOLDER, (_e, id: string) => instanceService.openFolder(id))
+  ipcMain.handle(IPC.INSTANCE_IMPORT_DETECT, () => instanceImportService.detect())
+  ipcMain.handle(IPC.INSTANCE_IMPORT_LIST, (_e, source: import('../../shared/ipc').ImportLauncherId) =>
+    instanceImportService.list(source)
+  )
+  ipcMain.handle(
+    IPC.INSTANCE_IMPORT_RUN,
+    (_e, source: import('../../shared/ipc').ImportLauncherId, instanceIds: string[]) =>
+      instanceImportService.importMany(source, instanceIds)
+  )
   ipcMain.handle(IPC.PROFILE_SET_INSTANCE, (_e, instanceId: string) =>
     profileService.setActiveInstance(instanceId)
   )
@@ -175,6 +186,10 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.STORE_CATALOG, () => storeService.getCatalog())
   ipcMain.handle(IPC.STORE_BALANCE, () => storeService.getBalance())
   ipcMain.handle(IPC.STORE_PURCHASE, (_e, itemId: string) => storeService.purchase(itemId))
+  ipcMain.handle(IPC.STORE_HISTORY, () => storeService.getHistory())
+  ipcMain.handle(IPC.STORE_PROMOS, () => storeService.listPromos())
+  ipcMain.handle(IPC.STORE_REDEEM, (_e, code: string) => storeService.redeemPromo(code))
+  ipcMain.handle(IPC.STORE_SYNC_MODE, () => storeService.getSyncMode())
 
   ipcMain.handle(IPC.COSMETIC_LIST, () => cosmeticService.list())
   ipcMain.handle(IPC.COSMETIC_TOGGLE, (_e, cosmeticId: string) => cosmeticService.toggleEquip(cosmeticId))
@@ -243,6 +258,7 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.SETTINGS_WALLPAPER_BROWSE, () => settingsService.browseWallpaper())
   ipcMain.handle(IPC.SETTINGS_WALLPAPER_CLEAR, () => settingsService.clearWallpaper())
   ipcMain.handle(IPC.SETTINGS_WALLPAPER_DATA, () => settingsService.getWallpaperDataUrl())
+  ipcMain.handle(IPC.SETTINGS_BROWSE_INSTANCES_ROOT, () => settingsService.browseInstancesRoot())
 
   ipcMain.handle(IPC.UPDATE_CHECK, (_e, force?: boolean) => updateService.check(Boolean(force)))
   ipcMain.handle(IPC.UPDATE_GET_STATUS, () => updateService.getStatus())
@@ -250,6 +266,13 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.UPDATE_INSTALL_MOD, (_e, instanceId?: string) => updateService.installMod(instanceId))
   ipcMain.handle(IPC.UPDATE_DISMISS, () => updateService.dismissBanner())
   ipcMain.handle(IPC.UPDATE_OPEN_RELEASE, (_e, url?: string) => updateService.openReleasePage(url))
+
+  ipcMain.handle(IPC.AI_KEY_STATUS, () => aiAssistantService.keyStatus())
+  ipcMain.handle(IPC.AI_HAS_KEY, async () => (await aiAssistantService.keyStatus()).hasKey)
+  ipcMain.handle(IPC.AI_SET_KEY, (_e, key: string) => aiAssistantService.setKey(key))
+  ipcMain.handle(IPC.AI_CLEAR_KEY, () => aiAssistantService.clearKey())
+  ipcMain.handle(IPC.AI_CHAT, (_e, payload) => aiAssistantService.chat(payload))
+  ipcMain.handle(IPC.AI_CONFIRM_INSTALL, (_e, payload) => aiAssistantService.confirmInstall(payload))
 }
 
 /** Forwards live social WebSocket payloads to all renderer windows. */

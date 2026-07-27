@@ -9,6 +9,7 @@ export const fr: LocaleCatalog = {
     more: 'Plus',
     dashboard: 'Accueil',
     accounts: 'Comptes',
+    profile: 'Profil',
     instances: 'Instances',
     skins: 'Skins',
     library: 'Bibliothèque',
@@ -48,6 +49,7 @@ export const fr: LocaleCatalog = {
     add: 'Ajouter',
     manage: 'Gérer',
     signIn: 'Se connecter',
+    close: 'Fermer',
     checkNow: 'Vérifier',
     downloadUpdate: 'Télécharger la mise à jour',
     automatic: 'Automatique',
@@ -72,6 +74,12 @@ export const fr: LocaleCatalog = {
     news: 'Actualités',
     moreNews: 'Toutes les actus',
     favoriteServers: 'Serveurs favoris',
+    friendsActivity: 'Activité des amis',
+    noFriendsOnline: 'Aucun ami en ligne',
+    noFriendsOnlineHint: 'Ajoute des amis pour voir leur activité ici.',
+    friendOnline: 'En ligne',
+    friendAway: 'Absent',
+    friendInGame: 'En jeu',
     noServers: 'Aucun serveur favori pour l’instant.',
     noServersHint: 'Ajoute un serveur pour le rejoindre depuis l’accueil.',
     addServer: 'Ajouter un serveur',
@@ -229,7 +237,43 @@ export const fr: LocaleCatalog = {
       label: 'Mode développeur',
       toggle: 'Mode développeur'
     },
+    groqKey: {
+      label: 'Clé Groq (override optionnel)',
+      hint: 'Laisse vide — tout le monde utilise le proxy Prime (clé serveur). Clé locale seulement pour self-host / hors ligne.',
+      placeholder: 'gsk_…',
+      save: 'Enregistrer',
+      clear: 'Effacer',
+      statusOk: 'Override local ({masked})',
+      statusMissing: 'IA Prime partagée (pas de clé perso)',
+      statusProxy: 'IA Prime partagée en ligne',
+      statusDown: 'IA partagée hors ligne — clé locale ou réessaie plus tard'
+    },
     updateNotes: 'v{current} → dernière v{latest} — {notes}'
+  },
+  ai: {
+    title: 'Prime Assistant',
+    subtitle: 'Installer des mods & conseils pour ton instance',
+    placeholder: 'Ex : Installe Sodium, Lithium et Iris…',
+    send: 'Envoyer',
+    thinking: 'Réflexion…',
+    install: 'Installer',
+    installing: 'Installation…',
+    installed: 'Installé',
+    installFailed: 'Échec',
+    emptyTitle: 'Pose une question',
+    emptyDesc:
+      'Installe des mods, tips FPS, ou dépannage crash via latest.log & crash-reports.',
+    needKey: 'IA partagée hors ligne. Réessaie plus tard, ou ajoute une clé locale (optionnel).',
+    saveKey: 'Enregistrer',
+    keyPlaceholder: 'gsk_… (optionnel)',
+    instance: 'Instance : {name} ({version})',
+    sourceModrinth: 'Modrinth',
+    sourceCurseforge: 'CurseForge',
+    clearChat: 'Effacer',
+    errorGeneric: 'Une erreur est survenue',
+    quickDiagnose: 'Analyser le crash',
+    quickLatestLog: 'Lire latest.log',
+    quickLauncherLog: 'Log launcher'
   },
   updates: {
     modal: {
@@ -270,6 +314,10 @@ export const fr: LocaleCatalog = {
       title: 'Comptes',
       subtitle: 'Profil actif, comptes Microsoft et hors ligne.'
     },
+    profile: {
+      title: 'Profil',
+      subtitle: 'Skin, grade, temps de jeu et amis.'
+    },
     instances: {
       title: 'Instances',
       subtitle: 'Tes installs Minecraft — jouer, configurer, rester simple.'
@@ -288,7 +336,7 @@ export const fr: LocaleCatalog = {
     },
     store: {
       title: 'Boutique Prime',
-      subtitle: 'Débloquez cosmétiques et thèmes avec des Prime Coins — tout en local.'
+      subtitle: 'Débloquez cosmétiques et thèmes avec des Prime Coins — sync cloud en ligne.'
     },
     skins: {
       title: 'Skins',
@@ -304,7 +352,7 @@ export const fr: LocaleCatalog = {
     },
     servers: {
       title: 'Hub Serveurs',
-      subtitle: 'Serveurs favoris avec joueurs, ping et connexion rapide.'
+      subtitle: 'Bannières, joueurs en direct, ping et fiches serveur complètes.'
     },
     friends: {
       title: 'Amis',
@@ -405,6 +453,16 @@ export const fr: LocaleCatalog = {
       close: 'Fermer'
     }
   },
+  profile: {
+    memberSince: 'Membre depuis',
+    playtime: 'Temps de jeu',
+    playtimeValue: '{hours}h {minutes}m',
+    accounts: 'Comptes',
+    friends: 'Amis',
+    recentFriends: 'Amis',
+    noFriends: 'Aucun ami',
+    noFriendsHint: 'Ajoute des amis depuis la page Amis.'
+  },
   accounts: {
     addAccount: 'Ajouter un compte',
     activeProfile: 'Profil actif',
@@ -440,7 +498,25 @@ export const fr: LocaleCatalog = {
     empty: 'Aucun serveur favori.',
     joinNeedsAccount: 'Connectez-vous pour rejoindre un serveur.',
     added: 'Serveur ajouté.',
-    addFailed: 'Impossible d\'ajouter le serveur.'
+    addFailed: 'Impossible d\'ajouter le serveur.',
+    removeFailed: 'Impossible de supprimer le serveur.',
+    info: 'Informations',
+    partner: 'Partenaire',
+    online: 'En ligne',
+    offlineCached: 'Cache',
+    noDescription: 'Pas encore de description.',
+    versionUnknown: 'Version inconnue',
+    social: {
+      discord: 'Discord',
+      store: 'Boutique',
+      website: 'Site web',
+      vote: 'Vote',
+      youtube: 'YouTube',
+      tiktok: 'TikTok',
+      instagram: 'Instagram',
+      facebook: 'Facebook',
+      x: 'X'
+    }
   },
   friends: {
     addFriend: 'Ajouter un ami',
@@ -569,6 +645,20 @@ export const fr: LocaleCatalog = {
     preview: 'Aperçu',
     emptyTitle: 'Rien ici',
     emptyDesc: 'Essayez une autre catégorie ou revenez plus tard.',
+    historyEmptyTitle: 'Aucun achat',
+    historyEmptyDesc: 'Les articles débloqués apparaîtront ici.',
+    promoPlaceholder: 'Code promo',
+    redeem: 'Utiliser',
+    redeemed: 'Utilisé',
+    promoOk: '+{coins} Prime Coins ajoutés.',
+    promoFailed: 'Impossible d\'utiliser le code.',
+    syncSynced: 'Synchronisé',
+    syncLocal: 'Local',
+    tabs: {
+      catalog: 'Catalogue',
+      history: 'Historique',
+      promos: 'Promos'
+    },
     categories: {
       all: 'Tout',
       cosmetic: 'Cosmétiques',
@@ -609,28 +699,63 @@ export const fr: LocaleCatalog = {
     emptyCosmeticsHint: 'Débloque des cosmétiques dans la Boutique, puis équipe-les ici.'
   },
   onboarding: {
-    eyebrow: 'Setup en 60 secondes',
+    eyebrow: 'Configuration initiale',
+    subtitle: 'Quelques préférences, puis vous êtes prêt à jouer.',
     next: 'Continuer',
+    back: 'Retour',
     finish: 'C’est parti',
     skip: 'Passer pour l’instant',
+    browseFolder: 'Choisir un dossier',
+    useDefaultFolder: 'Utiliser le défaut',
+    folderHint: 'Les instances et fichiers de jeu seront stockés ici. Gardez le défaut sauf besoin d’un autre disque.',
+    signedIn: 'Prêt à lancer',
     steps: {
+      language: {
+        short: 'Langue',
+        title: 'Choisis ta langue',
+        body: 'English ou Français — modifiable plus tard dans Réglages.'
+      },
+      theme: {
+        short: 'Thème',
+        title: 'Choisis un style',
+        body: 'S’applique au launcher et se synchronise dans le profil Prime en jeu.'
+      },
+      ram: {
+        short: 'RAM',
+        title: 'Mémoire par défaut',
+        body: 'RAM allouée aux nouvelles instances. Modifiable par instance ensuite.'
+      },
+      folder: {
+        short: 'Dossier',
+        title: 'Dossier des instances',
+        body: 'Emplacement disque où Prime stocke les instances Minecraft.'
+      },
       account: {
-        title: 'Ajoute ton compte',
-        body: 'Connecte-toi avec Microsoft ou crée un profil offline pour lancer.'
-      },
-      instance: {
-        title: 'Choisis une instance',
-        body: 'Prime Client est prêt pour 1.21.11 et 26.2 — sélectionne depuis l’accueil.'
-      },
-      skin: {
-        title: 'Personnalise ton look',
-        body: 'Importe un skin PNG ou parcours les capes dans Skins.'
-      },
-      play: {
-        title: 'Appuie sur Play',
-        body: 'Compte, instance et serveur optionnel — un seul bouton sur l’accueil.'
+        short: 'Compte',
+        title: 'Connexion',
+        body: 'Microsoft est recommandé. Les profils offline marchent en local.'
       }
     }
+  },
+  import: {
+    title: 'Importer des instances',
+    subtitle: 'Détecte d’autres launchers et copie mods, packs, captures et options.',
+    scanning: 'Scan des dossiers courants…',
+    foundCount: '{count} trouvé(s)',
+    notFound: 'Non détecté',
+    selectInstances: 'Sélectionne les instances à importer',
+    selectAll: 'Tout sélectionner',
+    deselectAll: 'Tout désélectionner',
+    loadingInstances: 'Chargement des instances…',
+    emptySource: 'Aucune instance pour ce launcher.',
+    importing: 'Import…',
+    importSelected: 'Importer ({count})',
+    success: '{count} instance(s) importée(s).',
+    errorDetect: 'Impossible de scanner les autres launchers.',
+    errorList: 'Impossible de lister les instances.',
+    errorImport: 'Échec de l’import.',
+    tagMods: 'mods',
+    tagPacks: 'resource packs'
   },
   social: {
     title: 'Amis',
@@ -651,6 +776,7 @@ export const fr: LocaleCatalog = {
     primeClient: 'Prime Client',
     primeBadge: 'Prime',
     newInstance: 'Nouvelle instance',
+    import: 'Importer',
     createPrime26: 'Prime 26.2',
     createPrime121: 'Prime 1.21.11',
     play: 'Jouer',
@@ -693,6 +819,7 @@ export const fr: LocaleCatalog = {
     openReport: 'Ouvrir le crash report',
     openLogs: 'Ouvrir les logs',
     sendReport: 'Envoyer à Prime',
+    askAi: 'Demander à l’IA',
     dismiss: 'Fermer',
     fix: {
       blurOnce:

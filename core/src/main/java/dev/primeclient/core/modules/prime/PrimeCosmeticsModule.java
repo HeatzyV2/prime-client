@@ -3,9 +3,12 @@ package dev.primeclient.core.modules.prime;
 import dev.primeclient.core.cosmetics.CosmeticManager;
 import dev.primeclient.core.cosmetics.CosmeticType;
 import dev.primeclient.core.event.ClientTickEvent;
+import dev.primeclient.core.module.BooleanSetting;
+import dev.primeclient.core.module.DoubleSetting;
 import dev.primeclient.core.module.EnumSetting;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
+import dev.primeclient.core.state.CapePhysicsState;
 import dev.primeclient.core.state.CosmeticsState;
 
 /** Equip Prime cosmetics (capes and wings — world-rendered). */
@@ -13,6 +16,12 @@ public final class PrimeCosmeticsModule extends Module {
 
     private final EnumSetting<CosmeticType> slot =
             addSetting(new EnumSetting<>("slot", "Slot", "Cosmetic slot to edit", CosmeticType.CAPE));
+    private final BooleanSetting clothPhysics = addSetting(new BooleanSetting(
+            "cloth-physics", "Cloth Physics",
+            "Lightweight cape swing from movement / jump (Prime capes only)", true));
+    private final DoubleSetting physicsIntensity = addSetting(new DoubleSetting(
+            "physics-intensity", "Physics Intensity",
+            "How strongly the cape reacts to motion", 1.0, 0.0, 1.5));
 
     private final CosmeticManager cosmetics;
 
@@ -68,5 +77,7 @@ public final class PrimeCosmeticsModule extends Module {
         CosmeticsState.setLocalLoadout(
                 cape != null ? cape.id() : "",
                 wings != null ? wings.id() : "");
+        CapePhysicsState.setActive(clothPhysics.get());
+        CapePhysicsState.setIntensity((float) physicsIntensity.get());
     }
 }

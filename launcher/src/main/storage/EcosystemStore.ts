@@ -5,6 +5,14 @@ import type { FriendEntry } from '../../shared/content-types'
 import type { FavoriteServer } from '../../shared/types'
 import { DEFAULT_EQUIPPED_COSMETICS, DEFAULT_OWNED_STORE } from '../../shared/ecosystem-catalog'
 
+export interface StorePurchaseRecord {
+  id: string
+  itemId: string
+  itemName: string
+  price: number
+  purchasedAt: string
+}
+
 export interface EcosystemDatabase {
   version: 1
   primeCoins: number
@@ -12,6 +20,10 @@ export interface EcosystemDatabase {
   equippedCosmetics: string[]
   friends: FriendEntry[]
   favoriteServers?: FavoriteServer[]
+  /** Local purchase ledger for the boutique history tab. */
+  storeHistory?: StorePurchaseRecord[]
+  /** Active promo codes already redeemed. */
+  redeemedPromos?: string[]
 }
 
 const DEFAULT_DB = (): EcosystemDatabase => ({

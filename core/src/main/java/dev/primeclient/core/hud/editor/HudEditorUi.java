@@ -302,7 +302,7 @@ final class HudEditorUi {
         int x = (ctx.screenWidth() - total - pad * 2) / 2;
         int y = 6;
         toolbar = new Rect(x, y, total + pad * 2, buttonH + 8);
-        UiChrome.glassPanel(ctx, theme, toolbar.x(), toolbar.y(), toolbar.w(), toolbar.h());
+        UiChrome.editorPanel(ctx, theme, toolbar.x(), toolbar.y(), toolbar.w(), toolbar.h());
         int textY = y + 4 + (buttonH - ctx.uiFontHeight()) / 2;
         int cursor = x + pad;
         ctx.drawUiText(title, cursor, textY, theme.accent());
@@ -335,7 +335,7 @@ final class HudEditorUi {
                 : ctx.screenHeight() - HINT_RESERVE - 4;
         int h = Math.max(40, dockTop - PANEL_TOP - 4);
         listPanel = new Rect(x, PANEL_TOP, LIST_WIDTH, h);
-        UiChrome.glassPanel(ctx, theme, x, PANEL_TOP, LIST_WIDTH, h);
+        UiChrome.editorPanel(ctx, theme, x, PANEL_TOP, LIST_WIDTH, h);
         ctx.drawUiText("Elements", x + 8, PANEL_TOP + 6, theme.foregroundMuted());
         int viewY = PANEL_TOP + 6 + ctx.uiFontHeight() + 4;
         listView = new Rect(x + 4, viewY, LIST_WIDTH - 8, PANEL_TOP + h - viewY - 6);
@@ -395,7 +395,7 @@ final class HudEditorUi {
         int y = bottomDockTop(ctx.screenHeight());
         int h = BOTTOM_DOCK_HEIGHT;
         propsPanel = new Rect(x, y, w, h);
-        UiChrome.glassPanel(ctx, theme, x, y, w, h);
+        UiChrome.editorPanel(ctx, theme, x, y, w, h);
 
         int row1Y = y + 5;
         int nameW = Math.min(ctx.uiTextWidth(selected.name()) + 4, 72);
@@ -494,13 +494,19 @@ final class HudEditorUi {
         }
         String ellipsis = "…";
         int budget = maxWidth - ctx.uiTextWidth(ellipsis);
-        StringBuilder out = new StringBuilder();
-        for (int i = 0; i < text.length(); i++) {
-            if (ctx.uiTextWidth(out.toString() + text.charAt(i)) > budget) {
-                break;
-            }
-            out.append(text.charAt(i));
+        if (budget <= 0) {
+            return ellipsis;
         }
-        return out + ellipsis;
+        int lo = 0;
+        int hi = text.length();
+        while (lo < hi) {
+            int mid = (lo + hi + 1) >>> 1;
+            if (ctx.uiTextWidth(text.substring(0, mid)) <= budget) {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        return text.substring(0, lo) + ellipsis;
     }
 }

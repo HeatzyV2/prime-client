@@ -83,27 +83,35 @@ public interface RenderContext {
                              int textureWidth, int textureHeight, int tintArgb) {
     }
 
-    /** Vertical gradient fill (top → bottom). Default uses scanline lerp. */
+    /** Vertical gradient fill (top → bottom). Chunked — not one draw call per row. */
     default void fillGradientVertical(int x, int y, int width, int height, int topArgb, int bottomArgb) {
-        if (height <= 0) {
+        if (width <= 0 || height <= 0) {
             return;
         }
-        for (int row = 0; row < height; row++) {
-            float t = row / (float) Math.max(1, height - 1);
-            int color = dev.primeclient.core.util.ColorUtil.lerp(topArgb, bottomArgb, t);
-            fillRect(x, y + row, width, 1, color);
+        int steps = Math.min(height, 24);
+        int cursor = 0;
+        for (int i = 0; i < steps; i++) {
+            int next = (i + 1) * height / steps;
+            float t = i / (float) Math.max(1, steps - 1);
+            fillRect(x, y + cursor, width, next - cursor,
+                    dev.primeclient.core.util.ColorUtil.lerp(topArgb, bottomArgb, t));
+            cursor = next;
         }
     }
 
-    /** Horizontal gradient fill (left → right). */
+    /** Horizontal gradient fill (left → right). Chunked — not one draw call per column. */
     default void fillGradientHorizontal(int x, int y, int width, int height, int leftArgb, int rightArgb) {
-        if (width <= 0) {
+        if (width <= 0 || height <= 0) {
             return;
         }
-        for (int col = 0; col < width; col++) {
-            float t = col / (float) Math.max(1, width - 1);
-            int color = dev.primeclient.core.util.ColorUtil.lerp(leftArgb, rightArgb, t);
-            fillRect(x + col, y, 1, height, color);
+        int steps = Math.min(width, 24);
+        int cursor = 0;
+        for (int i = 0; i < steps; i++) {
+            int next = (i + 1) * width / steps;
+            float t = i / (float) Math.max(1, steps - 1);
+            fillRect(x + cursor, y, next - cursor, height,
+                    dev.primeclient.core.util.ColorUtil.lerp(leftArgb, rightArgb, t));
+            cursor = next;
         }
     }
 

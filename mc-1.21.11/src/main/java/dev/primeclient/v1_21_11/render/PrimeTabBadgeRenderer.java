@@ -1,16 +1,19 @@
 package dev.primeclient.v1_21_11.render;
 
-import dev.primeclient.core.PrimeClient;
-import dev.primeclient.core.design.PrimeLogo;
+import dev.primeclient.core.hook.PrimeHooks;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.resources.Identifier;
 
-/** Draws the Prime logo in the player tab list. */
+/**
+ * Tab-list client badge. Uses a solid plate + glyph (not the full logo texture),
+ * because scaling the 512x279 transparent logo to 8px is effectively invisible.
+ */
 public final class PrimeTabBadgeRenderer {
 
-    private static final Identifier LOGO =
-            Identifier.fromNamespaceAndPath(PrimeClient.MOD_ID, PrimeLogo.TEXTURE);
+    private static final String GLYPH = "P";
+    private static final int PAD_X = 3;
+    private static final int ACCENT_W = 2;
 
     private PrimeTabBadgeRenderer() {
     }
@@ -20,13 +23,18 @@ public final class PrimeTabBadgeRenderer {
     }
 
     public static int width() {
-        return PrimeLogo.widthForHeight(height());
+        Font font = Minecraft.getInstance().font;
+        return ACCENT_W + PAD_X + font.width(GLYPH) + PAD_X;
     }
 
     public static void draw(GuiGraphics graphics, int x, int y) {
         int h = height();
         int w = width();
-        graphics.blit(RenderPipelines.GUI_TEXTURED, LOGO, x, y, 0f, 0f, w, h,
-                PrimeLogo.SRC_WIDTH, PrimeLogo.SRC_HEIGHT, 0xFFFFFFFF);
+        int bg = PrimeHooks.clientBadgeBackground();
+        int accent = PrimeHooks.clientBadgeAccent();
+        int fg = PrimeHooks.clientBadgeForeground();
+        graphics.fill(x, y, x + w, y + h, bg);
+        graphics.fill(x, y, x + ACCENT_W, y + h, accent);
+        graphics.drawString(Minecraft.getInstance().font, GLYPH, x + ACCENT_W + PAD_X, y, fg, false);
     }
 }

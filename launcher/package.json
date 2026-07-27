@@ -59,19 +59,24 @@
     "files": [
       "out/**/*",
       "resources/icon.png",
+      "resources/icon.ico",
       "package.json"
     ],
     "extraResources": [
       {
         "from": "resources/icon.png",
         "to": "icon.png"
+      },
+      {
+        "from": "resources/icon.ico",
+        "to": "icon.ico"
       }
     ],
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "resources/icon.png"
+      "icon": "resources/icon.ico"
     },
     "nsis": {
       "oneClick": false,

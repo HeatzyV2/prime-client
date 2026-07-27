@@ -46,8 +46,10 @@ public final class HudEditorScreen extends Screen {
         renderContext.prepare(extractor);
         int dim = minecraft.level != null ? WORLD_DIM : MENU_DIM;
         renderContext.fillRect(0, 0, width, height, dim);
+        // One layout pass (incl. hidden for hit-testing), then draw without re-measuring.
         client.hud().layout(renderContext, true);
-        client.hud().render(renderContext);
+        client.hud().render(renderContext, false);
+        client.hudEditor().tickAutosave();
         client.hudEditor().renderOverlay(renderContext, mouseX, mouseY);
     }
 
@@ -94,6 +96,7 @@ public final class HudEditorScreen extends Screen {
     @Override
     public void onClose() {
         HudEditorState.setActive(false);
+        PrimeClient.get().hudEditor().flushAutosave();
         PrimeClient.get().profiles().saveActive();
         super.onClose();
     }
