@@ -3,13 +3,15 @@ import PrimeLogo from './PrimeLogo.astro'
 
 const perks = [
   'Connexion Microsoft & mode hors-ligne',
-  'Gestionnaire d\'instances (mods, RAM, Java)',
-  'Installation auto du mod Prime Client',
-  'Intégration Modrinth (mods, packs, shaders)',
-  'Analyseur de crash intelligent',
-  'Mises à jour depuis GitHub Releases',
-  'Discord Rich Presence launcher + jeu',
-  'Store local, cosmétiques, amis & news'
+  'Onboarding guidé au premier lancement',
+  'Import d\'instances (Prism, MultiMC, Lunar, Feather, Dawn)',
+  'Gestionnaire d\'instances (mods, RAM, Java 21)',
+  'Serveurs favoris + partenaire Elysia SMP (épinglé)',
+  'Store Prime Coins, cosmétiques, bibliothèque de skins',
+  'Assistant IA (crashs, mods, packs) + analyseur de crash',
+  'Amis & activité, profil, téléchargements robustes',
+  'Modrinth / CurseForge (mods, packs, shaders)',
+  'Discord Rich Presence launcher + jeu'
 ]
 ---
 
@@ -19,8 +21,8 @@ const perks = [
       <div class="section-label">Prime Launcher</div>
       <h2 class="section-title">Un launcher à la hauteur<br /><span class="text-gradient">du client</span></h2>
       <p class="section-lead">
-        Pas besoin d'installer le mod à la main. Le launcher officiel télécharge Minecraft, Fabric,
-        le mod Prime Client et te connecte en un clic — avec un design rouge & noir assorti.
+        Pas besoin d'installer le mod à la main. Le launcher officiel (Electron) télécharge Minecraft,
+        Fabric, le mod Prime Client et te connecte en un clic — avec un design rouge & noir assorti.
       </p>
       <ul class="launcher__list">
         {perks.map((perk) => (
@@ -48,12 +50,20 @@ const perks = [
           <span class="launcher__pill">Fabric 1.21.11</span>
         </div>
         <div class="launcher__row">
+          <span>Import</span>
+          <span class="launcher__pill">Prism · Lunar · Feather…</span>
+        </div>
+        <div class="launcher__row">
+          <span>Partenaire</span>
+          <span class="launcher__pill launcher__pill--ok">Elysia SMP</span>
+        </div>
+        <div class="launcher__row">
           <span>Mod Prime Client</span>
           <span class="launcher__pill launcher__pill--ok">Auto-installé</span>
         </div>
         <div class="launcher__row">
-          <span>Crash analyzer</span>
-          <span class="launcher__pill launcher__pill--ok">Actif</span>
+          <span>Assistant IA</span>
+          <span class="launcher__pill">Disponible</span>
         </div>
         <div class="launcher__row">
           <span>Discord RPC</span>
@@ -137,6 +147,7 @@ const perks = [
     justify-content: space-between;
     font-size: 0.9rem;
     color: var(--prime-muted);
+    gap: 12px;
   }
 
   .launcher__pill {
@@ -147,6 +158,8 @@ const perks = [
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--prime-border);
     color: var(--prime-white);
+    text-align: right;
+    white-space: nowrap;
   }
 
   .launcher__pill--ok {

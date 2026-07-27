@@ -2,23 +2,35 @@
 const faqs = [
   {
     q: 'Est-ce que Prime Client est un cheat ?',
-    a: 'Non. Prime Client est 100 % visuel et QoL : HUD, performance, confort. Aucun avantage gameplay déloyal (pas de killaura, fly, x-ray, etc.).'
+    a: 'Non. Prime Client est 100 % visuel et QoL : HUD, performance, confort, cosmétiques. Aucun avantage gameplay déloyal (pas de killaura, fly, x-ray, etc.).'
   },
   {
     q: 'Quelle version de Minecraft est supportée ?',
-    a: 'Actuellement Minecraft 1.21.11 avec Fabric via le launcher. Le module mc-26.2 est en développement pour les futures versions.'
+    a: 'Actuellement Minecraft 1.21.11 avec Fabric via le launcher. Une cible mc-26.2 est en préparation pour les futures versions. La version affichée au téléchargement vient toujours de la dernière release GitHub.'
   },
   {
     q: 'Dois-je télécharger le mod séparément ?',
     a: 'Non. Télécharge uniquement le launcher (.exe). Il installe automatiquement le mod Prime Client dans ton instance Fabric.'
   },
   {
-    q: 'Comment publier une nouvelle version ?',
-    a: 'Tag semver sur GitHub (ex. v0.9.3) — la CI build le .exe et le jar, puis les attache à la release. Le site télécharge toujours la dernière release.'
+    q: 'Comment fonctionnent les skins custom (/skin) ?',
+    a: 'Tu charges un PNG via /skin url. Il s\'affiche pour toi et les autres joueurs qui utilisent aussi Prime Client (y compris en LAN / monde intégré / offline). Ce n\'est pas un skin Essentials visible pour tous les joueurs d\'un serveur public — seuls les peers Prime le voient.'
+  },
+  {
+    q: 'Qu\'est-ce qu\'Elysia SMP ?',
+    a: 'Elysia SMP (elysiasmp.fr) est le serveur partenaire officiel, épinglé en tête des favoris du launcher. Survival multiplayer, économie, claims et events — avec badge et cosmétiques Prime sur le serveur.'
+  },
+  {
+    q: 'Puis-je importer mes instances d\'un autre launcher ?',
+    a: 'Oui. Le launcher détecte et importe des instances depuis Prism Launcher, MultiMC, Lunar Client, Feather et Dawn Client.'
+  },
+  {
+    q: 'L\'assistant IA nécessite-t-il un abonnement ?',
+    a: 'Non. Tu peux brancher ta propre clé Groq (stockée localement). L\'IA aide pour les modules, packs, tips FPS et diagnostics — dans le launcher et en jeu via /ai.'
   },
   {
     q: 'Prime Client est-il gratuit ?',
-    a: 'Oui. Le client, le launcher et le code source sont gratuits et open source sur GitHub.'
+    a: 'Oui. Le client, le launcher et le code source sont gratuits et open source sur GitHub. Le store utilise des Prime Coins (cosmétiques / extras), sans payer pour les modules de base.'
   }
 ]
 ---

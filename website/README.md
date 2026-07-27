@@ -34,12 +34,12 @@ Le bouton **Télécharger** interroge l'API GitHub :
 
 Il cible le fichier `Prime-Launcher-Setup-*.exe` attaché à la release.
 
-Pour publier une version téléchargeable :
+Pour publier une version téléchargeable (exemple — utilise le tag semver courant) :
 
 ```powershell
-git tag v0.9.3
+git tag v1.2.63
 git push origin main
-git push origin v0.9.3
+git push origin v1.2.63
 ```
 
 La CI `release.yml` build le mod + le launcher `.exe` et les attache à la release.
