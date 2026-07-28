@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const crypto = require('crypto');
 const { URL } = require('url');
 const db = require('./db');
 const rateLimit = require('./rateLimit');
@@ -13,7 +14,8 @@ const CRASH_DIR = process.env.PRIME_CRASH_DIR || path.join(UPLOAD_DIR, 'crashes'
 const MAX_UPLOAD = 5 * 1024 * 1024;
 const MAX_CRASH = 2 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
-const BACKEND_VERSION = '2.1.0';
+const BACKEND_VERSION = '2.1.1';
+const STATS_SALT = process.env.STATS_SALT || 'prime-stats-v1';
 
 function ensureUploadDir() {
   if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -27,6 +29,11 @@ function clientIp(req) {
   const fwd = req.headers['x-forwarded-for'];
   if (typeof fwd === 'string' && fwd.length) return fwd.split(',')[0].trim();
   return req.socket?.remoteAddress || 'unknown';
+}
+
+/** Short-lived IP fingerprint for stats dedupe — never persisted as raw IP. */
+function cryptoHashIp(ip) {
+  return crypto.createHash('sha256').update(`${STATS_SALT}|ip|${ip || 'unknown'}`).digest('hex').slice(0, 24);
 }
 
 function enforceRate(req, res, route, opts) {
@@ -216,6 +223,44 @@ async function handleHttp(req, res, ctx) {
   if (req.method === 'GET' && pathname === '/v1/versions') {
     const manifest = versionsManifest();
     json(res, 200, { ...manifest, backend: BACKEND_VERSION });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/stats') {
+    json(res, 200, db.getPublicStats());
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/v1/stats/download') {
+    if (!enforceRate(req, res, 'stats-download', { limit: 20, windowMs: 60_000 })) return true;
+    let body = {};
+    try {
+      const raw = (await readBody(req, 4 * 1024)).toString('utf8') || '{}';
+      body = JSON.parse(raw || '{}');
+    } catch {
+      body = {};
+    }
+    const deviceId = body.deviceId ? String(body.deviceId).slice(0, 128) : '';
+    const ipHash = cryptoHashIp(clientIp(req));
+    const result = db.recordDownload([ipHash, deviceId]);
+    json(res, 200, { ok: true, counted: result.counted, ...result.stats });
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/v1/stats/launch') {
+    if (!enforceRate(req, res, 'stats-launch', { limit: 30, windowMs: 60_000 })) return true;
+    let body = {};
+    try {
+      const raw = (await readBody(req, 4 * 1024)).toString('utf8') || '{}';
+      body = JSON.parse(raw || '{}');
+    } catch {
+      body = {};
+    }
+    const deviceId = body.deviceId ? String(body.deviceId).slice(0, 128) : '';
+    const client = body.client ? String(body.client).slice(0, 32) : 'launcher';
+    const ipHash = cryptoHashIp(clientIp(req));
+    const result = db.recordLaunch([ipHash, deviceId, client]);
+    json(res, 200, { ok: true, counted: result.counted, ...result.stats });
     return true;
   }
 

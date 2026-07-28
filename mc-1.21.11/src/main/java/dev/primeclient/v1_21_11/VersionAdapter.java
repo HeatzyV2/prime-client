@@ -102,17 +102,20 @@ public final class VersionAdapter implements MinecraftAdapter {
 
     @Override
     public double playerX() {
-        return Minecraft.getInstance().player.getX();
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getX() : 0;
     }
 
     @Override
     public double playerY() {
-        return Minecraft.getInstance().player.getY();
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getY() : 0;
     }
 
     @Override
     public double playerZ() {
-        return Minecraft.getInstance().player.getZ();
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getZ() : 0;
     }
 
     @Override
@@ -185,6 +188,62 @@ public final class VersionAdapter implements MinecraftAdapter {
         Minecraft mc = Minecraft.getInstance();
         Screen parent = mc.screen != null ? mc.screen : null;
         mc.setScreen(new OptionsScreen(parent, mc.options));
+    }
+
+    @Override
+    public void openAdvancements() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.player.connection == null) {
+            return;
+        }
+        mc.setScreen(new net.minecraft.client.gui.screens.advancements.AdvancementsScreen(
+                mc.player.connection.getAdvancements()));
+    }
+
+    @Override
+    public void openStatistics() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) {
+            return;
+        }
+        Screen parent = mc.screen;
+        mc.setScreen(new net.minecraft.client.gui.screens.achievement.StatsScreen(parent, mc.player.getStats()));
+    }
+
+    @Override
+    public void openFeedbackLink() {
+        openExternalLink("https://aka.ms/javafeedback?ref=game");
+    }
+
+    @Override
+    public void openBugReportLink() {
+        openExternalLink("https://aka.ms/snapshotbugs?ref=game");
+    }
+
+    @Override
+    public void openShareToLan() {
+        Minecraft mc = Minecraft.getInstance();
+        if (!mc.hasSingleplayerServer()) {
+            return;
+        }
+        var server = mc.getSingleplayerServer();
+        if (server == null || server.isPublished()) {
+            return;
+        }
+        Screen parent = mc.screen;
+        mc.setScreen(new net.minecraft.client.gui.screens.ShareToLanScreen(parent));
+    }
+
+    @Override
+    public void disconnectToTitle() {
+        Minecraft mc = Minecraft.getInstance();
+        boolean local = mc.isLocalServer();
+        if (local) {
+            // Shows saving progress then TitleScreen — TitleScreenMixin redirects to Prime.
+            mc.disconnectWithSavingScreen();
+        } else {
+            mc.disconnect(new JoinMultiplayerScreen(new TitleScreen()), false);
+        }
     }
 
     @Override
@@ -383,12 +442,14 @@ public final class VersionAdapter implements MinecraftAdapter {
 
     @Override
     public float playerYaw() {
-        return Minecraft.getInstance().player.getYRot();
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getYRot() : 0;
     }
 
     @Override
     public float playerPitch() {
-        return Minecraft.getInstance().player.getXRot();
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getXRot() : 0;
     }
 
     @Override
@@ -403,32 +464,42 @@ public final class VersionAdapter implements MinecraftAdapter {
 
     @Override
     public float playerHealth() {
-        return Minecraft.getInstance().player.getHealth();
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getHealth() : 0;
     }
 
     @Override
     public float playerMaxHealth() {
-        return Minecraft.getInstance().player.getMaxHealth();
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getMaxHealth() : 20;
     }
 
     @Override
     public boolean isSprinting() {
-        return Minecraft.getInstance().player.isSprinting();
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null && player.isSprinting();
     }
 
     @Override
     public void setSprinting(boolean sprint) {
-        Minecraft.getInstance().player.setSprinting(sprint);
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) {
+            player.setSprinting(sprint);
+        }
     }
 
     @Override
     public boolean isSneaking() {
-        return Minecraft.getInstance().player.isShiftKeyDown();
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null && player.isShiftKeyDown();
     }
 
     @Override
     public void setSneaking(boolean sneak) {
-        Minecraft.getInstance().player.setShiftKeyDown(sneak);
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null) {
+            player.setShiftKeyDown(sneak);
+        }
     }
 
     @Override
@@ -481,7 +552,8 @@ public final class VersionAdapter implements MinecraftAdapter {
 
     @Override
     public float attackCooldown() {
-        return Minecraft.getInstance().player.getAttackStrengthScale(0);
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getAttackStrengthScale(0) : 1.0f;
     }
 
     @Override
@@ -906,18 +978,27 @@ public final class VersionAdapter implements MinecraftAdapter {
 
     @Override
     public String heldItemName() {
-        ItemStack stack = Minecraft.getInstance().player.getMainHandItem();
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return "";
+        }
+        ItemStack stack = player.getMainHandItem();
         return stack.isEmpty() ? "" : stack.getHoverName().getString();
     }
 
     @Override
     public int heldItemCount() {
-        return Minecraft.getInstance().player.getMainHandItem().getCount();
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null ? player.getMainHandItem().getCount() : 0;
     }
 
     @Override
     public String hoveredItemName() {
-        ItemStack stack = Minecraft.getInstance().player.containerMenu.getCarried();
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return "";
+        }
+        ItemStack stack = player.containerMenu.getCarried();
         if (!stack.isEmpty()) {
             return stack.getHoverName().getString();
         }
@@ -926,7 +1007,9 @@ public final class VersionAdapter implements MinecraftAdapter {
 
     @Override
     public boolean hoveredItemIsShulkerBox() {
-        return Minecraft.getInstance().player.getMainHandItem().getItem().toString().contains("shulker_box");
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null
+                && player.getMainHandItem().getItem().toString().contains("shulker_box");
     }
 
     @Override

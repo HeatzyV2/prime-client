@@ -197,9 +197,33 @@
 <script>
   const REPO = 'HeatzyV2/prime-client'
   const RELEASES_URL = `https://github.com/${REPO}/releases`
+  const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_API_URL
+    ? String(import.meta.env.PUBLIC_API_URL)
+    : 'http://194.9.172.102:26005'
+  ).replace(/\/$/, '')
   const statusEl = document.getElementById('release-status')
   const btnEl = document.getElementById('download-btn')
   const labelEl = document.getElementById('download-label')
+
+  function trackDownload() {
+    const url = `${API_BASE}/v1/stats/download`
+    const body = '{}'
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        const blob = new Blob([body], { type: 'application/json' })
+        if (navigator.sendBeacon(url, blob)) return
+      }
+    } catch {
+      /* fall through */
+    }
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+      mode: 'cors'
+    }).catch(() => {})
+  }
 
   function pickWindowsAsset(assets) {
     if (!assets?.length) return null
@@ -255,6 +279,13 @@
         labelEl.textContent = 'Releases GitHub'
       }
     }
+  }
+
+  if (btnEl) {
+    btnEl.addEventListener('click', () => {
+      if (btnEl.getAttribute('aria-disabled') === 'true') return
+      trackDownload()
+    })
   }
 
   loadRelease()

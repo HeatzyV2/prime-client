@@ -78,6 +78,13 @@ public final class ItemCooldownModule extends Module {
         }
 
         private void refresh() {
+            if (!adapter.hasPlayer()) {
+                if (lastPercent != 100) {
+                    lastPercent = 100;
+                    text = "100%";
+                }
+                return;
+            }
             float cooldown = adapter.attackCooldown();
             int percent = Math.round(Math.clamp(cooldown, 0.0f, 1.0f) * 100);
             if (percent != lastPercent) {

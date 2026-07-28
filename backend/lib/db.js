@@ -149,7 +149,29 @@ CREATE TABLE IF NOT EXISTS crashes (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_crashes_user ON crashes(user_uuid, created_at);
+
+CREATE TABLE IF NOT EXISTS usage_stats (
+  key TEXT PRIMARY KEY,
+  value INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS stats_dedupe (
+  kind TEXT NOT NULL,
+  hash TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  PRIMARY KEY (kind, hash)
+);
+CREATE INDEX IF NOT EXISTS idx_stats_dedupe_expires ON stats_dedupe(expires_at);
 `);
+
+  const seedAt = nowIso();
+  sql.prepare(
+    `INSERT OR IGNORE INTO usage_stats (key, value, updated_at) VALUES (?, 0, ?)`
+  ).run('downloads', seedAt);
+  sql.prepare(
+    `INSERT OR IGNORE INTO usage_stats (key, value, updated_at) VALUES (?, 0, ?)`
+  ).run('launches', seedAt);
 }
 
 migrateSchema();
@@ -998,6 +1020,83 @@ function dbStats() {
   };
 }
 
+const STATS_SALT = process.env.STATS_SALT || 'prime-stats-v1';
+
+function purgeExpiredStatsDedupe() {
+  const now = Date.now();
+  sql.prepare('DELETE FROM stats_dedupe WHERE expires_at < ?').run(now);
+}
+
+function hashStatsIdentity(parts) {
+  const raw = parts.filter(Boolean).join('|');
+  return crypto.createHash('sha256').update(`${STATS_SALT}|${raw}`).digest('hex').slice(0, 32);
+}
+
+function getPublicStats() {
+  const downloads =
+    sql.prepare(`SELECT value, updated_at FROM usage_stats WHERE key = 'downloads'`).get() || {
+      value: 0,
+      updated_at: null,
+    };
+  const launches =
+    sql.prepare(`SELECT value, updated_at FROM usage_stats WHERE key = 'launches'`).get() || {
+      value: 0,
+      updated_at: null,
+    };
+  const updatedAt = [downloads.updated_at, launches.updated_at]
+    .filter(Boolean)
+    .sort()
+    .at(-1) || nowIso();
+  return {
+    downloads: Number(downloads.value) || 0,
+    launches: Number(launches.value) || 0,
+    updatedAt,
+  };
+}
+
+/**
+ * Increment a public counter with short-lived anonymous dedupe (hashed identity only).
+ * @param {'downloads'|'launches'} key
+ * @param {{ kind: string, identityParts: string[], ttlMs: number }} opts
+ * @returns {{ counted: boolean, stats: ReturnType<typeof getPublicStats> }}
+ */
+function incrementUsageStat(key, opts) {
+  purgeExpiredStatsDedupe();
+  const kind = String(opts.kind || key);
+  const hash = hashStatsIdentity(opts.identityParts || []);
+  const ttlMs = Math.max(60_000, Number(opts.ttlMs) || 3_600_000);
+  const expiresAt = Date.now() + ttlMs;
+
+  const insert = sql.prepare(
+    `INSERT OR IGNORE INTO stats_dedupe (kind, hash, expires_at) VALUES (?, ?, ?)`
+  );
+  const result = insert.run(kind, hash, expiresAt);
+  let counted = result.changes > 0;
+  if (counted) {
+    const at = nowIso();
+    sql.prepare(
+      `UPDATE usage_stats SET value = value + 1, updated_at = ? WHERE key = ?`
+    ).run(at, key);
+  }
+  return { counted, stats: getPublicStats() };
+}
+
+function recordDownload(identityParts) {
+  return incrementUsageStat('downloads', {
+    kind: 'download',
+    identityParts,
+    ttlMs: Number(process.env.STATS_DOWNLOAD_DEDUPE_MS) || 60 * 60 * 1000,
+  });
+}
+
+function recordLaunch(identityParts) {
+  return incrementUsageStat('launches', {
+    kind: 'launch',
+    identityParts,
+    ttlMs: Number(process.env.STATS_LAUNCH_DEDUPE_MS) || 6 * 60 * 60 * 1000,
+  });
+}
+
 function flushNow() {
   try {
     sql.pragma('wal_checkpoint(TRUNCATE)');
@@ -1062,6 +1161,9 @@ module.exports = {
   recordCrash,
   listCrashes,
   dbStats,
+  getPublicStats,
+  recordDownload,
+  recordLaunch,
   flushNow,
   id,
   friendshipKeyPair,

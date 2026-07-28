@@ -6,8 +6,12 @@ import dev.primeclient.core.util.ColorUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /** {@link RenderContext} over 1.21.11's immediate-mode {@link GuiGraphics}. */
 public final class GuiRenderContext implements RenderContext {
@@ -134,6 +138,58 @@ public final class GuiRenderContext implements RenderContext {
         // 1.21.6+ treats blit tint as ARGB — always pass an explicit opaque color (no-color overload breaks alpha).
         graphics.blit(RenderPipelines.GUI_TEXTURED, id, x, y, 0f, 0f, width, height,
                 textureWidth, textureHeight, textureTint(tintArgb));
+    }
+
+    @Override
+    public void drawArmorItem(int slot, int x, int y) {
+        ItemStack stack = armorStack(slot);
+        if (stack.isEmpty()) {
+            return;
+        }
+        graphics.renderItem(stack, x, y);
+    }
+
+    @Override
+    public void drawArmorGhost(int slot, int x, int y) {
+        ItemStack ghost = armorGhost(slot);
+        if (ghost.isEmpty()) {
+            return;
+        }
+        graphics.renderFakeItem(ghost, x, y);
+    }
+
+    private static ItemStack armorStack(int slot) {
+        EquipmentSlot equipment = equipmentSlot(slot);
+        if (equipment == null) {
+            return ItemStack.EMPTY;
+        }
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player == null ? ItemStack.EMPTY : player.getItemBySlot(equipment);
+    }
+
+    private static final ItemStack GHOST_BOOTS = new ItemStack(Items.CHAINMAIL_BOOTS);
+    private static final ItemStack GHOST_LEGGINGS = new ItemStack(Items.CHAINMAIL_LEGGINGS);
+    private static final ItemStack GHOST_CHEST = new ItemStack(Items.CHAINMAIL_CHESTPLATE);
+    private static final ItemStack GHOST_HELMET = new ItemStack(Items.CHAINMAIL_HELMET);
+
+    private static ItemStack armorGhost(int slot) {
+        return switch (slot) {
+            case 0 -> GHOST_BOOTS;
+            case 1 -> GHOST_LEGGINGS;
+            case 2 -> GHOST_CHEST;
+            case 3 -> GHOST_HELMET;
+            default -> ItemStack.EMPTY;
+        };
+    }
+
+    private static EquipmentSlot equipmentSlot(int slot) {
+        return switch (slot) {
+            case 0 -> EquipmentSlot.FEET;
+            case 1 -> EquipmentSlot.LEGS;
+            case 2 -> EquipmentSlot.CHEST;
+            case 3 -> EquipmentSlot.HEAD;
+            default -> null;
+        };
     }
 
     /** Fabric/MC GUI textures use {@code textures/...} paths in {@link Identifier}s. */

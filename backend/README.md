@@ -2,7 +2,7 @@
 
 Unified **social + voice** server for Prime Client (friends / DM / party / presence), plus cloud-sync helpers for profiles, store, cosmetics, and settings.
 
-**Version:** `2.1.0` — SQLite persistence, MS profile verify (optional), party invites, friend notes, block list, profiles, Prime Coins store, cosmetics/settings sync, crash index.
+**Version:** `2.1.1` — SQLite persistence, MS profile verify (optional), party invites, friend notes, block list, profiles, Prime Coins store, cosmetics/settings sync, crash index, **public download/launch stats**.
 
 ## Run locally
 
@@ -13,6 +13,8 @@ npm start
 ```
 
 Default: `http://0.0.0.0:8765`
+
+Copy `.env.example` → `.env` for local overrides (never commit `.env`).
 
 ## Deploy (VPS / Pterodactyl)
 
@@ -39,13 +41,13 @@ GROQ_API_KEY=gsk_... PORT=26005 npm start
 
 Launcher + in-game `/ai` call this proxy. Users never see the API key.
 
-After pulling `2.1.0`, restart the process once so SQLite migrates (`ALTER` + new tables).
+After pulling `2.1.1`, restart the process once so SQLite migrates (`usage_stats` / `stats_dedupe` tables).
 
 ## Data & migration
 
 | Path | Role |
 |------|------|
-| `data/prime.db` | SQLite store (users, sessions, friends, messages, parties, notes, store, crashes) |
+| `data/prime.db` | SQLite store (users, sessions, friends, messages, parties, notes, store, crashes, **usage_stats**) |
 | `data/prime.json` | Legacy JSON — **one-shot migrated** into SQLite on first boot if DB is empty, then kept as backup |
 | `uploads/` | Chat image uploads |
 | `uploads/crashes/` | Crash logs (+ DB index on POST) |
@@ -74,7 +76,10 @@ No manual migrate step: start the server; missing user columns / tables are adde
 
 | Path | Role |
 |------|------|
-| `GET /health` | `{ version: "2.1.0", db, ws }` |
+| `GET /health` | `{ version: "2.1.1", db, ws }` |
+| `GET /v1/stats` | Public counters `{ downloads, launches, updatedAt }` — no auth |
+| `POST /v1/stats/download` | Increment downloads (rate-limited; optional `{ deviceId }`; IP hashed for short dedupe) |
+| `POST /v1/stats/launch` | Increment launches (rate-limited; optional `{ deviceId, client }`) |
 | `POST /v1/auth/session` | Session token |
 | `GET /v1/me` | Self + profile fields (`createdAt`, `playtimeMinutes`, `tier`, `badges`, `bio`, `primeCoins`) |
 | `GET /v1/profile/:uuid` | Public profile snapshot |
@@ -97,6 +102,12 @@ No manual migrate step: start the server; missing user columns / tables are adde
 | `WS /social?token=` | Presence, live chat, typing, party events; client `ping` every ~25s |
 | `WS /voice` | Existing proximity voice (unchanged) |
 
+### Public stats notes
+
+- CORS is open (`Access-Control-Allow-Origin: *`) so the GitHub Pages site can `GET /v1/stats` and `POST` increments.
+- Raw IPs are **not** stored; only a salted hash lives in `stats_dedupe` until its TTL expires (`STATS_DOWNLOAD_DEDUPE_MS` / `STATS_LAUNCH_DEDUPE_MS`, optional `STATS_SALT`).
+- Website download CTA → `POST /v1/stats/download`; launcher session start → `POST /v1/stats/launch`.
+
 Store sync is optional / local-first: launcher can keep working offline; cloud routes mirror catalog + coin ledger when online.
 
 ## Smoke checklist
@@ -107,6 +118,7 @@ Store sync is optional / local-first: launcher can keep working offline; cloud r
 4. **Join from drawer** — friend in-game with `serverAddress` → Join uses that address (not the note text).
 5. **Block** — block a user → cannot DM / party-invite them.
 6. **Notes** — save a friend note in launcher → persists after restart (SQLite).
-7. **Health** — `curl http://127.0.0.1:26005/health` → `version` `2.1.0`, `db.ok` true.
+7. **Health** — `curl http://127.0.0.1:26005/health` → `version` `2.1.1`, `db.ok` true.
 8. **Store** — redeem `WELCOME100` → purchase a paid catalog item → history lists both.
 9. **Crash list** — POST a crash → GET `/v1/crash` returns `{ id, createdAt, version }`.
+10. **Stats** — `GET /v1/stats` → `{ downloads, launches, updatedAt }`; POST download/launch increments (deduped).

@@ -73,6 +73,30 @@ public interface MinecraftAdapter {
     default void openOptions() {
     }
 
+    /** Opens the advancements screen from the pause menu. */
+    default void openAdvancements() {
+    }
+
+    /** Opens the statistics screen from the pause menu. */
+    default void openStatistics() {
+    }
+
+    /** Opens Mojang / Minecraft feedback site. */
+    default void openFeedbackLink() {
+    }
+
+    /** Opens the Minecraft bug tracker. */
+    default void openBugReportLink() {
+    }
+
+    /** Opens the Share to LAN screen when available. */
+    default void openShareToLan() {
+    }
+
+    /** Disconnects and returns to the title screen (save & quit / disconnect). */
+    default void disconnectToTitle() {
+    }
+
     /** Opens the in-game Minecraft account switcher (title menu). */
     default void openAccountSwitcher() {
     }

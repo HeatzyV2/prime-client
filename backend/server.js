@@ -6,6 +6,7 @@
  *
  * Endpoints:
  *   GET  /health
+ *   GET  /v1/stats · POST /v1/stats/download · POST /v1/stats/launch
  *   POST /v1/auth/session
  *   GET  /v1/ai/status · POST /v1/ai/chat  (Groq proxy — key stays on server)
  *   GET  /v1/me · /v1/profile/:uuid

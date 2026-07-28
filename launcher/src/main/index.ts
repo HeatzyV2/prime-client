@@ -91,6 +91,13 @@ app.whenReady().then(async () => {
     // offline — social features degrade gracefully
   })
 
+  // Anonymous usage ping — fail silent
+  void fetch(`${(process.env.PRIME_API_BASE || 'http://194.9.172.102:26005').replace(/\/$/, '')}/v1/stats/launch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client: 'launcher' })
+  }).catch(() => {})
+
   await launcherDiscordService.start()
 
   app.on('activate', () => {

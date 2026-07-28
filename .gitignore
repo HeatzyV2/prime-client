@@ -50,6 +50,7 @@ _panorama_extract/
 # Secrets & local user data
 .env
 .env.*
+!.env.example
 *.pem
 accounts.json
 instances.json

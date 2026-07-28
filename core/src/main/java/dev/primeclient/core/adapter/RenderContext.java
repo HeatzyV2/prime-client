@@ -83,6 +83,21 @@ public interface RenderContext {
                              int textureWidth, int textureHeight, int tintArgb) {
     }
 
+    /**
+     * Draws the equipped armor item icon for adapter slot
+     * ({@code 0}=boots, {@code 1}=leggings, {@code 2}=chest, {@code 3}=helmet).
+     * No-op when empty or no player. Coordinates are local to the current transform.
+     */
+    default void drawArmorItem(int slot, int x, int y) {
+    }
+
+    /**
+     * Draws a faint ghost placeholder for an empty armor slot (same slot index as
+     * {@link #drawArmorItem(int, int, int)}).
+     */
+    default void drawArmorGhost(int slot, int x, int y) {
+    }
+
     /** Vertical gradient fill (top → bottom). Chunked — not one draw call per row. */
     default void fillGradientVertical(int x, int y, int width, int height, int topArgb, int bottomArgb) {
         if (width <= 0 || height <= 0) {

@@ -30,6 +30,10 @@ import PrimeLogo from './PrimeLogo.astro'
 
     <div class="hero__stats reveal reveal-delay-4">
       <div class="hero__stat">
+        <strong id="stat-downloads">—</strong>
+        <span>Téléchargements</span>
+      </div>
+      <div class="hero__stat">
         <strong>130+</strong>
         <span>Modules</span>
       </div>
@@ -40,10 +44,6 @@ import PrimeLogo from './PrimeLogo.astro'
       <div class="hero__stat">
         <strong>100%</strong>
         <span>Légitime</span>
-      </div>
-      <div class="hero__stat">
-        <strong>0</strong>
-        <span>Cheat</span>
       </div>
     </div>
 
@@ -227,3 +227,38 @@ import PrimeLogo from './PrimeLogo.astro'
     pointer-events: none;
   }
 </style>
+
+<script>
+  const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_API_URL
+    ? String(import.meta.env.PUBLIC_API_URL)
+    : 'http://194.9.172.102:26005'
+  ).replace(/\/$/, '')
+  const FALLBACK_DOWNLOADS = 0
+
+  function formatCount(n) {
+    try {
+      return new Intl.NumberFormat('fr-FR', {
+        notation: n >= 10000 ? 'compact' : 'standard'
+      }).format(Math.max(0, Math.floor(n)))
+    } catch {
+      return String(Math.max(0, Math.floor(n)))
+    }
+  }
+
+  async function loadDownloads() {
+    const el = document.getElementById('stat-downloads')
+    if (!el) return
+    try {
+      const res = await fetch(`${API_BASE}/v1/stats`, { headers: { Accept: 'application/json' } })
+      if (!res.ok) throw new Error(String(res.status))
+      const data = await res.json()
+      const downloads = Number(data.downloads) || FALLBACK_DOWNLOADS
+      el.textContent = formatCount(downloads)
+      el.title = data.updatedAt ? `Mis à jour ${data.updatedAt}` : ''
+    } catch {
+      el.textContent = formatCount(FALLBACK_DOWNLOADS)
+    }
+  }
+
+  loadDownloads()
+</script>

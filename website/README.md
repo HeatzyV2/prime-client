@@ -34,6 +34,10 @@ Le bouton **Télécharger** interroge l'API GitHub :
 
 Il cible le fichier `Prime-Launcher-Setup-*.exe` attaché à la release.
 
+Au clic, le site envoie aussi un ping anonyme `POST {PUBLIC_API_URL}/v1/stats/download` (par défaut `http://194.9.172.102:26005`). Le hero affiche `GET /v1/stats` → compteur **Téléchargements**.
+
+Override build : `PUBLIC_API_URL=https://… npm run build`.
+
 Pour publier une version téléchargeable (exemple — utilise le tag semver courant) :
 
 ```powershell

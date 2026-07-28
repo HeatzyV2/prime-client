@@ -2,22 +2,39 @@ package dev.primeclient.core.modules.pvp;
 
 import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.adapter.RenderContext;
+import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.hud.HudAnchor;
 import dev.primeclient.core.hud.HudElement;
 import dev.primeclient.core.hud.HudManager;
+import dev.primeclient.core.module.BooleanSetting;
+import dev.primeclient.core.module.IntSetting;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.theme.ThemeManager;
+import dev.primeclient.core.util.ColorUtil;
 
-/** Armor durability summary HUD. */
+/**
+ * Horizontal 4-slot armor strip: Helmet → Chestplate → Leggings → Boots,
+ * with durability bars and critical !!! badges in Prime chrome.
+ */
 public final class ArmorHudModule extends Module {
+
+    private final BooleanSetting showDurability = addSetting(new BooleanSetting(
+            "durability", "Durability bars", "Show durability under damaged pieces", true));
+    private final BooleanSetting showGhosts = addSetting(new BooleanSetting(
+            "ghosts", "Empty ghosts", "Show faint outlines for empty armor slots", true));
+    private final BooleanSetting showWarnings = addSetting(new BooleanSetting(
+            "warnings", "Critical badges", "Show !!! when a piece is critically damaged", true));
+    private final IntSetting warningThreshold = addSetting(new IntSetting(
+            "warn-threshold", "Warning %", "Durability % that triggers the critical badge", 20, 5, 50));
 
     private final Element element;
 
     public ArmorHudModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
-        super("armor-hud", "Armor HUD", "Shows your armor durability", ModuleCategory.PVP);
-        this.element = hud.register(new Element(themes, adapter));
+        super("armor-hud", "Armor HUD", "Shows equipped armor durability", ModuleCategory.PVP);
+        this.element = hud.register(new Element(
+                themes, adapter, showDurability, showGhosts, showWarnings, warningThreshold));
         element.setVisible(false);
     }
 
@@ -32,71 +49,150 @@ public final class ArmorHudModule extends Module {
     }
 
     private static final class Element extends HudElement {
-        private static final int PADDING = 3;
+        /** Adapter order is boots→helmet; display order is helmet→boots. */
+        private static final int[] DISPLAY_SLOTS = {3, 2, 1, 0};
+
+        private static final int SLOT = 20;
+        private static final int ITEM = 16;
+        private static final int PAD = 2;
+        private static final int BAR_H = 2;
+        private static final int BAR_GAP = 1;
+        private static final int BADGE_SPACE = 12;
+        private static final int STRIP_H = PAD + ITEM + BAR_GAP + BAR_H + PAD;
 
         private final ThemeManager themes;
         private final MinecraftAdapter adapter;
+        private final BooleanSetting showDurability;
+        private final BooleanSetting showGhosts;
+        private final BooleanSetting showWarnings;
+        private final IntSetting warningThreshold;
 
-        private int lastPercent = -1;
-        private String text = "";
-
-        Element(ThemeManager themes, MinecraftAdapter adapter) {
-            super("armor", "Armor HUD", HudAnchor.BOTTOM_RIGHT, -4, -20);
+        Element(ThemeManager themes, MinecraftAdapter adapter,
+                BooleanSetting showDurability, BooleanSetting showGhosts,
+                BooleanSetting showWarnings, IntSetting warningThreshold) {
+            super("armor", "Armor HUD", HudAnchor.BOTTOM_CENTER, 0, -72);
             this.themes = themes;
             this.adapter = adapter;
+            this.showDurability = showDurability;
+            this.showGhosts = showGhosts;
+            this.showWarnings = showWarnings;
+            this.warningThreshold = warningThreshold;
         }
 
         @Override
         public int measureWidth(RenderContext ctx) {
-            refresh();
-            if (text.isEmpty()) {
-                return 0;
-            }
-            return ctx.textWidth(text) + PADDING * 2;
+            return SLOT * DISPLAY_SLOTS.length;
         }
 
         @Override
         public int measureHeight(RenderContext ctx) {
-            refresh();
-            if (text.isEmpty()) {
-                return 0;
-            }
-            return ctx.fontHeight() + PADDING * 2;
+            return BADGE_SPACE + STRIP_H;
         }
 
         @Override
         public void render(RenderContext ctx, long nowMillis) {
-            refresh();
-            if (text.isEmpty()) {
-                return;
-            }
             Theme theme = themes.active();
-            ctx.fillRect(0, 0, measureWidth(ctx), measureHeight(ctx), theme.background());
-            ctx.drawText(text, PADDING, PADDING, theme.foreground(), true);
+            int width = measureWidth(ctx);
+            int stripY = BADGE_SPACE;
+            boolean hasPlayer = adapter.hasPlayer();
+
+            drawStripFrame(ctx, theme, 0, stripY, width, STRIP_H);
+
+            for (int i = 0; i < DISPLAY_SLOTS.length; i++) {
+                int slot = DISPLAY_SLOTS[i];
+                int slotX = i * SLOT;
+                int itemX = slotX + (SLOT - ITEM) / 2;
+                int itemY = stripY + PAD;
+
+                if (i > 0) {
+                    ctx.fillRect(slotX, stripY + 2, 1, STRIP_H - 4,
+                            ColorUtil.withAlpha(theme.border(), 0.45f));
+                }
+
+                boolean equipped = hasPlayer && adapter.hasArmor(slot);
+                if (equipped) {
+                    ctx.drawArmorItem(slot, itemX, itemY);
+                    if (showDurability.get()) {
+                        drawDurabilityBar(ctx, theme, slot, slotX, stripY);
+                    }
+                    if (showWarnings.get() && isCritical(slot)) {
+                        drawWarningBadge(ctx, theme, slotX + SLOT / 2, stripY);
+                    }
+                } else if (showGhosts.get()) {
+                    ctx.drawArmorGhost(slot, itemX, itemY);
+                    // Mute the ghost so it reads as an outline, not a real item.
+                    ctx.fillRect(itemX, itemY, ITEM, ITEM, ColorUtil.withAlpha(theme.background(), 0.55f));
+                }
+            }
         }
 
-        private void refresh() {
-            int durability = 0;
-            int maxDurability = 0;
-            int slots = adapter.armorSlotCount();
-            for (int slot = 0; slot < slots; slot++) {
-                if (adapter.hasArmor(slot)) {
-                    durability += adapter.armorDurability(slot);
-                    maxDurability += adapter.armorMaxDurability(slot);
-                }
-            }
-            if (maxDurability == 0) {
-                if (lastPercent != -1) {
-                    lastPercent = -1;
-                    text = "";
-                }
+        private void drawStripFrame(RenderContext ctx, Theme theme, int x, int y, int w, int h) {
+            int radius = PrimeDesign.RADIUS_SM;
+            ctx.fillSoftShadow(x, y + 1, w, h, radius, 0x60000000);
+            ctx.fillRoundedBorder(x, y, w, h, radius, 1,
+                    ColorUtil.withAlpha(theme.accent(), 0.85f),
+                    ColorUtil.withAlpha(theme.background(), 0.92f));
+            // Soft inner glow along the top edge (Prime accent, not metallic bevel).
+            ctx.fillGradientHorizontal(x + radius, y + 1, w - radius * 2, 1,
+                    ColorUtil.withAlpha(theme.accent(), 0.55f),
+                    ColorUtil.withAlpha(theme.accent(), 0.08f));
+            ctx.fillRect(x + 1, y + h - 1, w - 2, 1,
+                    ColorUtil.withAlpha(theme.accentSecondary(), 0.35f));
+        }
+
+        private void drawDurabilityBar(RenderContext ctx, Theme theme, int slot, int slotX, int stripY) {
+            int max = adapter.armorMaxDurability(slot);
+            if (max <= 0) {
                 return;
             }
-            int percent = durability * 100 / maxDurability;
-            if (percent != lastPercent) {
-                lastPercent = percent;
-                text = "Armor " + percent + "%";
+            int remaining = adapter.armorDurability(slot);
+            if (remaining >= max) {
+                return; // pristine — no bar
             }
+            float ratio = Math.clamp(remaining / (float) max, 0f, 1f);
+            int barW = SLOT - PAD * 2;
+            int barX = slotX + PAD;
+            int barY = stripY + PAD + ITEM + BAR_GAP;
+            ctx.fillRect(barX, barY, barW, BAR_H, 0xE0000000);
+            int fill = Math.max(1, Math.round(barW * ratio));
+            ctx.fillRect(barX, barY, fill, BAR_H, durabilityColor(theme, ratio));
+        }
+
+        private int durabilityColor(Theme theme, float ratio) {
+            float warn = warningThreshold.get() / 100f;
+            if (ratio <= warn) {
+                return theme.error();
+            }
+            // Green when healthy → amber mid → red near critical.
+            if (ratio >= 0.55f) {
+                return theme.success();
+            }
+            float t = (ratio - warn) / Math.max(0.01f, 0.55f - warn);
+            return ColorUtil.lerp(theme.error(), theme.success(), t);
+        }
+
+        private boolean isCritical(int slot) {
+            int max = adapter.armorMaxDurability(slot);
+            if (max <= 0) {
+                return false;
+            }
+            int remaining = adapter.armorDurability(slot);
+            return remaining * 100 / max <= warningThreshold.get();
+        }
+
+        private void drawWarningBadge(RenderContext ctx, Theme theme, int centerX, int stripY) {
+            int size = 10;
+            int x = centerX - size / 2;
+            int y = stripY - size - 1;
+            ctx.fillRoundedRect(x - 1, y - 1, size + 2, size + 2, size / 2 + 1,
+                    ColorUtil.withAlpha(theme.accent(), 0.35f));
+            ctx.fillRoundedRect(x, y, size, size, size / 2, theme.error());
+            String mark = "!!!";
+            float scale = 0.55f;
+            int tw = ctx.smoothTextWidth(mark, scale);
+            int tx = centerX - tw / 2;
+            int ty = y + (size - Math.round(ctx.fontHeight() * scale)) / 2;
+            ctx.drawSmoothText(mark, tx, ty, theme.foreground(), scale);
         }
     }
 }
