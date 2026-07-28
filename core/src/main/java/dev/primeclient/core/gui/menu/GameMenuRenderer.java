@@ -197,9 +197,9 @@ public final class GameMenuRenderer {
         int iconW = 8;
         int textW = ctx.smoothTextWidth(label, scale);
         int start = x + (w - (iconW + 6 + textW)) / 2;
+        int textY = textTop(ctx, y, h, scale);
         drawPlayIcon(ctx, start, y + h / 2, theme.foreground());
-        ctx.drawSmoothText(label, start + iconW + 6, y + (h - ctx.fontHeight()) / 2 + 1,
-                theme.foreground(), scale);
+        ctx.drawSmoothText(label, start + iconW + 6, textY, theme.foreground(), scale);
         ctx.setDrawOpacity(1f);
     }
 
@@ -230,8 +230,10 @@ public final class GameMenuRenderer {
             float scale = 0.78f;
             int iconColor = theme.accent();
             int textColor = hover ? theme.foreground() : theme.foregroundMuted();
-            ctx.drawSmoothText(GRID_ICONS[i], x + 8, y + (h - ctx.fontHeight()) / 2 + 1, iconColor, 0.85f);
-            ctx.drawSmoothText(label, x + 22, y + (h - ctx.fontHeight()) / 2 + 1, textColor, scale);
+            int textY = textTop(ctx, y, h, scale);
+            int iconY = textTop(ctx, y, h, 0.85f);
+            ctx.drawSmoothText(GRID_ICONS[i], x + 8, iconY, iconColor, 0.85f);
+            ctx.drawSmoothText(label, x + 22, textY, textColor, scale);
         }
         ctx.setDrawOpacity(1f);
     }
@@ -262,9 +264,9 @@ public final class GameMenuRenderer {
         float scale = 0.84f;
         int textW = ctx.smoothTextWidth(label, scale);
         int start = x + (w - textW - 14) / 2;
-        ctx.drawSmoothText("⏻", start, y + (h - ctx.fontHeight()) / 2 + 1, theme.accent(), 0.9f);
-        ctx.drawSmoothText(label, start + 14, y + (h - ctx.fontHeight()) / 2 + 1,
-                theme.foreground(), scale);
+        int textY = textTop(ctx, y, h, scale);
+        ctx.drawSmoothText("⏻", start, textTop(ctx, y, h, 0.9f), theme.accent(), 0.9f);
+        ctx.drawSmoothText(label, start + 14, textY, theme.foreground(), scale);
         ctx.setDrawOpacity(1f);
     }
 
@@ -278,8 +280,8 @@ public final class GameMenuRenderer {
 
         // Left brand
         float brandScale = 0.78f;
-        PrimeLogo.draw(ctx, 8, y + 6, 16, 0xFFFFFFFF);
-        ctx.drawSmoothText("PRIME CLIENT", 28, y + (h - ctx.fontHeight()) / 2 + 1,
+        PrimeLogo.draw(ctx, 8, y + (h - 16) / 2, 16, 0xFFFFFFFF);
+        ctx.drawSmoothText("PRIME CLIENT", 28, textTop(ctx, y, h, brandScale),
                 theme.accent(), brandScale);
 
         // Center slogans
@@ -293,7 +295,7 @@ public final class GameMenuRenderer {
             if (i > 0) {
                 ctx.fillRect(sloganX - 6, y + 8, 1, h - 16, ColorUtil.withAlpha(0xFFFFFFFF, 0.12f));
             }
-            ctx.drawSmoothText(slogans[i], sloganX, y + (h - ctx.fontHeight()) / 2 + 1,
+            ctx.drawSmoothText(slogans[i], sloganX, textTop(ctx, y, h, 0.68f),
                     theme.foregroundMuted(), 0.68f);
             sloganX += ctx.smoothTextWidth(slogans[i], 0.68f) + 14;
         }
@@ -318,6 +320,12 @@ public final class GameMenuRenderer {
         ctx.fillRect(x + 2, cy - 2, 1, 4, color);
         ctx.fillRect(x + 3, cy - 1, 1, 2, color);
         ctx.fillRect(x + 4, cy, 1, 1, color);
+    }
+
+    /** Top Y for scaled smooth text optically centered in a button/row. */
+    private static int textTop(RenderContext ctx, int y, int h, float scale) {
+        int glyphH = Math.max(1, Math.round(ctx.fontHeight() * scale));
+        return y + (h - glyphH) / 2;
     }
 
     private static boolean hit(double mx, double my, int x, int y, int w, int h) {

@@ -1,7 +1,7 @@
 {
   "name": "prime-backend",
   "private": true,
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Unified Prime social + voice backend (SQLite, friends, chat, party, presence, voice)",
   "main": "server.js",
   "scripts": {
