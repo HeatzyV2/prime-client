@@ -13,32 +13,32 @@ import dev.primeclient.core.module.ModuleCategory;
 import dev.primeclient.core.module.ModuleManager;
 
 /**
- * Discord Rich Presence — live server IP, username, stats and Prime branding.
+ * Discord Rich Presence — clean server context, compact stats, Prime branding.
  *
  * <p>Application ID: {@link DiscordRpcService#APPLICATION_ID}</p>
  */
 public final class DiscordRichPresenceModule extends Module {
 
     private final BooleanSetting showServerIp =
-            addSetting(new BooleanSetting("server-ip", "Show server IP", "Display multiplayer address", true));
+            addSetting(new BooleanSetting("server-ip", "Show server", "Show server name / address in presence", true));
     private final BooleanSetting showHealth =
-            addSetting(new BooleanSetting("health", "Show health", "Display HP in status line", true));
+            addSetting(new BooleanSetting("health", "Show health", "HP on the secondary line", true));
     private final BooleanSetting showPing =
-            addSetting(new BooleanSetting("ping", "Show ping", "Display latency on servers", true));
+            addSetting(new BooleanSetting("ping", "Show ping", "Latency on the secondary line", true));
     private final BooleanSetting showBiome =
-            addSetting(new BooleanSetting("biome", "Show biome", "Display current biome", true));
+            addSetting(new BooleanSetting("biome", "Show biome", "Include current biome (can clutter)", false));
     private final BooleanSetting showCoordinates =
-            addSetting(new BooleanSetting("coords", "Show coordinates", "Display XYZ position", false));
+            addSetting(new BooleanSetting("coords", "Show coordinates", "Include XYZ (can clutter)", false));
     private final BooleanSetting showHeldItem =
-            addSetting(new BooleanSetting("held-item", "Show held item", "Display item in hand", true));
+            addSetting(new BooleanSetting("held-item", "Show held item", "Include item in hand (can clutter)", false));
     private final BooleanSetting showModuleCount =
-            addSetting(new BooleanSetting("modules", "Show modules", "Display enabled module count", true));
+            addSetting(new BooleanSetting("modules", "Show modules", "Short enabled-module count", false));
     private final BooleanSetting showSessionTime =
             addSetting(new BooleanSetting("session", "Session timer", "Show elapsed session time", true));
     private final BooleanSetting showAccountTier =
-            addSetting(new BooleanSetting("tier", "Show Prime tier", "Display account tier", true));
+            addSetting(new BooleanSetting("tier", "Show Prime tier", "Include account tier on secondary line", false));
     private final BooleanSetting showFps =
-            addSetting(new BooleanSetting("fps", "Show FPS", "Display current FPS", false));
+            addSetting(new BooleanSetting("fps", "Show FPS", "Include current FPS", false));
     private final IntSetting updateInterval =
             addSetting(new IntSetting("interval", "Update interval", "Ticks between RPC refresh", 40, 20, 200));
 
@@ -49,7 +49,7 @@ public final class DiscordRichPresenceModule extends Module {
 
     public DiscordRichPresenceModule(DiscordRpcService discord, MinecraftAdapter adapter,
                                      ModuleManager modules, PrimeAccountService account) {
-        super("discord-rpc", "Discord RPC", "Rich Presence with server, stats and Prime branding",
+        super("discord-rpc", "Discord RPC", "Clean Rich Presence with server context and compact stats",
                 ModuleCategory.PRIME);
         this.discord = discord;
         this.adapter = adapter;

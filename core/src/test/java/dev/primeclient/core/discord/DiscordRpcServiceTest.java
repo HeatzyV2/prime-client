@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DiscordRpcServiceTest {
@@ -123,7 +125,7 @@ class DiscordRpcServiceTest {
     }
 
     @Test
-    void multiplayerSnapshotIncludesServerAndPlayer() {
+    void multiplayerSnapshotUsesCleanHierarchy() {
         DiscordRpcService service = new DiscordRpcService();
         StubAdapter adapter = new StubAdapter();
         ModuleManager modules = new ModuleManager(new EventBus(), new KeybindManager());
@@ -132,11 +134,27 @@ class DiscordRpcServiceTest {
 
         DiscordPresenceSnapshot snapshot = service.buildSnapshot(adapter, modules, account);
 
-        assertTrue(snapshot.details().contains("play.hypixel.net"));
-        assertTrue(snapshot.state().contains("Zorat"));
-        assertTrue(snapshot.state().contains("38ms"));
-        assertTrue(snapshot.state().contains("Plains"));
+        assertEquals("play.hypixel.net", snapshot.details());
+        assertEquals("♥ 17/20 · 38ms", snapshot.state());
+        assertFalse(snapshot.state().contains("Zorat"));
+        assertFalse(snapshot.state().contains("Plains"));
+        assertFalse(snapshot.state().contains("Diamond Sword"));
         assertTrue(snapshot.buttons().size() >= 2);
+        assertEquals("Website", snapshot.buttons().get(0).label());
+        assertEquals("Server Status", snapshot.buttons().get(1).label());
+    }
+
+    @Test
+    void partnerServerUsesBrandName() {
+        DiscordRpcService service = new DiscordRpcService();
+        StubAdapter adapter = new StubAdapter();
+        adapter.server = "elysiasmp.fr";
+        ModuleManager modules = new ModuleManager(new EventBus(), new KeybindManager());
+
+        DiscordPresenceSnapshot snapshot = service.buildSnapshot(adapter, modules, new PrimeAccountService());
+
+        assertEquals("Elysia SMP", snapshot.details());
+        assertTrue(snapshot.state().startsWith("♥ "));
     }
 
     @Test
@@ -150,5 +168,8 @@ class DiscordRpcServiceTest {
 
         assertTrue(snapshot.details().contains("Main Menu"));
         assertTrue(snapshot.state().contains("26.2"));
+        assertFalse(snapshot.state().contains("Zorat"));
+        assertEquals("Website", snapshot.buttons().get(0).label());
+        assertEquals("Download", snapshot.buttons().get(1).label());
     }
 }

@@ -10,12 +10,12 @@ public final class DiscordPresenceSettings implements ConfigBinding {
     private boolean showServerIp = true;
     private boolean showHealth = true;
     private boolean showPing = true;
-    private boolean showBiome = true;
+    private boolean showBiome = false;
     private boolean showCoordinates = false;
-    private boolean showHeldItem = true;
-    private boolean showModuleCount = true;
+    private boolean showHeldItem = false;
+    private boolean showModuleCount = false;
     private boolean showSessionTime = true;
-    private boolean showAccountTier = true;
+    private boolean showAccountTier = false;
     private boolean showFps = false;
     private int updateIntervalTicks = 40;
 

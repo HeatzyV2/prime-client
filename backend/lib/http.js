@@ -14,7 +14,7 @@ const CRASH_DIR = process.env.PRIME_CRASH_DIR || path.join(UPLOAD_DIR, 'crashes'
 const MAX_UPLOAD = 5 * 1024 * 1024;
 const MAX_CRASH = 2 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
-const BACKEND_VERSION = '2.1.2';
+const BACKEND_VERSION = '2.1.3';
 const STATS_SALT = process.env.STATS_SALT || 'prime-stats-v1';
 
 function ensureUploadDir() {

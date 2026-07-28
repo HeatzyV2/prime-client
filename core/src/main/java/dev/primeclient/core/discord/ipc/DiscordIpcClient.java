@@ -184,9 +184,11 @@ public final class DiscordIpcClient {
         JsonObject assets = new JsonObject();
         assets.addProperty("large_image", snapshot.largeImageKey());
         assets.addProperty("large_text", trim(snapshot.largeImageText(), 128));
-        assets.addProperty("small_image", snapshot.smallImageKey());
-        if (!snapshot.smallImageText().isEmpty()) {
-            assets.addProperty("small_text", trim(snapshot.smallImageText(), 128));
+        if (snapshot.smallImageKey() != null && !snapshot.smallImageKey().isBlank()) {
+            assets.addProperty("small_image", snapshot.smallImageKey());
+            if (!snapshot.smallImageText().isEmpty()) {
+                assets.addProperty("small_text", trim(snapshot.smallImageText(), 128));
+            }
         }
         activity.add("assets", assets);
         if (includeButtons && !snapshot.buttons().isEmpty()) {

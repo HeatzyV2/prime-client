@@ -28,9 +28,9 @@ public final class DiscordPresenceSnapshot {
                                    Long startEpochSeconds, List<Button> buttons) {
         this.details = details != null ? details : "";
         this.state = state != null ? state : "";
-        this.largeImageKey = largeImageKey != null ? largeImageKey : "prime_logo";
+        this.largeImageKey = largeImageKey != null && !largeImageKey.isBlank() ? largeImageKey : "prime_logo";
         this.largeImageText = largeImageText != null ? largeImageText : "Prime Client";
-        this.smallImageKey = smallImageKey != null ? smallImageKey : "prime_logo";
+        this.smallImageKey = smallImageKey != null ? smallImageKey : "";
         this.smallImageText = smallImageText != null ? smallImageText : "";
         this.startEpochSeconds = startEpochSeconds;
         this.buttons = buttons != null ? List.copyOf(buttons) : List.of();

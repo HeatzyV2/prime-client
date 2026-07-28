@@ -42,6 +42,24 @@ public final class PartnerServers {
         return entry.name() + " ★";
     }
 
+    /**
+     * Nice label for Discord / UI when the address matches a partner
+     * (without the list star), or {@code null} if unknown.
+     */
+    public static String partnerLabel(String address) {
+        if (address == null || address.isBlank()) {
+            return null;
+        }
+        String normalized = normalize(address);
+        for (Entry entry : PARTNERS) {
+            String partner = normalize(entry.address());
+            if (normalized.equals(partner) || normalized.startsWith(partner + ":")) {
+                return entry.name();
+            }
+        }
+        return null;
+    }
+
     private static String normalize(String address) {
         String a = address.trim().toLowerCase(Locale.ROOT);
         if (a.startsWith("minecraft://")) {

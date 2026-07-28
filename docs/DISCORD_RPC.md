@@ -37,7 +37,11 @@ Sans cet asset, la présence peut s’afficher sans image ou être rejetée.
 | Launcher ouvert (sans jeu) | `Prime Launcher` · `Joueur • Ready to play` |
 | Téléchargement / lancement | `Launching Minecraft` |
 | Jeu lancé | Launcher efface sa présence → le **mod** prend le relais |
+| In-game (défaut) | **details** `Elysia SMP` · **state** `♥ 20/20 · 50ms` (+ elapsed) |
+| Menu | **details** `In Main Menu` · **state** `Minecraft 26.2 · Prime v…` |
 | Jeu fermé | Retour `Prime Launcher` |
+
+Présence in-game volontairement courte : pas de pseudo, PREMIUM, biome, item ou compteur modules par défaut (toggles dans le module Discord RPC). Boutons : **Website** / **Download**, ou **Server Status** en multi.
 
 ## Activer in-game
 
