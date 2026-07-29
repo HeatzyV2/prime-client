@@ -164,17 +164,18 @@ public final class GuiRenderContext implements RenderContext {
         return player == null ? ItemStack.EMPTY : player.getItemBySlot(equipment);
     }
 
-    private static final ItemStack GHOST_BOOTS = new ItemStack(Items.CHAINMAIL_BOOTS);
-    private static final ItemStack GHOST_LEGGINGS = new ItemStack(Items.CHAINMAIL_LEGGINGS);
-    private static final ItemStack GHOST_CHEST = new ItemStack(Items.CHAINMAIL_CHESTPLATE);
-    private static final ItemStack GHOST_HELMET = new ItemStack(Items.CHAINMAIL_HELMET);
+    // Lazily created — ItemStack ctor needs registries/components bound (not safe in <clinit>).
+    private static ItemStack ghostBoots;
+    private static ItemStack ghostLeggings;
+    private static ItemStack ghostChest;
+    private static ItemStack ghostHelmet;
 
     private static ItemStack armorGhost(int slot) {
         return switch (slot) {
-            case 0 -> GHOST_BOOTS;
-            case 1 -> GHOST_LEGGINGS;
-            case 2 -> GHOST_CHEST;
-            case 3 -> GHOST_HELMET;
+            case 0 -> ghostBoots == null ? (ghostBoots = new ItemStack(Items.CHAINMAIL_BOOTS)) : ghostBoots;
+            case 1 -> ghostLeggings == null ? (ghostLeggings = new ItemStack(Items.CHAINMAIL_LEGGINGS)) : ghostLeggings;
+            case 2 -> ghostChest == null ? (ghostChest = new ItemStack(Items.CHAINMAIL_CHESTPLATE)) : ghostChest;
+            case 3 -> ghostHelmet == null ? (ghostHelmet = new ItemStack(Items.CHAINMAIL_HELMET)) : ghostHelmet;
             default -> ItemStack.EMPTY;
         };
     }

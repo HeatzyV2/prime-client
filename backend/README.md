@@ -2,7 +2,7 @@
 
 Unified **social + voice** server for Prime Client (friends / DM / party / presence), plus cloud-sync helpers for profiles, store, cosmetics, and settings.
 
-**Version:** `2.1.4` — SQLite persistence, MS profile verify (optional), party invites, friend notes, block list, profiles, Prime Coins store, cosmetics/settings sync, crash index, **public download/launch stats**.
+**Version:** `2.1.5` — SQLite persistence, MS profile verify (optional), party invites, friend notes, block list, profiles, Prime Coins store, cosmetics/settings sync, crash index, **public download/launch stats**.
 
 ## Run locally
 
@@ -41,7 +41,7 @@ GROQ_API_KEY=gsk_... PORT=26005 npm start
 
 Launcher + in-game `/ai` call this proxy. Users never see the API key.
 
-After pulling `2.1.4`, restart the process once so SQLite migrates (`usage_stats` / `stats_dedupe` tables).
+After pulling `2.1.5`, restart the process once so SQLite migrates (`usage_stats` / `stats_dedupe` tables).
 
 ## Data & migration
 
@@ -76,7 +76,7 @@ No manual migrate step: start the server; missing user columns / tables are adde
 
 | Path | Role |
 |------|------|
-| `GET /health` | `{ version: "2.1.4", db, ws }` |
+| `GET /health` | `{ version: "2.1.5", db, ws }` |
 | `GET /v1/stats` | Public counters `{ downloads, launches, updatedAt }` — no auth |
 | `POST /v1/stats/download` | Increment downloads (rate-limited; optional `{ deviceId }`; IP hashed for short dedupe) |
 | `POST /v1/stats/launch` | Increment launches (rate-limited; optional `{ deviceId, client }`) |
@@ -118,7 +118,7 @@ Store sync is optional / local-first: launcher can keep working offline; cloud r
 4. **Join from drawer** — friend in-game with `serverAddress` → Join uses that address (not the note text).
 5. **Block** — block a user → cannot DM / party-invite them.
 6. **Notes** — save a friend note in launcher → persists after restart (SQLite).
-7. **Health** — `curl http://127.0.0.1:26005/health` → `version` `2.1.4`, `db.ok` true.
+7. **Health** — `curl http://127.0.0.1:26005/health` → `version` `2.1.5`, `db.ok` true.
 8. **Store** — redeem `WELCOME100` → purchase a paid catalog item → history lists both.
 9. **Crash list** — POST a crash → GET `/v1/crash` returns `{ id, createdAt, version }`.
 10. **Stats** — `GET /v1/stats` → `{ downloads, launches, updatedAt }`; POST download/launch increments (deduped).
