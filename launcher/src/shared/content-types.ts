@@ -39,9 +39,9 @@ export interface StoreItem {
 export interface CosmeticItem {
   id: string
   name: string
-  type: 'cape' | 'wings' | 'pet' | 'emote' | 'badge'
+  type: 'cape' | 'wings' | 'aura' | 'trail' | 'hat' | 'pet' | 'emote' | 'badge'
   equipped: boolean
-  rarity: 'common' | 'rare' | 'epic' | 'legendary'
+  rarity: 'common' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'prime_exclusive'
 }
 
 export interface FriendEntry {

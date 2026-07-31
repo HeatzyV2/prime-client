@@ -1,11 +1,13 @@
 package dev.primeclient.v1_21_11.network;
 
 import dev.primeclient.core.PrimeClient;
+import dev.primeclient.core.cosmetics.CosmeticLoadout;
 import dev.primeclient.core.hook.PrimeHooks;
 import dev.primeclient.core.skin.CustomSkinService;
 import dev.primeclient.core.state.ClientBadgeState;
 import dev.primeclient.core.state.CosmeticsState;
 import dev.primeclient.core.state.CustomSkinState;
+import dev.primeclient.core.state.EmoteState;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -18,11 +20,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Registers Prime presence + custom skin texture payloads for LAN / integrated servers. */
+/** Registers Prime presence + emote + custom skin texture payloads for LAN / integrated servers. */
 public final class PresenceNetworking {
 
     private static String lastSentSkinHash = "";
-    /** Peers we already pushed our skin texture to this session (avoids 128KB spam). */
     private static final Set<UUID> skinPushedTo = ConcurrentHashMap.newKeySet();
 
     private PresenceNetworking() {
@@ -31,15 +32,29 @@ public final class PresenceNetworking {
     public static void register() {
         PayloadTypeRegistry.playC2S().register(PresencePayload.TYPE, PresencePayload.CODEC);
         PayloadTypeRegistry.playS2C().register(PresencePayload.TYPE, PresencePayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(EmotePayload.TYPE, EmotePayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(EmotePayload.TYPE, EmotePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(SkinTexturePayload.TYPE, SkinTexturePayload.CODEC);
         PayloadTypeRegistry.playS2C().register(SkinTexturePayload.TYPE, SkinTexturePayload.CODEC);
 
         ClientPlayNetworking.registerGlobalReceiver(PresencePayload.TYPE, (payload, context) ->
                 context.client().execute(() -> {
                     PrimeHooks.onPresencePayload(
-                            payload.playerId(), payload.capeId(), payload.wingsId(), payload.skinHash());
+                            payload.playerId(),
+                            payload.capeId(),
+                            payload.wingsId(),
+                            payload.auraId(),
+                            payload.trailId(),
+                            payload.hatId(),
+                            payload.badgeId(),
+                            payload.skinHash());
                     maybePushSkinToPeer(payload.playerId());
                 }));
+
+        ClientPlayNetworking.registerGlobalReceiver(EmotePayload.TYPE, (payload, context) ->
+                context.client().execute(() ->
+                        PrimeHooks.onEmotePayload(
+                                payload.playerId(), payload.emoteId(), payload.startedAtMs())));
 
         ClientPlayNetworking.registerGlobalReceiver(SkinTexturePayload.TYPE, (payload, context) ->
                 context.client().execute(() -> {
@@ -49,6 +64,7 @@ public final class PresenceNetworking {
                 }));
 
         PrimeClient.get().presence().setNetworkAnnouncer(PresenceNetworking::sendLocalPresence);
+        EmoteState.setNetworkAnnouncer(PresenceNetworking::sendLocalEmote);
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             lastSentSkinHash = "";
@@ -67,7 +83,25 @@ public final class PresenceNetworking {
                 ServerPlayer sender = context.player();
                 UUID senderId = sender.getUUID();
                 PresencePayload forward = new PresencePayload(
-                        senderId, payload.capeId(), payload.wingsId(), payload.skinHash());
+                        senderId,
+                        payload.capeId(),
+                        payload.wingsId(),
+                        payload.auraId(),
+                        payload.trailId(),
+                        payload.hatId(),
+                        payload.badgeId(),
+                        payload.skinHash());
+                for (ServerPlayer target : server.getPlayerList().getPlayers()) {
+                    if (target == sender) {
+                        continue;
+                    }
+                    ServerPlayNetworking.send(target, forward);
+                }
+            });
+            ServerPlayNetworking.registerGlobalReceiver(EmotePayload.TYPE, (payload, context) -> {
+                ServerPlayer sender = context.player();
+                UUID senderId = sender.getUUID();
+                EmotePayload forward = new EmotePayload(senderId, payload.emoteId(), payload.startedAtMs());
                 for (ServerPlayer target : server.getPlayerList().getPlayers()) {
                     if (target == sender) {
                         continue;
@@ -98,18 +132,34 @@ public final class PresenceNetworking {
         if (client.player == null || !ClientPlayNetworking.canSend(PresencePayload.TYPE)) {
             return;
         }
+        CosmeticLoadout loadout = CosmeticsState.localLoadout();
         String skinHash = CustomSkinState.localHash();
         boolean skinChanged = skinHash != null && !skinHash.equals(lastSentSkinHash);
         ClientPlayNetworking.send(new PresencePayload(
                 client.player.getUUID(),
-                CosmeticsState.localCapeId(),
-                CosmeticsState.localWingsId(),
+                loadout.capeId(),
+                loadout.wingsId(),
+                loadout.auraId(),
+                loadout.trailId(),
+                loadout.hatId(),
+                loadout.badgeId(),
                 skinHash == null ? "" : skinHash));
         if (skinChanged || lastSentSkinHash.isEmpty()) {
-            // Broadcast to everyone on join / skin change (server relays to all peers).
             skinPushedTo.clear();
             sendLocalSkinTexture();
         }
+    }
+
+    private static void sendLocalEmote(String emoteId) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null || emoteId == null || emoteId.isBlank()) {
+            return;
+        }
+        if (!ClientPlayNetworking.canSend(EmotePayload.TYPE)) {
+            return;
+        }
+        ClientPlayNetworking.send(new EmotePayload(
+                client.player.getUUID(), emoteId, System.currentTimeMillis()));
     }
 
     private static void maybePushSkinToPeer(UUID peerId) {

@@ -12,7 +12,7 @@ import { getInstanceGameDir } from '../minecraft/paths'
 import { settingsStore } from '../storage/SettingsStore'
 import { instanceService } from './InstanceService'
 
-const COPY_DIRS = ['mods', 'resourcepacks', 'screenshots'] as const
+const COPY_DIRS = ['mods', 'config', 'resourcepacks', 'shaderpacks', 'screenshots'] as const
 const COPY_FILES = ['options.txt'] as const
 
 interface ParsedInstance {
@@ -218,6 +218,12 @@ const LAUNCHER_ROOTS: Record<ImportLauncherId, () => string[]> = {
     join(appData(), 'dawnclient', 'instances'),
     join(localAppData(), 'DawnClient', 'instances'),
     join(userProfile(), '.dawnclient', 'instances')
+  ],
+  modrinth: () => [
+    join(appData(), 'ModrinthApp', 'profiles'),
+    join(appData(), 'modrinth', 'profiles'),
+    join(localAppData(), 'ModrinthApp', 'profiles'),
+    join(userProfile(), '.local', 'share', 'modrinthapp', 'profiles')
   ]
 }
 
@@ -226,7 +232,8 @@ const LAUNCHER_LABELS: Record<ImportLauncherId, string> = {
   multimc: 'MultiMC',
   lunar: 'Lunar Client',
   feather: 'Feather',
-  dawn: 'Dawn Client'
+  dawn: 'Dawn Client',
+  modrinth: 'Modrinth App'
 }
 
 async function listLunarInstances(root: string): Promise<ParsedInstance[]> {
@@ -283,9 +290,46 @@ async function listLunarInstances(root: string): Promise<ParsedInstance[]> {
   })
 }
 
+async function listModrinthInstances(root: string): Promise<ParsedInstance[]> {
+  if (!(await isDir(root))) return []
+  const entries = await readdir(root, { withFileTypes: true })
+  const out: ParsedInstance[] = []
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue
+    const profileDir = join(root, entry.name)
+    let name = entry.name
+    let minecraftVersion = '1.21.11'
+    let loader: 'vanilla' | 'fabric' = 'fabric'
+
+    const metaPath = join(profileDir, 'profile.json')
+    if (await exists(metaPath)) {
+      try {
+        const raw = await readFile(metaPath, 'utf8')
+        const meta = JSON.parse(raw)
+        name = meta.name || name
+        minecraftVersion = meta.game_version || minecraftVersion
+        loader = meta.loader === 'fabric' ? 'fabric' : 'vanilla'
+      } catch {
+        // ignore JSON parse error
+      }
+    }
+
+    out.push({
+      name: name.slice(0, 32),
+      minecraftVersion,
+      loader,
+      gameDir: profileDir
+    })
+  }
+  return out
+}
+
 async function listSourceInstances(source: ImportLauncherId, root: string): Promise<ParsedInstance[]> {
   if (source === 'lunar') {
     return listLunarInstances(root)
+  }
+  if (source === 'modrinth') {
+    return listModrinthInstances(root)
   }
   return listPrismLike(root)
 }

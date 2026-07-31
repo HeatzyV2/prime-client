@@ -207,10 +207,39 @@ public final class PrimeHooks {
 
     /** Presence + cosmetics + optional custom skin hash. */
     public static void onPresencePayload(UUID playerId, String capeId, String wingsId, String skinHash) {
+        onPresencePayload(playerId, capeId, wingsId, "", "", "", "", skinHash);
+    }
+
+    /** Full cosmetic loadout presence from another Prime peer. */
+    public static void onPresencePayload(
+            UUID playerId,
+            String capeId,
+            String wingsId,
+            String auraId,
+            String trailId,
+            String hatId,
+            String badgeId,
+            String skinHash) {
         PrimeClient client = tryGet();
         if (client != null) {
-            client.presence().markPrime(playerId, capeId, wingsId, skinHash);
+            client.presence().markPrime(
+                    playerId,
+                    new dev.primeclient.core.cosmetics.CosmeticLoadout(
+                            capeId, wingsId, auraId, trailId, hatId, badgeId),
+                    skinHash);
         }
+    }
+
+    /** Emote announce from another Prime peer. */
+    public static void onEmotePayload(UUID playerId, String emoteId, long startedAtMs) {
+        if (playerId == null || emoteId == null || emoteId.isBlank()) {
+            return;
+        }
+        PrimeClient client = tryGet();
+        if (client != null) {
+            client.presence().markPrime(playerId);
+        }
+        dev.primeclient.core.state.EmoteState.playPeer(playerId, emoteId, startedAtMs);
     }
 
     /** PNG body texture from another Prime peer. */
@@ -265,7 +294,10 @@ public final class PrimeHooks {
         if (client.ai().handleClientCommand(message)) {
             return true;
         }
-        return client.customSkins().handleClientCommand(message);
+        if (client.customSkins().handleClientCommand(message)) {
+            return true;
+        }
+        return client.emotes().handleClientCommand(message);
     }
 
     private static PrimeClient tryGet() {

@@ -21,6 +21,13 @@ public final class PrimePauseScreen extends Screen {
     @Override
     protected void init() {
         gameMenu.resetFade();
+        dev.primeclient.core.gui.BlurBackdrop.setActive(true);
+    }
+
+    @Override
+    public void onClose() {
+        dev.primeclient.v26_2.render.PanelBlur.end(minecraft);
+        super.onClose();
     }
 
     @Override

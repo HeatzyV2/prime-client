@@ -100,7 +100,8 @@ export function SkinViewer3D({
     viewer.controls.enableZoom = true
     viewer.controls.minDistance = 25
     viewer.controls.maxDistance = 90
-    viewer.autoRotate = false
+    viewer.autoRotate = true
+    viewer.autoRotateSpeed = 0.6
 
     if (capeUrl) {
       void viewer.loadCape(capeUrl)

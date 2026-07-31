@@ -4,6 +4,7 @@ import { accountService } from '../services/AccountService'
 import { profileService } from '../services/ProfileService'
 import { instanceService } from '../services/InstanceService'
 import { instanceImportService } from '../services/InstanceImportService'
+import { modrinthImporterService } from '../services/ModrinthImporterService'
 import { serverService } from '../services/ServerService'
 import { contentService } from '../services/ContentService'
 import { cloudService } from '../services/CloudService'
@@ -84,6 +85,11 @@ export function registerServiceHandlers(): void {
     IPC.INSTANCE_IMPORT_RUN,
     (_e, source: import('../../shared/ipc').ImportLauncherId, instanceIds: string[]) =>
       instanceImportService.importMany(source, instanceIds)
+  )
+  ipcMain.handle(
+    IPC.INSTANCE_IMPORT_MRPACK,
+    (_e, mrpackPath: string, name: string) =>
+      modrinthImporterService.importMrpackFile(mrpackPath, name)
   )
   ipcMain.handle(IPC.PROFILE_SET_INSTANCE, (_e, instanceId: string) =>
     profileService.setActiveInstance(instanceId)

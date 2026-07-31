@@ -807,8 +807,6 @@ function updateProfileFields(uuid, fields = {}) {
 }
 
 function ensureDefaultOwnership(uuid) {
-  const count = sql.prepare('SELECT COUNT(*) AS c FROM store_ownership WHERE user_uuid = ?').get(uuid).c;
-  if (count > 0) return;
   const purchasedAt = nowIso();
   const insert = sql.prepare(
     `INSERT OR IGNORE INTO store_ownership (user_uuid, item_id, purchased_at) VALUES (?, ?, ?)`

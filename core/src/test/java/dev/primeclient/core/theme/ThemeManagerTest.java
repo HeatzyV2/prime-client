@@ -9,9 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class ThemeManagerTest {
 
     @Test
-    void registersFiveSharedThemes() {
+    void registersDefaultThemes() {
         ThemeManager themes = new ThemeManager();
-        assertEquals(5, themes.all().size());
+        assertEquals(7, themes.all().size());
         assertEquals("prime-crimson", themes.active().id());
     }
 

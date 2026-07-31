@@ -85,7 +85,11 @@ const api = {
         ok: boolean
         imported: import('../shared/ipc').ImportInstanceResultDto[]
         error?: string
-      }>
+      }>,
+    importMrpack: (mrpackPath: string, name: string) =>
+      ipcRenderer.invoke(IPC.INSTANCE_IMPORT_MRPACK, mrpackPath, name) as Promise<
+        import('../shared/ipc').InstanceMutationDto
+      >
   },
   minecraft: {
     getInstances: () => ipcRenderer.invoke('minecraft:get-instances'),

@@ -1,15 +1,17 @@
 import type { CosmeticItem } from '../../shared/content-types'
-import { COSMETIC_CATALOG, STORE_TO_COSMETIC } from '../../shared/ecosystem-catalog'
+import { COSMETIC_CATALOG, DEFAULT_OWNED_STORE, STORE_TO_COSMETIC } from '../../shared/ecosystem-catalog'
 import { ecosystemStore } from '../storage/EcosystemStore'
-
-const FREE_COSMETICS = new Set(['cape-prime', 'wings-aurora'])
 
 export class CosmeticService {
   async list(): Promise<CosmeticItem[]> {
     const db = await ecosystemStore.load()
-    const ownedCosmeticIds = new Set<string>(FREE_COSMETICS)
+    const ownedCosmeticIds = new Set<string>()
 
-    for (const storeId of db.ownedStoreItems) {
+    // Cosmetics Update: everything unlocked for Prime
+    for (const c of COSMETIC_CATALOG) {
+      ownedCosmeticIds.add(c.id)
+    }
+    for (const storeId of [...DEFAULT_OWNED_STORE, ...db.ownedStoreItems]) {
       const cosmeticId = STORE_TO_COSMETIC[storeId]
       if (cosmeticId) {
         ownedCosmeticIds.add(cosmeticId)
@@ -30,7 +32,7 @@ export class CosmeticService {
 
     const items = await this.list()
     if (!items.find((c) => c.id === cosmeticId)) {
-      return { ok: false, error: 'Cosmetic not owned. Get it from the Store.' }
+      return { ok: false, error: 'Cosmetic not owned.' }
     }
 
     await ecosystemStore.mutate((db) => {
@@ -40,14 +42,16 @@ export class CosmeticService {
         return
       }
 
-      if (cosmetic.type !== 'badge') {
+      if (cosmetic.type !== 'badge' && cosmetic.type !== 'emote') {
         db.equippedCosmetics = db.equippedCosmetics.filter((id) => {
           const meta = COSMETIC_CATALOG.find((c) => c.id === id)
           return meta?.type !== cosmetic.type
         })
       }
 
-      db.equippedCosmetics.push(cosmeticId)
+      if (cosmetic.type !== 'emote') {
+        db.equippedCosmetics.push(cosmeticId)
+      }
     })
 
     const { instanceService } = await import('./InstanceService')

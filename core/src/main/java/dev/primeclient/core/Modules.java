@@ -171,6 +171,16 @@ final class Modules {
                 client.crosshairPresets(), client.crosshairProfiles()));
         modules.register(new HitColorModule());
         modules.register(new HitParticlesModule(adapter));
+        modules.register(new dev.primeclient.core.modules.pvp.HitMarkerModule(hud, themes, adapter));
+        modules.register(new dev.primeclient.core.modules.pvp.CustomHealthHudModule(hud, themes, adapter));
+        modules.register(new dev.primeclient.core.modules.pvp.ProjectileTrailModule(adapter));
+        modules.register(new dev.primeclient.core.modules.pvp.SoundRadarModule(hud, themes));
+        modules.register(new dev.primeclient.core.modules.pvp.CustomPotionGridModule(hud, themes));
+        modules.register(new dev.primeclient.core.modules.qol.CustomBossbarModule(hud, themes));
+        modules.register(new dev.primeclient.core.modules.qol.RadialMenuModule());
+        modules.register(new dev.primeclient.core.modules.prime.VoiceSpectrumModule(hud, themes));
+        modules.register(new dev.primeclient.core.modules.qol.GlassChatModule());
+        modules.register(new dev.primeclient.core.modules.qol.ModernScoreboardModule(hud, themes, adapter));
         modules.register(new DamageIndicatorModule(hud, themes, adapter));
         modules.register(new DirectionHudModule(hud, themes, adapter));
         modules.register(new CoordinatesModule(hud, themes, adapter));

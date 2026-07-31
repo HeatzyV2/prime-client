@@ -381,8 +381,16 @@ export class MinecraftEngine {
     const javaPath = await resolveLaunchJava(config, settings.defaultJavaPath)
     emitLaunchProgress({ phase: 'launch', detail: `Using Java: ${javaPath}`, percent: 80 })
 
+    const defaultOptimizedFlags = [
+      '-XX:+UseG1GC',
+      '-XX:G1ReservePercent=20',
+      '-XX:MaxGCPauseMillis=50',
+      '-XX:+UnlockExperimentalVMOptions',
+      '-XX:+AlwaysPreTouch'
+    ]
+
     const mergedJvm = filterJvmArgs([
-      ...new Set([...(settings.jvmArgs ?? []), ...(config.jvmArgs ?? [])])
+      ...new Set([...defaultOptimizedFlags, ...(settings.jvmArgs ?? []), ...(config.jvmArgs ?? [])])
     ])
 
     emitLaunchProgress({

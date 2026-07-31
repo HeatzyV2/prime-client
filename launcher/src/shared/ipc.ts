@@ -44,6 +44,7 @@ export const IPC = {
   INSTANCE_IMPORT_DETECT: 'instance:import-detect',
   INSTANCE_IMPORT_LIST: 'instance:import-list',
   INSTANCE_IMPORT_RUN: 'instance:import-run',
+  INSTANCE_IMPORT_MRPACK: 'instance:import-mrpack',
 
   PROFILE_SET_INSTANCE: 'profile:set-instance',
 
@@ -258,7 +259,7 @@ export interface InstanceMutationDto {
   error?: string
 }
 
-export type ImportLauncherId = 'prism' | 'multimc' | 'lunar' | 'feather' | 'dawn'
+export type ImportLauncherId = 'prism' | 'multimc' | 'lunar' | 'feather' | 'dawn' | 'modrinth'
 
 export interface DetectedImportLauncherDto {
   id: ImportLauncherId

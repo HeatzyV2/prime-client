@@ -1,9 +1,11 @@
 package dev.primeclient.core.presence;
 
 import dev.primeclient.core.adapter.MinecraftAdapter;
+import dev.primeclient.core.cosmetics.CosmeticLoadout;
 import dev.primeclient.core.state.ClientBadgeState;
 import dev.primeclient.core.state.CosmeticsState;
 import dev.primeclient.core.state.CustomSkinState;
+import dev.primeclient.core.state.EmoteState;
 
 import java.util.Set;
 import java.util.UUID;
@@ -34,6 +36,7 @@ public final class PrimePresenceService {
         primeUsers.clear();
         CosmeticsState.clearPeers();
         CustomSkinState.clearPeers();
+        EmoteState.reset();
         announceTicks = 0;
         announceSent = false;
         reannounceCooldown = 0;
@@ -46,18 +49,19 @@ public final class PrimePresenceService {
         primeUsers.clear();
         CosmeticsState.clearPeers();
         CustomSkinState.clearPeers();
+        EmoteState.reset();
         announceTicks = -1;
         announceSent = false;
         reannounceCooldown = 0;
     }
 
     public void tick() {
+        EmoteState.tick();
         if (!ClientBadgeState.active() || announceTicks < 0) {
             CosmeticsState.consumeAnnounceDirty();
             CustomSkinState.consumeAnnounceDirty();
             return;
         }
-        // Keep self marked even if world-join raced ahead of module enable / UUID settle.
         markLocalPlayer();
         if (!announceSent) {
             announceTicks++;
@@ -101,27 +105,28 @@ public final class PrimePresenceService {
     }
 
     public void markPrime(UUID uuid) {
-        markPrime(uuid, "", "", "");
+        markPrime(uuid, CosmeticLoadout.EMPTY, "");
     }
 
     public void markPrime(UUID uuid, String capeId, String wingsId) {
-        markPrime(uuid, capeId, wingsId, "");
+        markPrime(uuid, new CosmeticLoadout(capeId, wingsId), "");
     }
 
     public void markPrime(UUID uuid, String capeId, String wingsId, String skinHash) {
+        markPrime(uuid, new CosmeticLoadout(capeId, wingsId), skinHash);
+    }
+
+    public void markPrime(UUID uuid, CosmeticLoadout loadout, String skinHash) {
         if (uuid == null) {
             return;
         }
         primeUsers.add(uuid);
-        CosmeticsState.setPeerLoadout(uuid, capeId, wingsId);
+        CosmeticsState.setPeerLoadout(uuid, loadout);
         if (skinHash == null || skinHash.isBlank()) {
             CustomSkinState.removePeer(uuid);
-            return;
         }
-        // Texture bytes arrive via SkinTexturePayload; keep old bytes until matching packet.
     }
 
-    /** Force a presence broadcast (e.g. after equipping cosmetics or changing skin). */
     public void requestAnnounce() {
         CosmeticsState.markAnnounceDirty();
         CustomSkinState.markAnnounceDirty();
@@ -143,8 +148,7 @@ public final class PrimePresenceService {
         UUID local = localUuid();
         if (local != null) {
             primeUsers.add(local);
-            CosmeticsState.setPeerLoadout(
-                    local, CosmeticsState.localCapeId(), CosmeticsState.localWingsId());
+            CosmeticsState.setPeerLoadout(local, CosmeticsState.localLoadout());
             if (CustomSkinState.hasLocal()) {
                 byte[] bytes = CustomSkinState.localBytes();
                 if (bytes != null) {

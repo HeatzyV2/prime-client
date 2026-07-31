@@ -18,6 +18,8 @@ public final class CrosshairConfig implements ConfigBinding {
     public CrosshairStyle style = CrosshairStyle.CLASSIC;
     public boolean outline = true;
     public boolean hideVanilla = true;
+    public boolean dynamicRecoil = true;
+    public boolean invertOnBlock = false;
     public String serverProfile = "global";
 
     public int effectiveColor() {
@@ -42,6 +44,8 @@ public final class CrosshairConfig implements ConfigBinding {
         json.addProperty("style", style.name());
         json.addProperty("outline", outline);
         json.addProperty("hideVanilla", hideVanilla);
+        json.addProperty("dynamicRecoil", dynamicRecoil);
+        json.addProperty("invertOnBlock", invertOnBlock);
         json.addProperty("serverProfile", serverProfile);
         return json;
     }
@@ -67,6 +71,8 @@ public final class CrosshairConfig implements ConfigBinding {
         }
         if (json.has("outline")) outline = json.get("outline").getAsBoolean();
         if (json.has("hideVanilla")) hideVanilla = json.get("hideVanilla").getAsBoolean();
+        if (json.has("dynamicRecoil")) dynamicRecoil = json.get("dynamicRecoil").getAsBoolean();
+        if (json.has("invertOnBlock")) invertOnBlock = json.get("invertOnBlock").getAsBoolean();
         if (json.has("serverProfile")) serverProfile = json.get("serverProfile").getAsString();
     }
 }

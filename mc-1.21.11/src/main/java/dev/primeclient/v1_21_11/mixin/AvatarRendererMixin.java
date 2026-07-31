@@ -5,6 +5,7 @@ import dev.primeclient.core.cosmetics.CosmeticLoadout;
 import dev.primeclient.core.state.CapePhysicsState;
 import dev.primeclient.core.state.CosmeticsState;
 import dev.primeclient.v1_21_11.render.PrimeCosmeticRenderData;
+import dev.primeclient.v1_21_11.render.PrimeHatLayer;
 import dev.primeclient.v1_21_11.render.PrimeWingsLayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -24,6 +25,8 @@ public abstract class AvatarRendererMixin {
     private void primeclient$addWingsLayer(EntityRendererProvider.Context context, boolean slim, CallbackInfo ci) {
         ((LivingEntityRendererAccessor) this).primeclient$addLayer(new PrimeWingsLayer(
                 (AvatarRenderer<?>) (Object) this, context.getModelSet()));
+        ((LivingEntityRendererAccessor) this).primeclient$addLayer(new PrimeHatLayer(
+                (AvatarRenderer<?>) (Object) this, context.getModelSet()));
     }
 
     @Inject(method = "extractCapeState", at = @At("RETURN"))
@@ -33,6 +36,7 @@ public abstract class AvatarRendererMixin {
         if (state instanceof PrimeCosmeticRenderData data) {
             data.primeclient$setCapeId(loadout.capeId());
             data.primeclient$setWingsId(loadout.wingsId());
+            data.primeclient$setHatId(loadout.hatId());
         }
         if (loadout.hasCape()) {
             state.showCape = true;

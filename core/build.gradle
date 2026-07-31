@@ -35,6 +35,16 @@ tasks.named("compileJava").configure {
 	dependsOn("generatePrimeVersion")
 }
 
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.named("sourcesJar").configure {
+	dependsOn("generatePrimeVersion")
+}
+
 dependencies {
 	// Provided at runtime by Fabric Loader; never bundled.
 	api "org.slf4j:slf4j-api:${slf4j_version}"
@@ -60,10 +70,4 @@ test {
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 21
 	it.options.encoding = 'UTF-8'
-}
-
-java {
-	withSourcesJar()
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
 }

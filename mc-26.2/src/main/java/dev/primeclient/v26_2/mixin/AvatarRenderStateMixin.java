@@ -14,6 +14,9 @@ public abstract class AvatarRenderStateMixin implements PrimeCosmeticRenderData 
     @Unique
     private String primeclient$wingsId = "";
 
+    @Unique
+    private String primeclient$hatId = "";
+
     @Override
     public String primeclient$getCapeId() {
         return primeclient$capeId;
@@ -32,5 +35,15 @@ public abstract class AvatarRenderStateMixin implements PrimeCosmeticRenderData 
     @Override
     public void primeclient$setWingsId(String wingsId) {
         this.primeclient$wingsId = wingsId != null ? wingsId : "";
+    }
+
+    @Override
+    public String primeclient$getHatId() {
+        return primeclient$hatId;
+    }
+
+    @Override
+    public void primeclient$setHatId(String hatId) {
+        this.primeclient$hatId = hatId != null ? hatId : "";
     }
 }

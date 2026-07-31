@@ -13,7 +13,7 @@ import { playUiSound } from '@renderer/lib/uiSounds'
 import './SkinsPage.css'
 
 type Pose = 'idle' | 'walk' | 'run'
-type SkinTab = 'skins' | 'cape' | 'wings' | 'badge'
+type SkinTab = 'skins' | 'cape' | 'wings' | 'aura' | 'trail' | 'hat' | 'emote' | 'badge'
 
 interface LocalSkin {
   id: string
@@ -25,7 +25,9 @@ const RARITY_VARIANT: Record<CosmeticItem['rarity'], 'default' | 'red' | 'prime'
   common: 'default',
   rare: 'success',
   epic: 'red',
-  legendary: 'prime'
+  legendary: 'prime',
+  mythic: 'prime',
+  prime_exclusive: 'prime'
 }
 
 export function SkinsPage() {
@@ -49,6 +51,10 @@ export function SkinsPage() {
       { id: 'skins', label: t('skins.tabs.skins') },
       { id: 'cape', label: t('skins.tabs.capes') },
       { id: 'wings', label: t('skins.tabs.wings') },
+      { id: 'aura', label: 'Auras' },
+      { id: 'trail', label: 'Trails' },
+      { id: 'hat', label: 'Hats' },
+      { id: 'emote', label: 'Emotes' },
       { id: 'badge', label: t('skins.tabs.badges') }
     ],
     [t]

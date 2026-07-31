@@ -4,6 +4,7 @@ import { ecosystemStore } from '../storage/EcosystemStore'
 import { settingsStore } from '../storage/SettingsStore'
 import { downloadStore } from '../storage/DownloadStore'
 import { updateService } from './UpdateService'
+import { launchLogService } from './LaunchLogService'
 
 /** Real boot tasks — stores and optional update check. */
 export class BootService {
@@ -17,6 +18,7 @@ export class BootService {
     ])
 
     const settings = await settingsStore.load()
+    void launchLogService.purgeOldLogs()
     if (settings.autoUpdate) {
       try {
         await updateService.check()

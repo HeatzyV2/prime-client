@@ -65,18 +65,31 @@ public final class NotificationsElement extends HudElement implements Consumer<N
         float slide = (1f - Easing.easeOutCubic(1f - progress)) * 12f * prefs.slideStrength();
         int y = cursorY + Math.round(slide);
 
-        ctx.fillRect(0, y, WIDTH, ROW_HEIGHT, theme.background());
-        ctx.fillRect(0, y, ACCENT_WIDTH, ROW_HEIGHT, levelColor(notification, theme));
-        int textX = ACCENT_WIDTH + PADDING;
-        if (prefs.showIcons()) {
-            ctx.drawText(levelIcon(notification), textX, y + PADDING, levelColor(notification, theme), true);
-            textX += 12;
+        int radius = ROW_HEIGHT / 2;
+        int levelCol = levelColor(notification, theme);
+        int bgFill = ColorUtil.withAlpha(0xFF0D0D10, 0.94f);
+
+        // Dynamic Island pill shape with soft shadow and glowing accent border
+        ctx.fillSoftShadow(0, y, WIDTH, ROW_HEIGHT, radius, 0x80000000);
+        ctx.fillRoundedBorder(0, y, WIDTH, ROW_HEIGHT, radius, 1,
+                ColorUtil.withAlpha(levelCol, 0.55f), bgFill);
+
+        // Circular badge for level icon
+        int badgeSize = 16;
+        int badgeX = 5;
+        int badgeY = y + (ROW_HEIGHT - badgeSize) / 2;
+        ctx.fillRoundedRect(badgeX, badgeY, badgeSize, badgeSize, badgeSize / 2, ColorUtil.withAlpha(levelCol, 0.25f));
+        ctx.drawSmoothText(levelIcon(notification), badgeX + 4, badgeY + 1, levelCol, 0.75f);
+
+        int textX = badgeX + badgeSize + 6;
+        ctx.drawSmoothText(notification.title(), textX, y + 3, theme.foreground(), 0.75f);
+        ctx.drawSmoothText(notification.message(), textX, y + 13, theme.foregroundMuted(), 0.65f);
+
+        // Glowing progress bar at bottom of pill
+        int barWidth = Math.max(0, Math.round((WIDTH - 24) * (1f - progress)));
+        if (barWidth > 0) {
+            ctx.fillRoundedRect(12, y + ROW_HEIGHT - 3, barWidth, 2, 1, ColorUtil.withAlpha(levelCol, 0.85f));
         }
-        ctx.drawText(notification.title(), textX, y + PADDING, theme.foreground(), true);
-        ctx.drawText(notification.message(), textX, y + ROW_HEIGHT - PADDING - ctx.fontHeight(),
-                theme.foregroundMuted(), true);
-        int barWidth = Math.round(WIDTH * (1f - progress));
-        ctx.fillRect(0, y + ROW_HEIGHT - 1, barWidth, 1, ColorUtil.withAlpha(theme.accent(), 0.8f));
         cursorY += ROW_HEIGHT + GAP;
     }
 

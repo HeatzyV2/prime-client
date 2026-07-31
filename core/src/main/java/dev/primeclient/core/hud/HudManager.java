@@ -211,4 +211,9 @@ public final class HudManager implements ConfigBinding {
             element.setTintArgb(json.get("tint").getAsInt());
         }
     }
+
+    /** Snaps coordinate to nearest grid step (e.g. 4px magnetic grid). */
+    public static float snapToGrid(float val, float step) {
+        return Math.round(val / step) * step;
+    }
 }

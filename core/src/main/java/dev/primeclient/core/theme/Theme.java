@@ -22,4 +22,9 @@ public record Theme(
         int warning,
         int error
 ) {
+    /** Returns an animated RGB shift / wave color phase shift without object allocations. */
+    public int animatedAccent(float timeSeconds) {
+        float wave = 0.5f + 0.5f * (float) Math.sin(timeSeconds * 2.5f);
+        return dev.primeclient.core.util.ColorUtil.lerp(accent, accentSecondary, wave);
+    }
 }

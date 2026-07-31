@@ -96,10 +96,19 @@ public final class KeystrokesModule extends Module {
 
         private void key(RenderContext ctx, Theme theme, String label,
                          int x, int y, int width, int height, boolean pressed) {
-            ctx.fillRect(x, y, width, height, pressed ? theme.accent() : theme.background());
-            int labelColor = pressed ? theme.background() : theme.foreground();
-            ctx.drawText(label, x + (width - ctx.textWidth(label)) / 2, y + (height - ctx.fontHeight()) / 2 + 1,
-                    labelColor, false);
+            int radius = 3;
+            int bgFill = pressed
+                    ? dev.primeclient.core.util.ColorUtil.withAlpha(theme.accent(), 0.85f)
+                    : dev.primeclient.core.util.ColorUtil.withAlpha(0xFF0F0F12, 0.92f);
+            if (pressed) {
+                ctx.fillSoftShadow(x, y, width, height, radius, dev.primeclient.core.util.ColorUtil.withAlpha(theme.accent(), 0.5f));
+            }
+            ctx.fillRoundedBorder(x, y, width, height, radius, 1,
+                    dev.primeclient.core.util.ColorUtil.withAlpha(theme.accent(), pressed ? 0.9f : 0.35f), bgFill);
+
+            int labelColor = pressed ? theme.foreground() : theme.foregroundMuted();
+            int textW = ctx.smoothTextWidth(label, 0.78f);
+            ctx.drawSmoothText(label, x + (width - textW) / 2, y + (height - ctx.fontHeight()) / 2 + 1, labelColor, 0.78f);
         }
     }
 }

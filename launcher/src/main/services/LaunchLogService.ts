@@ -37,6 +37,27 @@ export class LaunchLogService {
     await shell.openPath(dir)
   }
 
+  async purgeOldLogs(maxAgeDays = 7): Promise<void> {
+    try {
+      const dir = join(app.getPath('userData'), 'logs')
+      const { readdir, stat, rm } = await import('fs/promises')
+      const files = await readdir(dir)
+      const now = Date.now()
+      const maxAgeMs = maxAgeDays * 86400000
+
+      for (const file of files) {
+        if (!file.endsWith('.log')) continue
+        const filePath = join(dir, file)
+        const stats = await stat(filePath)
+        if (now - stats.mtimeMs > maxAgeMs) {
+          await rm(filePath, { force: true })
+        }
+      }
+    } catch {
+      // non-fatal
+    }
+  }
+
   append(level: LaunchLogEntryDto['level'], message: string, phase?: LaunchProgressDto['phase']): void {
     const line = message.trim()
     if (!line) {

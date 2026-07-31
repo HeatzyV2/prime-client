@@ -114,6 +114,44 @@ public final class ThemeManager implements ConfigBinding {
             0xFFF87171  // error
     );
 
+    /** Neon electric violet with magenta secondary. */
+    public static final Theme PRIME_VIOLET = new Theme(
+            "prime-violet", "Prime Violet",
+            0xFFA855F7, // accent
+            0xFFEC4899, // accentSecondary
+            0xFF09050F, // background
+            0xF0130C1F, // backgroundLight
+            0xF01B112B, // surfaceElevated
+            0xFFFAF5FF, // foreground
+            0xFFA588C4, // foregroundMuted
+            0x40A855F7, // border
+            0xCC000000, // overlay
+            0xFF09050F, // gradientTop
+            0xFF130C1F, // gradientBottom
+            0xFF4ADE80, // success
+            0xFFFBBF24, // warning
+            0xFFF87171  // error
+    );
+
+    /** Royal emerald green with lime accent. */
+    public static final Theme PRIME_EMERALD = new Theme(
+            "prime-emerald", "Prime Emerald",
+            0xFF10B981, // accent
+            0xFF84CC16, // accentSecondary
+            0xFF040E0A, // background
+            0xF00A1A14, // backgroundLight
+            0xF010261E, // surfaceElevated
+            0xFFECFDF5, // foreground
+            0xFF77A892, // foregroundMuted
+            0x4010B981, // border
+            0xCC000000, // overlay
+            0xFF040E0A, // gradientTop
+            0xFF0A1A14, // gradientBottom
+            0xFF34D399, // success
+            0xFFFBBF24, // warning
+            0xFFF87171  // error
+    );
+
     private final Map<String, Theme> themes = new LinkedHashMap<>();
     private Theme active;
 
@@ -123,6 +161,8 @@ public final class ThemeManager implements ConfigBinding {
         register(PRIME_AURORA);
         register(PRIME_OBSIDIAN);
         register(PRIME_EMBER);
+        register(PRIME_VIOLET);
+        register(PRIME_EMERALD);
         this.active = PRIME_CRIMSON;
     }
 

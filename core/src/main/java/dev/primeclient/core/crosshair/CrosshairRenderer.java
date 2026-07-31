@@ -16,6 +16,9 @@ public final class CrosshairRenderer {
         int arm = Math.max(1, config.armLength);
         int thick = Math.max(1, config.thickness);
         int gap = Math.max(0, config.gap);
+        if (config.dynamicRecoil) {
+            gap += Math.abs((int) (Math.sin(System.currentTimeMillis() / 250.0) * 1.5));
+        }
 
         if (config.rotation != 0f) {
             ctx.pushTransform(0, 0, 1f, config.rotation, center, center);

@@ -25,6 +25,7 @@ public final class SocialHubScreen extends Screen {
     @Override
     protected void init() {
         ui.onOpen();
+        dev.primeclient.core.gui.BlurBackdrop.setActive(true);
     }
 
     @Override
@@ -75,6 +76,7 @@ public final class SocialHubScreen extends Screen {
 
     @Override
     public void onClose() {
+        dev.primeclient.v26_2.render.PanelBlur.end(Minecraft.getInstance());
         Minecraft.getInstance().gui.setScreen(parent);
     }
 }

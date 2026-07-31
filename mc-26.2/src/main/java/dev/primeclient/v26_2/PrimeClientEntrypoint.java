@@ -1,7 +1,9 @@
 package dev.primeclient.v26_2;
 
 import dev.primeclient.core.PrimeClient;
+import dev.primeclient.core.gui.menu.EmoteWheelRenderer;
 import dev.primeclient.core.hook.PrimeHooks;
+import dev.primeclient.core.state.EmoteState;
 import dev.primeclient.v26_2.render.GuiRenderContext;
 import dev.primeclient.v26_2.network.MainNetworking;
 import dev.primeclient.v26_2.network.PresenceNetworking;
@@ -63,6 +65,8 @@ public final class PrimeClientEntrypoint implements ClientModInitializer {
         });
 
         GuiRenderContext renderContext = new GuiRenderContext();
+        EmoteWheelRenderer emoteWheel = new EmoteWheelRenderer();
+        final boolean[] wasLeftDown = {false};
         HudElementRegistry.addLast(
                 Identifier.fromNamespaceAndPath(PrimeClient.MOD_ID, "hud"),
                 (extractor, deltaTracker) -> {
@@ -75,7 +79,29 @@ public final class PrimeClientEntrypoint implements ClientModInitializer {
                     if (client.loadingOverlay().visible()) {
                         client.loadingOverlay().render(renderContext, client.themes().active());
                     }
+                    if (EmoteState.wheelOpen()) {
+                        var mc = net.minecraft.client.Minecraft.getInstance();
+                        double mx = mc.mouseHandler.xpos()
+                                * mc.getWindow().getGuiScaledWidth() / Math.max(1, mc.getWindow().getScreenWidth());
+                        double my = mc.mouseHandler.ypos()
+                                * mc.getWindow().getGuiScaledHeight() / Math.max(1, mc.getWindow().getScreenHeight());
+                        emoteWheel.render(renderContext, client.themes().active(),
+                                mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), mx, my);
+                    }
                 });
+
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            boolean left = client.mouseHandler.isLeftPressed();
+            if (EmoteState.wheelOpen() && left && !wasLeftDown[0]) {
+                double mx = client.mouseHandler.xpos()
+                        * client.getWindow().getGuiScaledWidth() / Math.max(1, client.getWindow().getScreenWidth());
+                double my = client.mouseHandler.ypos()
+                        * client.getWindow().getGuiScaledHeight() / Math.max(1, client.getWindow().getScreenHeight());
+                emoteWheel.mousePressed(mx, my,
+                        client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
+            }
+            wasLeftDown[0] = left;
+        });
     }
 
     private float lastHealth = -1;

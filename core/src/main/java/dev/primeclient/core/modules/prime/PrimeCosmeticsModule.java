@@ -1,5 +1,6 @@
 package dev.primeclient.core.modules.prime;
 
+import dev.primeclient.core.cosmetics.CosmeticLoadout;
 import dev.primeclient.core.cosmetics.CosmeticManager;
 import dev.primeclient.core.cosmetics.CosmeticType;
 import dev.primeclient.core.event.ClientTickEvent;
@@ -11,7 +12,7 @@ import dev.primeclient.core.module.ModuleCategory;
 import dev.primeclient.core.state.CapePhysicsState;
 import dev.primeclient.core.state.CosmeticsState;
 
-/** Equip Prime cosmetics (capes and wings — world-rendered). */
+/** Equip Prime cosmetics (capes, wings, auras, trails, hats, badges). */
 public final class PrimeCosmeticsModule extends Module {
 
     private final EnumSetting<CosmeticType> slot =
@@ -27,7 +28,7 @@ public final class PrimeCosmeticsModule extends Module {
 
     public PrimeCosmeticsModule(CosmeticManager cosmetics) {
         super("prime-cosmetics", "Prime Cosmetics",
-                "Capes and wings visible to you and Prime peers", ModuleCategory.PRIME);
+                "Capes, wings, auras, trails, hats & badges — visible to Prime peers", ModuleCategory.PRIME);
         this.cosmetics = cosmetics;
         listen(ClientTickEvent.class, event -> {
             if (isEnabled()) {
@@ -49,12 +50,14 @@ public final class PrimeCosmeticsModule extends Module {
     /** Cycles equipped item in the selected slot. */
     public void cycleEquipped() {
         CosmeticType type = slot.get();
-        if (type != CosmeticType.CAPE && type != CosmeticType.WINGS) {
+        if (type == CosmeticType.EMOTE) {
             type = CosmeticType.CAPE;
         }
         final CosmeticType cycleType = type;
         var items = cosmetics.catalog().values().stream()
-                .filter(i -> i.type() == cycleType).toList();
+                .filter(i -> i.type() == cycleType)
+                .filter(i -> !"cape-prime".equals(i.id()))
+                .toList();
         if (items.isEmpty()) {
             return;
         }
@@ -72,12 +75,20 @@ public final class PrimeCosmeticsModule extends Module {
     }
 
     private void pushState() {
-        var cape = cosmetics.equipped(CosmeticType.CAPE);
-        var wings = cosmetics.equipped(CosmeticType.WINGS);
-        CosmeticsState.setLocalLoadout(
-                cape != null ? cape.id() : "",
-                wings != null ? wings.id() : "");
+        CosmeticsState.setLocalLoadout(new CosmeticLoadout(
+                id(CosmeticType.CAPE),
+                id(CosmeticType.WINGS),
+                id(CosmeticType.AURA),
+                id(CosmeticType.TRAIL),
+                id(CosmeticType.HAT),
+                id(CosmeticType.BADGE)));
+        CosmeticsState.bindSettings(cosmetics.settings());
         CapePhysicsState.setActive(clothPhysics.get());
         CapePhysicsState.setIntensity((float) physicsIntensity.get());
+    }
+
+    private String id(CosmeticType type) {
+        var item = cosmetics.equipped(type);
+        return item != null ? item.id() : "";
     }
 }

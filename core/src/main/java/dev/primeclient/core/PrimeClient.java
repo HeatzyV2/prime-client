@@ -7,6 +7,8 @@ import dev.primeclient.core.cloud.CloudSyncManager;
 import dev.primeclient.core.cloud.LocalCloudClient;
 import dev.primeclient.core.config.ConfigManager;
 import dev.primeclient.core.cosmetics.CosmeticManager;
+import dev.primeclient.core.cosmetics.CosmeticsFx;
+import dev.primeclient.core.cosmetics.EmoteService;
 import dev.primeclient.core.crosshair.CrosshairConfig;
 import dev.primeclient.core.crosshair.CrosshairPresetStore;
 import dev.primeclient.core.crosshair.CrosshairProfileManager;
@@ -38,6 +40,7 @@ import dev.primeclient.core.presence.PrimePresenceService;
 import dev.primeclient.core.serverapi.ServerApiService;
 import dev.primeclient.core.skin.CustomSkinService;
 import dev.primeclient.core.social.SocialService;
+import dev.primeclient.core.state.CosmeticsState;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.replay.ReplaySession;
 import dev.primeclient.core.replay.ReplayStorage;
@@ -75,6 +78,7 @@ public final class PrimeClient {
     private final CrosshairPresetStore crosshairPresets;
     private final CrosshairProfileManager crosshairProfiles;
     private final CosmeticManager cosmetics;
+    private final EmoteService emotes;
     private final CloudSyncManager cloudSync;
     private final PrimeAccountService account;
     private final OnboardingManager onboarding;
@@ -113,6 +117,8 @@ public final class PrimeClient {
         this.crosshairPresets = new CrosshairPresetStore();
         this.crosshairProfiles = new CrosshairProfileManager(crosshairConfig);
         this.cosmetics = new CosmeticManager();
+        CosmeticsState.bindSettings(this.cosmetics.settings());
+        this.emotes = new EmoteService(adapter);
         this.onboarding = new OnboardingManager();
         this.loadingOverlay = new LoadingOverlay();
         this.replaySession = new ReplaySession();
@@ -240,6 +246,7 @@ public final class PrimeClient {
         tooltips.tick(50);
         profiles.pollExternalBridgeChanges();
         social.tick();
+        CosmeticsFx.tick(adapter);
         if (adapter.isScreenOpen()) {
             keybinds.releaseAll();
         } else {
@@ -304,6 +311,7 @@ public final class PrimeClient {
     public CrosshairPresetStore crosshairPresets() { return crosshairPresets; }
     public CrosshairProfileManager crosshairProfiles() { return crosshairProfiles; }
     public CosmeticManager cosmetics() { return cosmetics; }
+    public EmoteService emotes() { return emotes; }
     public CloudSyncManager cloudSync() { return cloudSync; }
     public PrimeAccountService account() { return account; }
     public OnboardingManager onboarding() { return onboarding; }
