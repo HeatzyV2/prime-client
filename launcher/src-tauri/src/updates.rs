@@ -1,16 +1,41 @@
 use crate::error::AppError;
 use crate::minecraft_targets::{is_prime_jar_for_prefix, DEFAULT_TARGET};
 use crate::paths;
+use parking_lot::Mutex;
 use serde_json::{json, Value};
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 use tauri::Emitter;
 
 const OWNER: &str = "HeatzyV2";
 const REPO: &str = "prime-client";
+const CHECK_CACHE: Duration = Duration::from_secs(60 * 60);
 
-pub async fn check(current_launcher: &str) -> Result<Value, AppError> {
+static CACHED: Mutex<Option<(Instant, Value)>> = Mutex::new(None);
+
+pub fn get_status() -> Option<Value> {
+    CACHED.lock().as_ref().map(|(_, v)| v.clone())
+}
+
+pub async fn check(current_launcher: &str, force: bool) -> Result<Value, AppError> {
+    if !force {
+        if let Some((at, status)) = CACHED.lock().as_ref() {
+            if at.elapsed() < CHECK_CACHE {
+                return Ok(status.clone());
+            }
+        }
+    }
+    let status = fetch_status(current_launcher).await?;
+    *CACHED.lock() = Some((Instant::now(), status.clone()));
+    let mut s = crate::settings::load()?;
+    s.last_update_check = Some(chrono::Utc::now().to_rfc3339());
+    let _ = crate::settings::save(&s);
+    Ok(status)
+}
+
+async fn fetch_status(current_launcher: &str) -> Result<Value, AppError> {
     let client = reqwest::Client::builder()
         .user_agent("Prime-Launcher")
         .build()
@@ -25,10 +50,11 @@ pub async fn check(current_launcher: &str) -> Result<Value, AppError> {
     if !res.status().is_success() {
         return Ok(json!({
             "checkedAt": chrono::Utc::now().to_rfc3339(),
-            "notes": "",
+            "notes": "Offline — could not check GitHub Releases.",
+            "releaseUrl": format!("https://github.com/{OWNER}/{REPO}/releases"),
             "anyUpdateAvailable": false,
             "launcher": { "current": current_launcher, "latest": current_launcher, "updateAvailable": false },
-            "mod": { "current": "1.2.56", "latest": "1.2.56", "updateAvailable": false },
+            "mod": { "current": "local", "latest": "local", "updateAvailable": false },
             "current": current_launcher,
             "latest": current_launcher,
             "updateAvailable": false
@@ -46,14 +72,17 @@ pub async fn check(current_launcher: &str) -> Result<Value, AppError> {
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
-    let assets = body.get("assets").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    let assets = body
+        .get("assets")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
     let launcher_asset = assets.iter().find(|a| {
         a.get("name")
             .and_then(|n| n.as_str())
             .map(|n| n.starts_with("Prime-Launcher-Setup-") && n.ends_with(".exe"))
             .unwrap_or(false)
     });
-    // Prefer recommended target jar; fall back to any known Prime jar.
     let preferred_prefix = DEFAULT_TARGET.jar_prefix;
     let mod_asset = assets
         .iter()
@@ -106,6 +135,11 @@ pub async fn check(current_launcher: &str) -> Result<Value, AppError> {
     }))
 }
 
+pub fn open_release(url: Option<String>) -> Result<(), AppError> {
+    let target = url.unwrap_or_else(|| format!("https://github.com/{OWNER}/{REPO}/releases"));
+    open::that(&target).map_err(|e| AppError::Message(e.to_string()))
+}
+
 pub async fn install_launcher(app: tauri::AppHandle, current: &str) -> Result<Value, AppError> {
     #[cfg(not(windows))]
     {
@@ -114,7 +148,7 @@ pub async fn install_launcher(app: tauri::AppHandle, current: &str) -> Result<Va
     }
     #[cfg(windows)]
     {
-        let status = check(current).await?;
+        let status = check(current, true).await?;
         let launcher = status.get("launcher").cloned().unwrap_or(Value::Null);
         let available = launcher
             .get("updateAvailable")
@@ -128,7 +162,15 @@ pub async fn install_launcher(app: tauri::AppHandle, current: &str) -> Result<Va
             .get("fileName")
             .and_then(|v| v.as_str())
             .map(str::to_string)
-            .unwrap_or_else(|| format!("Prime-Launcher-Setup-{}.exe", launcher.get("latest").and_then(|v| v.as_str()).unwrap_or("latest")));
+            .unwrap_or_else(|| {
+                format!(
+                    "Prime-Launcher-Setup-{}.exe",
+                    launcher
+                        .get("latest")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("latest")
+                )
+            });
         let latest = launcher
             .get("latest")
             .and_then(|v| v.as_str())
@@ -170,10 +212,7 @@ pub async fn install_launcher(app: tauri::AppHandle, current: &str) -> Result<Va
             .parent()
             .map(|p| p.to_path_buf())
             .unwrap_or_else(|| PathBuf::from("."));
-        let args = vec![
-            "/S".to_string(),
-            format!("/D={}", install_dir.display()),
-        ];
+        let args = vec!["/S".to_string(), format!("/D={}", install_dir.display())];
         std::process::Command::new(&dest)
             .args(&args)
             .spawn()
@@ -189,7 +228,11 @@ pub async fn install_launcher(app: tauri::AppHandle, current: &str) -> Result<Va
     }
 }
 
-pub async fn install_mod(download_url: String, file_name: String, instance_id: String) -> Result<Value, AppError> {
+pub async fn install_mod(
+    download_url: String,
+    file_name: String,
+    instance_id: String,
+) -> Result<Value, AppError> {
     let client = reqwest::Client::builder()
         .user_agent("Prime-Launcher")
         .build()
@@ -208,7 +251,6 @@ pub async fn install_mod(download_url: String, file_name: String, instance_id: S
     fs::File::create(&cached)?.write_all(&bytes)?;
     let mods = paths::instance_mods_dir(&instance_id);
     fs::create_dir_all(&mods)?;
-    // remove old prime jars
     if let Ok(rd) = fs::read_dir(&mods) {
         for e in rd.flatten() {
             let n = e.file_name().to_string_lossy().to_string();

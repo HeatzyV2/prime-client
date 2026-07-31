@@ -263,24 +263,11 @@ export function ChatPage() {
 
   async function attachImage(): Promise<void> {
     if (!activeId) return
-    const launcher = window.primeLauncher as typeof window.primeLauncher & {
-      dialog?: {
-        openFile?: (opts: {
-          filters: { name: string; extensions: string[] }[]
-        }) => Promise<string | { filePaths?: string[] } | null>
-      }
-    }
-    const result = await launcher.dialog?.openFile?.({
+    const result = await window.primeLauncher.dialog.openFile({
       filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }]
     })
-    const filePath =
-      typeof result === 'string'
-        ? result
-        : result && typeof result === 'object'
-          ? result.filePaths?.[0]
-          : undefined
     const path =
-      filePath ||
+      (typeof result === 'string' ? result : null) ||
       (() => {
         const manual = window.prompt(t('chat.imagePathPrompt'))
         return manual || null

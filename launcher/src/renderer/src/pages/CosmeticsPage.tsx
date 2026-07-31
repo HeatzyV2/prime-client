@@ -10,7 +10,9 @@ const RARITY_VARIANT: Record<CosmeticItem['rarity'], 'default' | 'red' | 'prime'
   common: 'default',
   rare: 'success',
   epic: 'red',
-  legendary: 'prime'
+  legendary: 'prime',
+  mythic: 'prime',
+  prime_exclusive: 'prime'
 }
 
 export function CosmeticsPage() {

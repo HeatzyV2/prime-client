@@ -57,6 +57,13 @@ pub fn sync_instance(instance_id: &str) -> Result<(), AppError> {
         obj.insert("modules".into(), Value::Object(modules));
     }
     fs::write(profile, serde_json::to_string_pretty(&existing)?)?;
+
+    // Sync active custom skin into game dir if set
+    if let Ok(Some(skin_path)) = crate::skins::active_file_path() {
+        let dest = game.join("prime-custom-skin.png");
+        let _ = fs::copy(skin_path, dest);
+    }
+
     Ok(())
 }
 

@@ -1,11 +1,14 @@
 mod accounts;
+mod ai;
 mod bridge;
 mod commands;
 mod content;
+mod crash;
 mod discord;
 mod downloads;
 mod ecosystem;
 mod error;
+mod import;
 mod instances;
 mod java;
 mod launch;
@@ -17,6 +20,7 @@ mod options_txt;
 mod paths;
 mod performance;
 mod settings;
+mod skins;
 mod social;
 mod state;
 mod updates;
@@ -59,6 +63,9 @@ pub fn run() {
             commands::instance_duplicate,
             commands::instance_set_default,
             commands::instance_open_folder,
+            commands::instance_import_detect,
+            commands::instance_import_list,
+            commands::instance_import_run,
             commands::profile_get_active,
             commands::profile_get_all,
             commands::profile_set_instance,
@@ -92,6 +99,8 @@ pub fn run() {
             commands::content_shader_remove,
             commands::content_shader_import,
             commands::update_check,
+            commands::update_get_status,
+            commands::update_open_release,
             commands::update_install_mod,
             commands::update_install_launcher,
             commands::update_dismiss,
@@ -101,6 +110,7 @@ pub fn run() {
             commands::friends_accept,
             commands::friends_update_note,
             commands::friends_refresh_all,
+            commands::friends_refresh,
             commands::social_connect,
             commands::chat_conversations,
             commands::chat_open_dm,
@@ -121,8 +131,17 @@ pub fn run() {
             commands::store_catalog,
             commands::store_balance,
             commands::store_purchase,
+            commands::store_history,
+            commands::store_promos,
+            commands::store_redeem,
+            commands::store_sync_mode,
             commands::cosmetic_list,
             commands::cosmetic_toggle,
+            commands::skin_list,
+            commands::skin_import,
+            commands::skin_remove,
+            commands::skin_set_active,
+            commands::skin_active_data,
             commands::servers_list,
             commands::servers_add,
             commands::servers_remove,
@@ -138,7 +157,17 @@ pub fn run() {
             commands::settings_java_list,
             commands::settings_java_browse,
             commands::settings_java_add,
+            commands::settings_wallpaper_browse,
+            commands::settings_wallpaper_clear,
+            commands::settings_wallpaper_data,
+            commands::settings_browse_instances_root,
             commands::dialog_open_file,
+            commands::ai_key_status,
+            commands::ai_has_key,
+            commands::ai_set_key,
+            commands::ai_clear_key,
+            commands::ai_chat,
+            commands::ai_confirm_install,
         ])
         .setup(|app| {
             let state = app.state::<AppState>();

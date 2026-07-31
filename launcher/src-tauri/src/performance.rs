@@ -27,7 +27,7 @@ fn sys_info_ram_mb() -> f64 {
         .ok()
         .and_then(|s| {
             s.lines()
-                .find(|l| l.startsWith("MemTotal:"))
+                .find(|l| l.starts_with("MemTotal:"))
                 .and_then(|l| l.split_whitespace().nth(1))
                 .and_then(|n| n.parse::<f64>().ok())
                 .map(|kb| kb / 1024.0)

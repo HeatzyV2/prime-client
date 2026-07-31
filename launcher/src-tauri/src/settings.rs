@@ -38,6 +38,12 @@ pub struct LauncherSettings {
     pub last_server_address: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dismissed_update_banner: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wallpaper_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_skin_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instances_root: Option<String>,
 }
 
 impl Default for LauncherSettings {
@@ -67,8 +73,37 @@ impl Default for LauncherSettings {
             curse_forge_api_key: None,
             last_server_address: None,
             dismissed_update_banner: None,
+            wallpaper_path: None,
+            active_skin_id: None,
+            instances_root: None,
         }
     }
+}
+
+pub fn wallpaper_data_url() -> Result<Option<String>, AppError> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    let settings = load()?;
+    let Some(path) = settings.wallpaper_path.filter(|p| !p.is_empty()) else {
+        return Ok(None);
+    };
+    let bytes = match fs::read(&path) {
+        Ok(b) => b,
+        Err(_) => return Ok(None),
+    };
+    let ext = std::path::Path::new(&path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("png")
+        .to_lowercase();
+    let mime = match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        _ => "image/png",
+    };
+    Ok(Some(format!(
+        "data:{mime};base64,{}",
+        STANDARD.encode(bytes)
+    )))
 }
 
 pub fn load() -> Result<LauncherSettings, AppError> {

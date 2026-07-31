@@ -1,6 +1,7 @@
 //! Spawns the Node launch-bridge only while starting the game (not a persistent Electron shell).
 use crate::accounts;
 use crate::bridge;
+use crate::crash;
 use crate::ecosystem;
 use crate::error::AppError;
 use crate::instances;
@@ -15,6 +16,7 @@ use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -173,6 +175,14 @@ async fn launch_inner(
         drop(stdin);
     }
 
+    let game_dir = paths::instance_game_dir(&instance_id);
+    let known_crashes = crash::snapshot_crash_reports(&game_dir);
+    let session_started_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    let launch_instance_id = instance_id.clone();
+
     let stdout = child.stdout.take().ok_or_else(|| AppError::Message("No stdout".into()))?;
     let mut lines = BufReader::new(stdout).lines();
     let mut ok = false;
@@ -197,8 +207,17 @@ async fn launch_inner(
                                 None,
                             );
                         }
+                        let analyzed = emit_exit_analysis(
+                            &app,
+                            &game_dir,
+                            &known_crashes,
+                            session_started_ms,
+                            &msg,
+                        );
+                        let _ = app.emit("launch:progress", analyzed);
+                    } else {
+                        let _ = app.emit("launch:progress", msg);
                     }
-                    let _ = app.emit("launch:progress", msg);
                 }
                 Some("done") => {
                     ok = true;
@@ -221,8 +240,10 @@ async fn launch_inner(
                             presence_server.as_deref(),
                         );
                     }
-                    // Keep reading until the bridge exits so we catch phase=stopped.
                     let app_bg = app.clone();
+                    let game_dir_bg = game_dir.clone();
+                    let known_bg = known_crashes.clone();
+                    let _ = launch_instance_id;
                     tokio::spawn(async move {
                         while let Ok(Some(line)) = lines.next_line().await {
                             if let Ok(msg) = serde_json::from_str::<Value>(&line) {
@@ -243,12 +264,22 @@ async fn launch_inner(
                                                 None,
                                             );
                                         }
+                                        let analyzed = emit_exit_analysis(
+                                            &app_bg,
+                                            &game_dir_bg,
+                                            &known_bg,
+                                            session_started_ms,
+                                            &msg,
+                                        );
+                                        let _ = app_bg.emit("launch:progress", analyzed);
+                                    } else {
+                                        let _ = app_bg.emit("launch:progress", msg);
                                     }
-                                    let _ = app_bg.emit("launch:progress", msg);
                                 }
                             }
                         }
-                        let _ = child.wait().await;
+                        let status = child.wait().await;
+                        let exit_code = status.ok().and_then(|s| s.code());
                         if let Some(state) = app_bg.try_state::<AppState>() {
                             social::set_presence(
                                 state.social_ws_tx.lock().as_ref(),
@@ -257,10 +288,19 @@ async fn launch_inner(
                                 None,
                             );
                         }
-                        let _ = app_bg.emit(
-                            "launch:progress",
-                            json!({ "phase": "stopped", "detail": "Game exited" }),
+                        let synthetic = json!({
+                            "phase": if exit_code.unwrap_or(0) == 0 { "stopped" } else { "crashed" },
+                            "exitCode": exit_code,
+                            "detail": "Game exited"
+                        });
+                        let analyzed = emit_exit_analysis(
+                            &app_bg,
+                            &game_dir_bg,
+                            &known_bg,
+                            session_started_ms,
+                            &synthetic,
                         );
+                        let _ = app_bg.emit("launch:progress", analyzed);
                     });
                     break;
                 }
@@ -286,10 +326,74 @@ async fn launch_inner(
     if ok {
         let _ = instances::mark_played(&instance_id);
         let _ = ecosystem::reward_launch_coins();
-        Ok(json!({ "ok": true, "message": message }))
-    } else {
-        Ok(json!({ "ok": false, "message": message.clone(), "error": message }))
     }
+    Ok(json!({ "ok": ok, "message": message }))
+}
+
+fn emit_exit_analysis(
+    app: &AppHandle,
+    game_dir: &PathBuf,
+    known: &std::collections::HashSet<String>,
+    session_started_ms: u128,
+    msg: &Value,
+) -> Value {
+    let exit_code = msg
+        .get("exitCode")
+        .and_then(|v| v.as_i64())
+        .map(|c| c as i32);
+    let signal = msg.get("signal").and_then(|v| v.as_str());
+    let recent: Vec<String> = logs::list()
+        .into_iter()
+        .rev()
+        .take(120)
+        .map(|e| e.message)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
+    let analysis = crash::analyze_game_exit(
+        game_dir,
+        known,
+        session_started_ms,
+        exit_code,
+        signal,
+        false,
+        &recent,
+    )
+    .unwrap_or(json!({ "kind": "exit", "exit": { "reason": "clean_quit" } }));
+
+    if analysis.get("kind").and_then(|v| v.as_str()) == Some("crash") {
+        if let Some(crash) = analysis.get("crash") {
+            let title = crash
+                .get("title")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Minecraft crashed");
+            let entry = logs::append("error", &format!("[CRASH] {title}"), Some("crashed"));
+            let _ = app.emit("launch:log-append", &entry);
+            return json!({
+                "t": "progress",
+                "phase": "crashed",
+                "detail": title,
+                "percent": 0,
+                "crash": crash
+            });
+        }
+    }
+    let exit = analysis.get("exit").cloned().unwrap_or(json!({}));
+    let detail = if exit.get("reason").and_then(|v| v.as_str()) == Some("launcher_kill") {
+        "Game stopped by launcher."
+    } else {
+        msg.get("detail")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Minecraft closed normally.")
+    };
+    json!({
+        "t": "progress",
+        "phase": "stopped",
+        "detail": detail,
+        "percent": 0,
+        "exit": exit
+    })
 }
 
 pub fn is_running() -> bool {

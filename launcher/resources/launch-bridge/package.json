@@ -3,7 +3,6 @@
   "private": true,
   "version": "1.0.0",
   "dependencies": {
-    "minecraft-java-core": "^4.2.7",
-    "prime-launcher": "file:../.."
+    "minecraft-java-core": "^4.2.7"
   }
 }

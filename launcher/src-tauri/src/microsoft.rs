@@ -345,6 +345,11 @@ pub fn refresh_account(account_id: &str) -> Result<OkResult, AppError> {
     let Some(account) = db.accounts.iter_mut().find(|a| a.id == account_id) else {
         return Ok(OkResult::err("Account not found."));
     };
+    if account.ms_auth_provider.as_deref() == Some("live") {
+        return Ok(OkResult::err(
+            "This Microsoft account was signed in with the old Electron flow. Sign in again with Microsoft.",
+        ));
+    }
     let Some(refresh) = account.ms_refresh_token.clone() else {
         return Ok(OkResult::err("No Microsoft refresh token — sign in again."));
     };
@@ -376,6 +381,11 @@ pub async fn launch_authenticator(account: &StoredMinecraftAccount) -> Result<Va
             "meta": { "type": "offline", "online": false }
         }));
     }
+    if account.ms_auth_provider.as_deref() == Some("live") {
+        return Err(AppError::Message(
+            "Re-sign in with Microsoft (Azure) — msmc tokens are not supported.".into(),
+        ));
+    }
     let refresh = account
         .ms_refresh_token
         .as_deref()
@@ -386,6 +396,7 @@ pub async fn launch_authenticator(account: &StoredMinecraftAccount) -> Result<Va
         let mut db = load()?;
         if let Some(a) = db.accounts.iter_mut().find(|a| a.id == account.id) {
             a.ms_refresh_token = Some(tokens.refresh_token.clone());
+            a.ms_auth_provider = Some("azure".into());
             save(&db)?;
         }
     }

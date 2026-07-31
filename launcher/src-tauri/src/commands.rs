@@ -1,10 +1,12 @@
 use crate::accounts;
+use crate::ai;
 use crate::bridge;
 use crate::content;
 use crate::discord;
 use crate::downloads;
 use crate::ecosystem;
 use crate::error::{AppError, OkResult};
+use crate::import;
 use crate::instances;
 use crate::java;
 use crate::launch;
@@ -12,12 +14,13 @@ use crate::logs;
 use crate::paths;
 use crate::performance;
 use crate::settings;
+use crate::skins;
 use crate::social;
 use crate::state::AppState;
 use crate::updates;
 use serde_json::{json, Value};
 use std::fs;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 #[tauri::command]
 pub fn window_minimize(app: AppHandle) -> Result<(), AppError> {
@@ -74,8 +77,16 @@ pub fn boot_initialize(state: State<'_, AppState>) -> Result<(), AppError> {
 }
 
 #[tauri::command]
-pub fn settings_get() -> Result<settings::LauncherSettings, AppError> {
-    settings::load()
+pub fn settings_get() -> Result<Value, AppError> {
+    let settings = settings::load()?;
+    let mut v = serde_json::to_value(settings)?;
+    if let Some(obj) = v.as_object_mut() {
+        obj.insert(
+            "defaultInstancesRoot".into(),
+            json!(paths::user_data_dir().join("instances").to_string_lossy()),
+        );
+    }
+    Ok(v)
 }
 
 #[tauri::command]
@@ -281,8 +292,8 @@ pub async fn content_shaders_list(instance_id: Option<String>) -> Result<Vec<Val
 }
 
 #[tauri::command]
-pub async fn update_check() -> Result<Value, AppError> {
-    updates::check(env!("CARGO_PKG_VERSION")).await
+pub async fn update_check(force: Option<bool>) -> Result<Value, AppError> {
+    updates::check(env!("CARGO_PKG_VERSION"), force.unwrap_or(false)).await
 }
 
 #[tauri::command]
@@ -390,6 +401,15 @@ pub async fn friends_update_note(
 #[tauri::command]
 pub async fn friends_refresh_all(state: State<'_, AppState>) -> Result<Vec<social::FriendEntry>, AppError> {
     friends_list(state).await
+}
+
+#[tauri::command]
+pub async fn friends_refresh(
+    state: State<'_, AppState>,
+    friend_id: String,
+) -> Result<Option<social::FriendEntry>, AppError> {
+    let list = friends_list(state).await?;
+    Ok(list.into_iter().find(|f| f.id == friend_id))
 }
 
 #[tauri::command]
@@ -727,18 +747,38 @@ pub async fn content_shader_import(
 }
 
 #[tauri::command]
-pub fn store_catalog() -> Result<Vec<Value>, AppError> {
-    ecosystem::store_catalog()
+pub async fn store_catalog() -> Result<Vec<Value>, AppError> {
+    ecosystem::store_catalog_cloud().await
 }
 
 #[tauri::command]
-pub fn store_balance() -> Result<i64, AppError> {
-    ecosystem::balance()
+pub async fn store_balance() -> Result<i64, AppError> {
+    ecosystem::store_balance_cloud().await
 }
 
 #[tauri::command]
-pub fn store_purchase(item_id: String) -> Result<Value, AppError> {
-    ecosystem::purchase(item_id)
+pub async fn store_purchase(item_id: String) -> Result<Value, AppError> {
+    ecosystem::store_purchase_cloud(item_id).await
+}
+
+#[tauri::command]
+pub async fn store_history() -> Result<Vec<Value>, AppError> {
+    ecosystem::store_history().await
+}
+
+#[tauri::command]
+pub async fn store_promos() -> Result<Vec<Value>, AppError> {
+    ecosystem::store_promos().await
+}
+
+#[tauri::command]
+pub async fn store_redeem(code: String) -> Result<Value, AppError> {
+    ecosystem::store_redeem(code).await
+}
+
+#[tauri::command]
+pub fn store_sync_mode() -> String {
+    ecosystem::sync_mode().to_string()
 }
 
 #[tauri::command]
@@ -875,5 +915,150 @@ pub fn dialog_open_file(
     }))
 }
 
-use tauri::Manager;
+#[tauri::command]
+pub fn settings_wallpaper_browse(app: AppHandle) -> Result<Value, AppError> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("Images", &["png", "jpg", "jpeg", "webp"])
+        .set_title("Select wallpaper")
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(json!({ "ok": false, "error": "Cancelled." }));
+    };
+    let path_str = match path {
+        tauri_plugin_dialog::FilePath::Path(p) => p.to_string_lossy().to_string(),
+        tauri_plugin_dialog::FilePath::Url(u) => u.to_string(),
+    };
+    settings::update_merge(json!({ "wallpaperPath": path_str }))?;
+    Ok(json!({ "ok": true, "path": path_str }))
+}
+
+#[tauri::command]
+pub fn settings_wallpaper_clear() -> Result<Value, AppError> {
+    let settings = settings::update_merge(json!({ "wallpaperPath": null }))?;
+    Ok(json!({ "settings": settings }))
+}
+
+#[tauri::command]
+pub fn settings_wallpaper_data() -> Result<Option<String>, AppError> {
+    settings::wallpaper_data_url()
+}
+
+#[tauri::command]
+pub fn settings_browse_instances_root(app: AppHandle) -> Result<Value, AppError> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .set_title("Select instances folder")
+        .blocking_pick_folder();
+    let Some(path) = picked else {
+        return Ok(json!({ "ok": false, "error": "Cancelled." }));
+    };
+    let path_str = match path {
+        tauri_plugin_dialog::FilePath::Path(p) => p.to_string_lossy().to_string(),
+        tauri_plugin_dialog::FilePath::Url(u) => u.to_string(),
+    };
+    settings::update_merge(json!({ "instancesRoot": path_str }))?;
+    Ok(json!({ "ok": true, "path": path_str }))
+}
+
+#[tauri::command]
+pub fn skin_list() -> Result<Vec<skins::LocalSkin>, AppError> {
+    skins::list()
+}
+
+#[tauri::command]
+pub fn skin_import(app: AppHandle) -> Result<Value, AppError> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("PNG Skin", &["png"])
+        .set_title("Import Minecraft skin")
+        .blocking_pick_file();
+    let Some(path) = picked else {
+        return Ok(json!({ "ok": false, "error": "Cancelled." }));
+    };
+    let path_buf = match path {
+        tauri_plugin_dialog::FilePath::Path(p) => p,
+        tauri_plugin_dialog::FilePath::Url(u) => {
+            return Ok(json!({ "ok": false, "error": format!("Unsupported path: {u}") }));
+        }
+    };
+    skins::import_png(&path_buf)
+}
+
+#[tauri::command]
+pub fn skin_remove(id: String) -> Result<Value, AppError> {
+    skins::remove(id)
+}
+
+#[tauri::command]
+pub fn skin_set_active(id: Option<String>) -> Result<Value, AppError> {
+    skins::set_active(id)
+}
+
+#[tauri::command]
+pub fn skin_active_data() -> Result<Option<String>, AppError> {
+    skins::active_data_url()
+}
+
+#[tauri::command]
+pub fn instance_import_detect() -> Result<Vec<Value>, AppError> {
+    import::detect()
+}
+
+#[tauri::command]
+pub fn instance_import_list(source: String) -> Result<Vec<Value>, AppError> {
+    import::list(source)
+}
+
+#[tauri::command]
+pub fn instance_import_run(source: String, instance_ids: Vec<String>) -> Result<Value, AppError> {
+    import::import_run(source, instance_ids)
+}
+
+#[tauri::command]
+pub fn update_get_status() -> Option<Value> {
+    updates::get_status()
+}
+
+#[tauri::command]
+pub fn update_open_release(url: Option<String>) -> Result<(), AppError> {
+    updates::open_release(url)
+}
+
+#[tauri::command]
+pub async fn ai_key_status() -> Result<Value, AppError> {
+    ai::key_status().await
+}
+
+#[tauri::command]
+pub async fn ai_has_key() -> Result<bool, AppError> {
+    let s = ai::key_status().await?;
+    Ok(s.get("hasKey").and_then(|v| v.as_bool()).unwrap_or(false))
+}
+
+#[tauri::command]
+pub async fn ai_set_key(key: String) -> Result<Value, AppError> {
+    ai::set_key(key).await
+}
+
+#[tauri::command]
+pub async fn ai_clear_key() -> Result<Value, AppError> {
+    ai::clear_key().await
+}
+
+#[tauri::command]
+pub async fn ai_chat(payload: Value) -> Result<Value, AppError> {
+    ai::chat(payload).await
+}
+
+#[tauri::command]
+pub async fn ai_confirm_install(payload: Value) -> Result<Value, AppError> {
+    ai::confirm_install(payload).await
+}
 

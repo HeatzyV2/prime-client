@@ -1,9 +1,14 @@
 /**
- * Tauri bridge — same `window.primeLauncher` surface as Electron preload.
+ * Tauri bridge — same `window.primeLauncher` surface as the former Electron preload.
  */
-import { invoke } from '@tauri-apps/api/core'
+import { invoke as tauriInvoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import type { CreateInstanceDto, LaunchProgressDto, UpdateInstanceDto } from '../../../shared/ipc'
+
+/** Match Electron ipcRenderer.invoke looseness (Promise<any>). */
+function invoke<T = any>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  return tauriInvoke<T>(cmd, args)
+}
 
 export function createTauriPrimeApi() {
   return {
@@ -61,9 +66,9 @@ export function createTauriPrimeApi() {
       clearLogs: () => invoke('launch_logs_clear'),
       openLogFolder: () => invoke('launch_logs_open_folder'),
       openCrashReport: (filePath: string) => invoke('launch_crash_open', { filePath }),
-      onLogAppend: (listener: (entry: unknown) => void): (() => void) => {
+      onLogAppend: (listener: (entry: import('../../../shared/ipc').LaunchLogEntryDto) => void): (() => void) => {
         let unlisten: (() => void) | undefined
-        void listen('launch:log-append', (event) => {
+        void listen<import('../../../shared/ipc').LaunchLogEntryDto>('launch:log-append', (event) => {
           listener(event.payload)
         }).then((fn) => {
           unlisten = fn
@@ -100,7 +105,11 @@ export function createTauriPrimeApi() {
       importList: (source: import('@shared/ipc').ImportLauncherId) =>
         invoke('instance_import_list', { source }),
       importRun: (source: import('@shared/ipc').ImportLauncherId, instanceIds: string[]) =>
-        invoke('instance_import_run', { source, instanceIds })
+        invoke<{
+          ok: boolean
+          imported: Array<{ ok: boolean; error?: string; instanceId?: string }>
+          error?: string
+        }>('instance_import_run', { source, instanceIds })
     },
     minecraft: {
       getInstances: () => invoke('instance_list'),
@@ -206,14 +215,21 @@ export function createTauriPrimeApi() {
       catalog: () => invoke('store_catalog'),
       balance: () => invoke('store_balance'),
       purchase: (itemId: string) => invoke('store_purchase', { itemId }),
-      history: async () => [],
-      promos: async () => [],
-      redeem: async () => ({ ok: false, error: 'Not available in Tauri build yet.' }),
-      syncMode: async () => 'local' as const
+      history: () => invoke('store_history'),
+      promos: () => invoke('store_promos'),
+      redeem: (code: string) => invoke('store_redeem', { code }),
+      syncMode: () => invoke<'synced' | 'local'>('store_sync_mode')
     },
     cosmetic: {
       list: () => invoke('cosmetic_list'),
       toggle: (cosmeticId: string) => invoke('cosmetic_toggle', { cosmeticId })
+    },
+    skins: {
+      list: () => invoke('skin_list'),
+      import: () => invoke('skin_import'),
+      remove: (id: string) => invoke('skin_remove', { id }),
+      setActive: (id: string | null) => invoke('skin_set_active', { id }),
+      activeData: () => invoke('skin_active_data')
     },
     friends: {
       list: () => invoke('friends_list'),
@@ -223,7 +239,7 @@ export function createTauriPrimeApi() {
       updateNote: (friendId: string, note: string) =>
         invoke('friends_update_note', { friendId, note }),
       refreshAll: () => invoke('friends_refresh_all'),
-      refresh: () => invoke('friends_list')
+      refresh: (friendId: string) => invoke('friends_refresh', { friendId })
     },
     chat: {
       connect: () => invoke('social_connect'),
@@ -295,11 +311,13 @@ export function createTauriPrimeApi() {
       browseInstancesRoot: () => invoke('settings_browse_instances_root')
     },
     update: {
-      check: (_force?: boolean) => invoke('update_check'),
+      check: (force?: boolean) => invoke('update_check', { force: force ?? false }),
+      getStatus: () => invoke('update_get_status'),
+      openRelease: (url?: string) => invoke('update_open_release', { url: url ?? null }),
       installLauncher: () => invoke('update_install_launcher'),
       installMod: async (statusOrInstance?: unknown) => {
         if (typeof statusOrInstance === 'string' || statusOrInstance == null) {
-          const status = (await invoke('update_check')) as {
+          const status = (await invoke('update_check', { force: false })) as {
             mod?: { downloadUrl?: string; fileName?: string; updateAvailable?: boolean }
           }
           if (!status.mod?.updateAvailable || !status.mod.downloadUrl || !status.mod.fileName) {
@@ -330,18 +348,39 @@ export function createTauriPrimeApi() {
         })
       },
       dismiss: () => invoke('update_dismiss'),
-      onProgress: (listener: (payload: unknown) => void): (() => void) => {
+      onProgress: (listener: (payload: import('../../../shared/ipc').UpdateProgressDto) => void): (() => void) => {
         let unlisten: (() => void) | undefined
-        void listen('update:progress', (event) => {
+        void listen<import('../../../shared/ipc').UpdateProgressDto>('update:progress', (event) => {
           listener(event.payload)
         }).then((fn) => {
           unlisten = fn
         })
         return () => unlisten?.()
       }
+    },
+    ai: {
+      keyStatus: () => invoke('ai_key_status'),
+      hasKey: () => invoke('ai_has_key'),
+      setKey: (key: string) => invoke('ai_set_key', { key }),
+      clearKey: () => invoke('ai_clear_key'),
+      chat: (payload: {
+        message: string
+        instanceId?: string
+        history?: Array<{ role: 'user' | 'assistant'; content: string }>
+      }) => invoke('ai_chat', { payload }),
+      confirmInstall: (payload: {
+        projectId: string
+        title: string
+        source: 'modrinth' | 'curseforge'
+        type: 'mod' | 'resourcepack' | 'shader'
+        instanceId?: string
+        versionId?: string
+      }) => invoke('ai_confirm_install', { payload })
     }
   }
 }
+
+export type PrimeLauncherApi = ReturnType<typeof createTauriPrimeApi>
 
 export function isTauriRuntime(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window

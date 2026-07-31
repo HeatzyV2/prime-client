@@ -16,6 +16,20 @@ pub struct EcosystemDb {
     pub equipped_cosmetics: Vec<String>,
     pub friends: Vec<Value>,
     pub favorite_servers: Vec<FavoriteServer>,
+    #[serde(default)]
+    pub store_history: Vec<StorePurchaseRecord>,
+    #[serde(default)]
+    pub redeemed_promos: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StorePurchaseRecord {
+    pub id: String,
+    pub item_id: String,
+    pub item_name: String,
+    pub price: i64,
+    pub purchased_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,6 +52,388 @@ fn default_db() -> EcosystemDb {
         equipped_cosmetics: vec!["cape-prime".into(), "badge-veteran".into()],
         friends: vec![],
         favorite_servers: vec![],
+        store_history: vec![],
+        redeemed_promos: vec![],
+    }
+}
+
+use parking_lot::Mutex;
+static SYNC_MODE: Mutex<&'static str> = Mutex::new("local");
+
+const LOCAL_PROMOS: &[(&str, i64, &str)] = &[
+    ("PRIME2026", 100, "Prime 2026"),
+    ("WELCOME", 50, "Welcome bonus"),
+    ("ELYSIA", 75, "Elysia partner"),
+];
+
+const CLOUD_PROMOS: &[(&str, i64, &str)] = &[
+    ("WELCOME100", 100, "Welcome bonus"),
+    ("PRIME500", 500, "Prime starter pack"),
+    ("ELYSIA250", 250, "Elysia promo"),
+    ("FOUNDER1000", 1000, "Founder gift"),
+];
+
+fn set_sync_mode(mode: &'static str) {
+    *SYNC_MODE.lock() = mode;
+}
+
+pub fn sync_mode() -> &'static str {
+    *SYNC_MODE.lock()
+}
+
+async fn cloud_session() -> Result<crate::social::SocialSession, AppError> {
+    let active = crate::accounts::get_active()?
+        .ok_or_else(|| AppError::Message("No Minecraft account.".into()))?;
+    let uuid = active.get("uuid").and_then(|v| v.as_str()).unwrap_or("");
+    let username = active
+        .get("username")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Player");
+    let offline = active.get("type").and_then(|v| v.as_str()) == Some("offline");
+    crate::social::ensure_session(uuid, username, offline).await
+}
+
+fn map_cloud_history(history: &[Value]) -> Vec<StorePurchaseRecord> {
+    let mut out = vec![];
+    for h in history {
+        if h.get("kind").and_then(|v| v.as_str()) != Some("purchase") {
+            continue;
+        }
+        let Some(item_id) = h.get("itemId").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let item_name = STORE
+            .iter()
+            .find(|(id, ..)| *id == item_id)
+            .map(|(_, name, ..)| (*name).to_string())
+            .unwrap_or_else(|| item_id.to_string());
+        let amount = h.get("amount").and_then(|v| v.as_i64()).unwrap_or(0).abs();
+        let fallback_id = Uuid::new_v4().to_string();
+        out.push(StorePurchaseRecord {
+            id: h
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or(&fallback_id)
+                .to_string(),
+            item_id: item_id.to_string(),
+            item_name,
+            price: amount,
+            purchased_at: h
+                .get("createdAt")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+        });
+    }
+    out.sort_by(|a, b| b.purchased_at.cmp(&a.purchased_at));
+    out
+}
+
+fn redeemed_from_history(history: &[Value]) -> Vec<String> {
+    let mut codes: Vec<String> = history
+        .iter()
+        .filter(|h| h.get("kind").and_then(|v| v.as_str()) == Some("redeem"))
+        .filter_map(|h| {
+            h.get("code")
+                .and_then(|v| v.as_str())
+                .map(|c| c.to_uppercase())
+        })
+        .collect();
+    codes.sort();
+    codes.dedup();
+    codes
+}
+
+pub async fn store_catalog_cloud() -> Result<Vec<Value>, AppError> {
+    match cloud_session().await {
+        Ok(session) => match crate::social::get_json(&session, "/v1/store/catalog").await {
+            Ok(data) => {
+                let balance = data.get("balance").and_then(|v| v.as_i64()).unwrap_or(0);
+                let items = data
+                    .get("items")
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or_default();
+                let history = crate::social::get_json(&session, "/v1/store/history?limit=50")
+                    .await
+                    .ok()
+                    .and_then(|h| h.get("history").and_then(|v| v.as_array()).cloned())
+                    .unwrap_or_default();
+                let owned: Vec<String> = items
+                    .iter()
+                    .filter(|i| i.get("owned").and_then(|v| v.as_bool()).unwrap_or(false))
+                    .filter_map(|i| i.get("id").and_then(|v| v.as_str()).map(str::to_string))
+                    .collect();
+                let mut db = load()?;
+                db.prime_coins = balance;
+                db.owned_store_items = {
+                    let mut o = vec!["cape-prime".into()];
+                    o.extend(owned);
+                    o.sort();
+                    o.dedup();
+                    o
+                };
+                db.store_history = map_cloud_history(&history);
+                db.redeemed_promos = redeemed_from_history(&history);
+                save(&db)?;
+                set_sync_mode("synced");
+                Ok(items)
+            }
+            Err(_) => {
+                set_sync_mode("local");
+                store_catalog()
+            }
+        },
+        Err(_) => {
+            set_sync_mode("local");
+            store_catalog()
+        }
+    }
+}
+
+pub async fn store_balance_cloud() -> Result<i64, AppError> {
+    match cloud_session().await {
+        Ok(session) => match crate::social::get_json(&session, "/v1/store/balance").await {
+            Ok(data) => {
+                let balance = data.get("balance").and_then(|v| v.as_i64()).unwrap_or(0);
+                let mut db = load()?;
+                db.prime_coins = balance;
+                save(&db)?;
+                set_sync_mode("synced");
+                Ok(balance)
+            }
+            Err(_) => balance(),
+        },
+        Err(_) => balance(),
+    }
+}
+
+pub async fn store_history() -> Result<Vec<Value>, AppError> {
+    match cloud_session().await {
+        Ok(session) => match crate::social::get_json(&session, "/v1/store/history?limit=50").await {
+            Ok(data) => {
+                let history = data
+                    .get("history")
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or_default();
+                let mapped = map_cloud_history(&history);
+                let redeemed = redeemed_from_history(&history);
+                let mut db = load()?;
+                db.store_history = mapped.clone();
+                db.redeemed_promos = redeemed;
+                save(&db)?;
+                set_sync_mode("synced");
+                Ok(mapped
+                    .into_iter()
+                    .map(|h| {
+                        json!({
+                            "id": h.id,
+                            "itemId": h.item_id,
+                            "itemName": h.item_name,
+                            "price": h.price,
+                            "purchasedAt": h.purchased_at
+                        })
+                    })
+                    .collect())
+            }
+            Err(_) => local_history(),
+        },
+        Err(_) => local_history(),
+    }
+}
+
+fn local_history() -> Result<Vec<Value>, AppError> {
+    set_sync_mode("local");
+    let mut hist = load()?.store_history;
+    hist.sort_by(|a, b| b.purchased_at.cmp(&a.purchased_at));
+    Ok(hist
+        .into_iter()
+        .map(|h| {
+            json!({
+                "id": h.id,
+                "itemId": h.item_id,
+                "itemName": h.item_name,
+                "price": h.price,
+                "purchasedAt": h.purchased_at
+            })
+        })
+        .collect())
+}
+
+pub async fn store_promos() -> Result<Vec<Value>, AppError> {
+    match cloud_session().await {
+        Ok(session) => match crate::social::get_json(&session, "/v1/store/history?limit=50").await {
+            Ok(data) => {
+                let history = data
+                    .get("history")
+                    .and_then(|v| v.as_array())
+                    .cloned()
+                    .unwrap_or_default();
+                let redeemed: std::collections::HashSet<String> =
+                    redeemed_from_history(&history).into_iter().collect();
+                let mut db = load()?;
+                db.redeemed_promos = redeemed.iter().cloned().collect();
+                save(&db)?;
+                set_sync_mode("synced");
+                Ok(CLOUD_PROMOS
+                    .iter()
+                    .map(|(code, coins, label)| {
+                        json!({
+                            "code": code,
+                            "label": label,
+                            "coins": coins,
+                            "redeemed": redeemed.contains(*code)
+                        })
+                    })
+                    .collect())
+            }
+            Err(_) => local_promos(),
+        },
+        Err(_) => local_promos(),
+    }
+}
+
+fn local_promos() -> Result<Vec<Value>, AppError> {
+    set_sync_mode("local");
+    let db = load()?;
+    let redeemed: std::collections::HashSet<_> =
+        db.redeemed_promos.iter().cloned().collect();
+    Ok(LOCAL_PROMOS
+        .iter()
+        .map(|(code, coins, label)| {
+            json!({
+                "code": code,
+                "label": label,
+                "coins": coins,
+                "redeemed": redeemed.contains(*code)
+            })
+        })
+        .collect())
+}
+
+pub async fn store_redeem(code_raw: String) -> Result<Value, AppError> {
+    match cloud_session().await {
+        Ok(session) => {
+            match crate::social::post_json(
+                &session,
+                "/v1/store/redeem",
+                json!({ "code": code_raw }),
+            )
+            .await
+            {
+                Ok(data) => {
+                    let balance = data.get("balance").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let coins = data.get("coins").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let code = data
+                        .get("code")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(&code_raw)
+                        .to_uppercase();
+                    let mut db = load()?;
+                    db.prime_coins = balance;
+                    if !db.redeemed_promos.contains(&code) {
+                        db.redeemed_promos.push(code);
+                    }
+                    save(&db)?;
+                    set_sync_mode("synced");
+                    Ok(json!({ "ok": true, "coins": coins }))
+                }
+                Err(e) => {
+                    let msg = e.to_string();
+                    if msg.contains("unavailable") || msg.contains("Auth") {
+                        redeem_local(code_raw)
+                    } else {
+                        Ok(json!({ "ok": false, "error": msg }))
+                    }
+                }
+            }
+        }
+        Err(_) => redeem_local(code_raw),
+    }
+}
+
+fn redeem_local(code_raw: String) -> Result<Value, AppError> {
+    set_sync_mode("local");
+    let code = code_raw.trim().to_uppercase();
+    let Some(&(_, coins, _)) = LOCAL_PROMOS.iter().find(|(c, ..)| *c == code) else {
+        return Ok(json!({ "ok": false, "error": "Invalid promo code." }));
+    };
+    let mut db = load()?;
+    if db.redeemed_promos.contains(&code) {
+        return Ok(json!({ "ok": false, "error": "Promo already redeemed." }));
+    }
+    db.prime_coins += coins;
+    db.redeemed_promos.push(code);
+    save(&db)?;
+    Ok(json!({ "ok": true, "coins": coins }))
+}
+
+pub async fn store_purchase_cloud(item_id: String) -> Result<Value, AppError> {
+    match cloud_session().await {
+        Ok(session) => {
+            match crate::social::post_json(
+                &session,
+                "/v1/store/purchase",
+                json!({ "itemId": item_id }),
+            )
+            .await
+            {
+                Ok(data) => {
+                    let balance = data.get("balance").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let price = data.get("price").and_then(|v| v.as_i64()).unwrap_or(0);
+                    let owned = data
+                        .get("owned")
+                        .and_then(|v| v.as_array())
+                        .cloned()
+                        .unwrap_or_default();
+                    let item = STORE.iter().find(|(id, ..)| *id == item_id);
+                    let mut db = load()?;
+                    db.prime_coins = balance;
+                    db.owned_store_items = {
+                        let mut o = vec!["cape-prime".into()];
+                        for v in &owned {
+                            if let Some(s) = v.as_str() {
+                                o.push(s.to_string());
+                            }
+                        }
+                        o.sort();
+                        o.dedup();
+                        o
+                    };
+                    if let Some(&(id, name, _, _, _)) = item {
+                        if !db.store_history.iter().any(|h| h.item_id == id) {
+                            db.store_history.push(StorePurchaseRecord {
+                                id: Uuid::new_v4().to_string(),
+                                item_id: id.into(),
+                                item_name: name.into(),
+                                price,
+                                purchased_at: chrono::Utc::now().to_rfc3339(),
+                            });
+                        }
+                    }
+                    save(&db)?;
+                    if item_id == "bg-nebula" {
+                        let _ = settings::update_merge(json!({ "backgroundNebula": true }));
+                    }
+                    if item_id == "theme-crimson" {
+                        let _ = settings::update_merge(json!({ "theme": "prime-crimson" }));
+                    }
+                    crate::bridge::sync_all_prime_instances()?;
+                    set_sync_mode("synced");
+                    Ok(json!({ "ok": true, "balance": balance }))
+                }
+                Err(e) => {
+                    let msg = e.to_string();
+                    if msg.contains("Auth") || msg.contains("unavailable") {
+                        purchase(item_id)
+                    } else {
+                        Ok(json!({ "ok": false, "error": msg }))
+                    }
+                }
+            }
+        }
+        Err(_) => purchase(item_id),
     }
 }
 
@@ -110,7 +506,7 @@ pub fn balance() -> Result<i64, AppError> {
 }
 
 pub fn purchase(item_id: String) -> Result<Value, AppError> {
-    let Some(&(id, _, _, price, _)) = STORE.iter().find(|(i, ..)| *i == item_id) else {
+    let Some(&(id, name, _, price, _)) = STORE.iter().find(|(i, ..)| *i == item_id) else {
         return Ok(json!({ "ok": false, "error": "Unknown item." }));
     };
     let mut db = load()?;
@@ -122,12 +518,22 @@ pub fn purchase(item_id: String) -> Result<Value, AppError> {
     }
     db.prime_coins -= price;
     db.owned_store_items.push(id.to_string());
+    if !db.store_history.iter().any(|h| h.item_id == id) {
+        db.store_history.push(StorePurchaseRecord {
+            id: Uuid::new_v4().to_string(),
+            item_id: id.to_string(),
+            item_name: name.to_string(),
+            price,
+            purchased_at: chrono::Utc::now().to_rfc3339(),
+        });
+    }
     if let Some((_, cos)) = STORE_TO_COSMETIC.iter().find(|(s, _)| *s == id) {
         if !db.equipped_cosmetics.iter().any(|x| x == *cos) {
             // don't auto-equip all; just ensure owned via store
         }
     }
     save(&db)?;
+    set_sync_mode("local");
     if id == "bg-nebula" {
         let _ = settings::update_merge(json!({ "backgroundNebula": true }));
     }

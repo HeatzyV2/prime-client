@@ -1,6 +1,6 @@
-# Prime Launcher — Rust (Tauri)
+# Prime Launcher — Tauri 2
 
-Pixel-identical React UI. Shell is **Rust + WebView2** (low RAM). Electron remains available as `npm run dev`.
+Pixel-identical React UI. Shell is **Rust + WebView2**.
 
 ## Run
 
@@ -8,39 +8,36 @@ Pixel-identical React UI. Shell is **Rust + WebView2** (low RAM). Electron remai
 cd launcher
 npm install
 npm install --prefix resources/launch-bridge
-npm run dev:tauri
+npm run dev
 ```
 
-## Features (complete)
+## Features
 
 | Feature | Implementation |
 |---------|----------------|
-| Same UI (React/CSS) | Vite + existing renderer |
-| Window chrome | Rust |
-| Settings / accounts / Microsoft OAuth | Rust |
-| Instances CRUD | Rust |
-| Play (Fabric) | Rust prep (Prime jar + Fabric API) + short-lived Node `launch-bridge` for libraries/JVM |
-| Modrinth + CurseForge search/install | Rust |
-| Import mods / resource packs / shaders | Rust dialogs |
-| Resource packs & shaders activate/remove | Rust (`options.txt`) |
-| Friends / chat (+ image upload) / party | Rust → Prime backend |
-| Store / cosmetics / servers | Rust (`ecosystem.json`) |
-| Performance presets / Java discovery | Rust |
-| Downloads history / launch logs | Rust |
-| GitHub updates (mod + NSIS launcher) | Rust |
-| Discord RPC | Rust |
-| Cosmetics sync into instance profile | Rust bridge |
+| Same UI (React/CSS) | Vite + renderer |
+| Window chrome / settings / accounts | Rust |
+| Microsoft OAuth (Azure / Prism) | Rust |
+| Instances CRUD + import | Rust |
+| Play (Fabric) | Rust + short-lived Node `launch-bridge` |
+| Modrinth + CurseForge | Rust |
+| Skin library / wallpaper | Rust |
+| Friends / chat / party | Rust → Prime backend |
+| Store / promos / history (cloud + local) | Rust |
+| AI assistant (Groq proxy) | Rust |
+| Crash analysis DTO | Rust |
+| GitHub updates (mod + NSIS) | Rust |
 
 ## Data
 
-`%APPDATA%\prime-launcher\` — shared with the Electron build.
+`%APPDATA%\prime-launcher\`
 
-**Note:** Microsoft accounts created in Electron (msmc blob) need a **one-time re-login** in Tauri (new OAuth tokens).
+**Note:** Microsoft accounts created with the old Electron/msmc flow need a **one-time re-login**.
 
 ## Scripts
 
 | Command | Role |
 |---------|------|
-| `npm run dev:tauri` | Tauri + Vite UI |
-| `npm run dist:tauri` | Native installer |
-| `npm run dev` | Legacy Electron |
+| `npm run dev` | Tauri + Vite UI |
+| `npm run dist` | Native NSIS installer |
+| `npm run build:ui` | Frontend only |
