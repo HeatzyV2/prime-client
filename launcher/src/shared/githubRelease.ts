@@ -58,10 +58,12 @@ export function compareSemver(a: string, b: string): number {
   return 0
 }
 
-/** Expected asset name: Prime-Launcher-Setup-0.9.7.exe */
+/** Expected asset name: Prime.Launcher_2.3.2_x64-setup.exe (Tauri) or Prime-Launcher-Setup-0.9.7.exe (legacy) */
 export function parseLauncherVersionFromAsset(name: string): string | null {
-  const match = name.match(/Prime-Launcher-Setup-(\d+\.\d+\.\d+)/i)
-  return match?.[1] ?? null
+  const tauri = name.match(/Prime\.Launcher_(\d+\.\d+\.\d+)_x64-setup\.exe$/i)
+  if (tauri?.[1]) return tauri[1]
+  const legacy = name.match(/Prime-Launcher-Setup-(\d+\.\d+\.\d+)/i)
+  return legacy?.[1] ?? null
 }
 
 /** Expected asset name: prime-client-<target>-1.2.31.jar */
@@ -78,8 +80,9 @@ export function parseModVersionFromAsset(name: string, prefix?: string): string 
 export function pickWindowsLauncherAsset(release: GitHubRelease): GitHubReleaseAsset | undefined {
   const assets = release.assets ?? []
   return (
+    assets.find((a) => /Prime\.Launcher_.*_x64-setup\.exe$/i.test(a.name)) ??
     assets.find((a) => /Prime-Launcher-Setup-.*\.exe$/i.test(a.name)) ??
-    assets.find((a) => /setup.*\.exe$/i.test(a.name)) ??
-    assets.find((a) => /\.exe$/i.test(a.name))
+    assets.find((a) => /setup.*\.exe$/i.test(a.name) && !/blockmap/i.test(a.name)) ??
+    assets.find((a) => /\.exe$/i.test(a.name) && !/blockmap/i.test(a.name))
   )
 }

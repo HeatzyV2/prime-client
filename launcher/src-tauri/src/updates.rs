@@ -35,9 +35,44 @@ pub async fn check(current_launcher: &str, force: bool) -> Result<Value, AppErro
     Ok(status)
 }
 
+/// Matches Tauri NSIS (`Prime.Launcher_2.3.1_x64-setup.exe`) and legacy Electron
+/// (`Prime-Launcher-Setup-2.2.0.exe`) installer names.
+fn is_windows_launcher_asset(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    if !lower.ends_with(".exe") || lower.contains("blockmap") {
+        return false;
+    }
+    (lower.starts_with("prime.launcher_") && lower.contains("setup"))
+        || lower.starts_with("prime-launcher-setup-")
+        || (lower.starts_with("prime_launcher_") && lower.contains("setup"))
+}
+
+fn compare_semver_str(a: &str, b: &str) -> std::cmp::Ordering {
+    let parse = |v: &str| -> Vec<u64> {
+        v.trim_start_matches('v')
+            .split('.')
+            .filter_map(|p| p.parse().ok())
+            .collect()
+    };
+    let pa = parse(a);
+    let pb = parse(b);
+    let len = pa.len().max(pb.len());
+    for i in 0..len {
+        let x = pa.get(i).copied().unwrap_or(0);
+        let y = pb.get(i).copied().unwrap_or(0);
+        match x.cmp(&y) {
+            std::cmp::Ordering::Equal => {}
+            other => return other,
+        }
+    }
+    std::cmp::Ordering::Equal
+}
+
 async fn fetch_status(current_launcher: &str) -> Result<Value, AppError> {
     let client = reqwest::Client::builder()
-        .user_agent("Prime-Launcher")
+        .timeout(Duration::from_secs(30))
+        .connect_timeout(Duration::from_secs(15))
+        .user_agent("Prime-Launcher/2.3.2")
         .build()
         .map_err(|e| AppError::Message(e.to_string()))?;
     let url = format!("https://api.github.com/repos/{OWNER}/{REPO}/releases/latest");
@@ -80,7 +115,7 @@ async fn fetch_status(current_launcher: &str) -> Result<Value, AppError> {
     let launcher_asset = assets.iter().find(|a| {
         a.get("name")
             .and_then(|n| n.as_str())
-            .map(|n| n.starts_with("Prime-Launcher-Setup-") && n.ends_with(".exe"))
+            .map(is_windows_launcher_asset)
             .unwrap_or(false)
     });
     let preferred_prefix = DEFAULT_TARGET.jar_prefix;
@@ -109,12 +144,18 @@ async fn fetch_status(current_launcher: &str) -> Result<Value, AppError> {
     let mod_name = mod_asset
         .and_then(|a| a.get("name").and_then(|n| n.as_str()))
         .map(str::to_string);
-    let launcher_update = tag != current_launcher && launcher_url.is_some();
+    let launcher_update =
+        compare_semver_str(&tag, current_launcher) == std::cmp::Ordering::Greater
+            && launcher_url.is_some();
+    // Mod jar presence alone is not an "update" — only when release tag is newer than current launcher tag context.
+    // Always offer the jar download URL when present so Settings can reinstall; gate the badge on tag.
+    let mod_update = mod_url.is_some()
+        && compare_semver_str(&tag, current_launcher) == std::cmp::Ordering::Greater;
     Ok(json!({
         "checkedAt": chrono::Utc::now().to_rfc3339(),
         "notes": notes,
         "releaseUrl": format!("https://github.com/{OWNER}/{REPO}/releases"),
-        "anyUpdateAvailable": launcher_update || mod_url.is_some(),
+        "anyUpdateAvailable": launcher_update || mod_update,
         "launcher": {
             "current": current_launcher,
             "latest": tag,
@@ -125,7 +166,7 @@ async fn fetch_status(current_launcher: &str) -> Result<Value, AppError> {
         "mod": {
             "current": "local",
             "latest": tag,
-            "updateAvailable": mod_url.is_some(),
+            "updateAvailable": mod_update,
             "downloadUrl": mod_url,
             "fileName": mod_name
         },
@@ -164,7 +205,7 @@ pub async fn install_launcher(app: tauri::AppHandle, current: &str) -> Result<Va
             .map(str::to_string)
             .unwrap_or_else(|| {
                 format!(
-                    "Prime-Launcher-Setup-{}.exe",
+                    "Prime.Launcher_{}_x64-setup.exe",
                     launcher
                         .get("latest")
                         .and_then(|v| v.as_str())
@@ -188,16 +229,20 @@ pub async fn install_launcher(app: tauri::AppHandle, current: &str) -> Result<Va
         );
 
         let bytes = reqwest::Client::builder()
-            .user_agent("Prime-Launcher")
+            .timeout(Duration::from_secs(300))
+            .connect_timeout(Duration::from_secs(15))
+            .user_agent("Prime-Launcher/2.3.2")
             .build()
             .map_err(|e| AppError::Message(e.to_string()))?
             .get(&download_url)
             .send()
             .await
-            .map_err(|e| AppError::Message(e.to_string()))?
+            .map_err(|e| AppError::Message(format!("Launcher download failed: {e}")))?
+            .error_for_status()
+            .map_err(|e| AppError::Message(format!("Launcher download HTTP error: {e}")))?
             .bytes()
             .await
-            .map_err(|e| AppError::Message(e.to_string()))?;
+            .map_err(|e| AppError::Message(format!("Launcher download interrupted: {e}")))?;
 
         let dest = std::env::temp_dir().join(&file_name);
         fs::File::create(&dest)?.write_all(&bytes)?;
@@ -234,17 +279,21 @@ pub async fn install_mod(
     instance_id: String,
 ) -> Result<Value, AppError> {
     let client = reqwest::Client::builder()
-        .user_agent("Prime-Launcher")
+        .timeout(Duration::from_secs(120))
+        .connect_timeout(Duration::from_secs(15))
+        .user_agent("Prime-Launcher/2.3.2")
         .build()
         .map_err(|e| AppError::Message(e.to_string()))?;
     let bytes = client
         .get(&download_url)
         .send()
         .await
-        .map_err(|e| AppError::Message(e.to_string()))?
+        .map_err(|e| AppError::Message(format!("Mod download failed: {e}")))?
+        .error_for_status()
+        .map_err(|e| AppError::Message(format!("Mod download HTTP error: {e}")))?
         .bytes()
         .await
-        .map_err(|e| AppError::Message(e.to_string()))?;
+        .map_err(|e| AppError::Message(format!("Mod download interrupted: {e}")))?;
     let cache = paths::cache_dir().join("prime-mod");
     fs::create_dir_all(&cache)?;
     let cached = cache.join(&file_name);

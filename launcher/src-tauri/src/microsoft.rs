@@ -381,17 +381,31 @@ pub async fn launch_authenticator(account: &StoredMinecraftAccount) -> Result<Va
             "meta": { "type": "offline", "online": false }
         }));
     }
-    if account.ms_auth_provider.as_deref() == Some("live") {
-        return Err(AppError::Message(
-            "Re-sign in with Microsoft (Azure) — msmc tokens are not supported.".into(),
-        ));
-    }
     let refresh = account
         .ms_refresh_token
         .as_deref()
-        .ok_or_else(|| AppError::Message("Sign in with Microsoft again.".into()))?;
-    let tokens = refresh_ms(refresh).await?;
-    // Persist rotated refresh
+        .ok_or_else(|| {
+            AppError::Message(
+                "No Microsoft session — open Accounts and sign in with Microsoft again.".into(),
+            )
+        })?;
+
+    // Electron used msmc ("live"). Try Prism Azure refresh anyway; migrate on success.
+    let legacy_live = account.ms_auth_provider.as_deref() == Some("live");
+    let tokens = match refresh_ms(refresh).await {
+        Ok(t) => t,
+        Err(e) if legacy_live => {
+            return Err(AppError::Message(format!(
+                "Your Microsoft account was signed in with the old Electron launcher and must be re-linked. Open Accounts → remove the account → Sign in with Microsoft. ({e})"
+            )));
+        }
+        Err(e) => {
+            return Err(AppError::Message(format!(
+                "Microsoft session expired — sign in again. ({e})"
+            )));
+        }
+    };
+    // Persist rotated refresh + mark migrated away from msmc "live"
     {
         let mut db = load()?;
         if let Some(a) = db.accounts.iter_mut().find(|a| a.id == account.id) {
@@ -400,7 +414,15 @@ pub async fn launch_authenticator(account: &StoredMinecraftAccount) -> Result<Va
             save(&db)?;
         }
     }
-    let (mc_token, uuid, name, _, _) = xbox_minecraft(&tokens.access_token).await?;
+    let (mc_token, uuid, name, _, _) = xbox_minecraft(&tokens.access_token).await.map_err(|e| {
+        if legacy_live {
+            AppError::Message(format!(
+                "Your Microsoft account was signed in with the old Electron launcher and must be re-linked. Open Accounts → Sign in with Microsoft again. ({e})"
+            ))
+        } else {
+            e
+        }
+    })?;
     Ok(json!({
         "name": name,
         "uuid": uuid.replace('-', ""),

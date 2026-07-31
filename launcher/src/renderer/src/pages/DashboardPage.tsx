@@ -115,13 +115,16 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
     setLaunching(true)
     playUiSound('click')
     clearLaunchMessage()
-    await window.primeLauncher.profile.setInstance(instance.id)
-    const server = selectedServer.trim() || undefined
-    if (server) {
-      await window.primeLauncher.settings.update({ lastServerAddress: server })
+    try {
+      await window.primeLauncher.profile.setInstance(instance.id)
+      const server = selectedServer.trim() || undefined
+      if (server) {
+        await window.primeLauncher.settings.update({ lastServerAddress: server })
+      }
+      await launch(instance.id, server)
+    } finally {
+      setLaunching(false)
     }
-    await launch(instance.id, server)
-    setLaunching(false)
   }
 
   async function handleJoinServer(address: string) {
@@ -133,10 +136,13 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
     setLaunching(true)
     playUiSound('click')
     clearLaunchMessage()
-    await window.primeLauncher.profile.setInstance(instance.id)
-    await window.primeLauncher.settings.update({ lastServerAddress: address })
-    await launch(instance.id, address)
-    setLaunching(false)
+    try {
+      await window.primeLauncher.profile.setInstance(instance.id)
+      await window.primeLauncher.settings.update({ lastServerAddress: address })
+      await launch(instance.id, address)
+    } finally {
+      setLaunching(false)
+    }
   }
 
   async function handleInstanceChange(id: string) {

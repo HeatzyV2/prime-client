@@ -79,17 +79,37 @@ async fn launch_inner(
         json!({ "phase": "mods", "detail": "Installing Prime Client & Fabric API…", "percent": 12 }),
     );
     logs::append("info", "Ensuring mods…", Some("mods"));
-    if let Err(e) = modpack::ensure_instance_mods(&instance_id).await {
+    if let Err(e) = modpack::ensure_instance_mods(&instance_id, Some(&app)).await {
         let msg = e.to_string();
         logs::append("error", &msg, Some("mods"));
         let _ = app.emit(
             "launch:progress",
-            json!({ "phase": "error", "detail": &msg }),
+            json!({ "phase": "error", "detail": &msg, "percent": 0 }),
         );
         return Ok(json!({ "ok": false, "message": msg, "error": msg }));
     }
 
-    let authenticator = microsoft::launch_authenticator(&account).await?;
+    let _ = app.emit(
+        "launch:progress",
+        json!({ "phase": "launch", "detail": "Refreshing Microsoft session…", "percent": 50 }),
+    );
+    logs::append("info", "Refreshing Microsoft session…", Some("auth"));
+    let authenticator = match microsoft::launch_authenticator(&account).await {
+        Ok(a) => a,
+        Err(e) => {
+            let msg = e.to_string();
+            logs::append("error", &msg, Some("auth"));
+            let _ = app.emit(
+                "launch:progress",
+                json!({ "phase": "error", "detail": &msg, "percent": 0 }),
+            );
+            return Ok(json!({ "ok": false, "message": msg, "error": msg }));
+        }
+    };
+    let _ = app.emit(
+        "launch:progress",
+        json!({ "phase": "launch", "detail": "Starting Minecraft…", "percent": 55 }),
+    );
     let s = settings::load()?;
     let presence_server = server_address.clone();
 

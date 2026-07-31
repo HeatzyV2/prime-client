@@ -1,6 +1,6 @@
 [package]
 name = "prime-launcher"
-version = "2.3.1"
+version = "2.3.2"
 description = "Prime Launcher — Rust / Tauri shell (pixel-identical UI)"
 authors = ["Prime Client"]
 edition = "2021"

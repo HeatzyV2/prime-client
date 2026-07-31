@@ -147,13 +147,27 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const launch = useCallback(
     async (instanceId: string, serverAddress?: string) => {
-      const result = await window.primeLauncher.launch.game(instanceId, serverAddress)
-      setLaunchMessage(result.ok ? null : result.message)
-      if (result.ok) {
-        await refresh()
-        await syncRunning()
+      try {
+        const result = await window.primeLauncher.launch.game(instanceId, serverAddress)
+        setLaunchMessage(result.ok ? null : result.message)
+        if (!result.ok) {
+          setLaunchProgress({
+            phase: 'error',
+            detail: result.message || result.error || 'Launch failed',
+            percent: 0
+          })
+        }
+        if (result.ok) {
+          await refresh()
+          await syncRunning()
+        }
+        return result
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        setLaunchMessage(message)
+        setLaunchProgress({ phase: 'error', detail: message, percent: 0 })
+        return { ok: false, message, error: message }
       }
-      return result
     },
     [refresh, syncRunning]
   )

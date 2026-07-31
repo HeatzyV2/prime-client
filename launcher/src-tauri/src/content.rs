@@ -13,7 +13,9 @@ use tauri_plugin_dialog::{DialogExt, FilePath};
 
 fn client() -> Result<reqwest::Client, AppError> {
     reqwest::Client::builder()
-        .user_agent("Prime-Launcher/0.9.11")
+        .timeout(std::time::Duration::from_secs(60))
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .user_agent("Prime-Launcher/2.3.2")
         .build()
         .map_err(|e| AppError::Message(e.to_string()))
 }
@@ -301,10 +303,14 @@ async fn pick_modrinth_version(
             .map_err(|e| AppError::Message(e.to_string()));
     }
     let mut url = format!(
-        "https://api.modrinth.com/v2/project/{project_id}/version?game_versions=[\"{mc}\"]"
+        "https://api.modrinth.com/v2/project/{project_id}/version?game_versions={}",
+        urlencoding::encode(&format!("[\"{mc}\"]"))
     );
     if let Some(l) = loader {
-        url.push_str(&format!("&loaders=[\"{l}\"]"));
+        url.push_str(&format!(
+            "&loaders={}",
+            urlencoding::encode(&format!("[\"{l}\"]"))
+        ));
     }
     let versions: Vec<Value> = client()?
         .get(url)
@@ -540,11 +546,14 @@ pub async fn list_versions(
     }
 
     let mut url = format!(
-        "https://api.modrinth.com/v2/project/{project_id}/version?game_versions=[\"{}\"]",
-        inst.minecraft_version
+        "https://api.modrinth.com/v2/project/{project_id}/version?game_versions={}",
+        urlencoding::encode(&format!("[\"{}\"]", inst.minecraft_version))
     );
     if let Some(l) = loader {
-        url.push_str(&format!("&loaders=[\"{l}\"]"));
+        url.push_str(&format!(
+            "&loaders={}",
+            urlencoding::encode(&format!("[\"{l}\"]"))
+        ));
     }
     let versions: Vec<Value> = client()?
         .get(url)
