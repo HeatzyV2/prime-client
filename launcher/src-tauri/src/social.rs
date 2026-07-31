@@ -1,4 +1,6 @@
+use crate::accounts;
 use crate::error::AppError;
+use crate::state::AppState;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -23,6 +25,90 @@ struct AuthResponse {
     token: String,
 }
 
+/// Drop the cached Prime API session so the next call mints a fresh token.
+/// Backend allows only one `client: "launcher"` session per UUID — minting
+/// elsewhere without updating this cache leaves a stale Bearer and 401s.
+pub fn invalidate_session(state: &AppState) {
+    let mut guard = state.inner.lock();
+    guard.social = None;
+}
+
+/// Shared session for friends, chat, party, store, and cloud — one cache for all.
+pub async fn get_or_create_session(state: &AppState) -> Result<SocialSession, AppError> {
+    {
+        let guard = state.inner.lock();
+        if let Some(session) = guard.social.clone() {
+            return Ok(session);
+        }
+    }
+    let active = accounts::get_active()?
+        .ok_or_else(|| AppError::Message("No Minecraft account. Log in first.".into()))?;
+    let uuid = active.get("uuid").and_then(|v| v.as_str()).unwrap_or("");
+    let username = active
+        .get("username")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Player");
+    let offline = active.get("type").and_then(|v| v.as_str()) == Some("offline");
+    if uuid.is_empty() {
+        return Err(AppError::Message(
+            "Minecraft account is missing a UUID. Re-login and try again.".into(),
+        ));
+    }
+    let session = ensure_session(uuid, username, offline).await?;
+    state.inner.lock().social = Some(session.clone());
+    Ok(session)
+}
+
+fn extract_error_message(text: &str) -> String {
+    serde_json::from_str::<Value>(text)
+        .ok()
+        .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(str::to_string))
+        .unwrap_or_else(|| text.trim().to_string())
+}
+
+pub fn is_unauthorized(err: &AppError) -> bool {
+    let msg = err.to_string();
+    let lower = msg.to_ascii_lowercase();
+    lower.contains("unauthorized")
+        || lower.contains("\"error\":\"unauthorized\"")
+        || extract_error_message(&msg)
+            .eq_ignore_ascii_case("unauthorized")
+}
+
+pub fn humanize_api_error(err: AppError) -> AppError {
+    let msg = err.to_string();
+    let extracted = extract_error_message(&msg);
+    if extracted.eq_ignore_ascii_case("unauthorized") || msg.to_ascii_lowercase().contains("unauthorized")
+    {
+        return AppError::Message(
+            "Prime session expired. Try again — if it keeps failing, re-login with Microsoft."
+                .into(),
+        );
+    }
+    if extracted.is_empty() {
+        err
+    } else {
+        AppError::Message(extracted)
+    }
+}
+
+async fn with_session_retry<F, Fut>(state: &AppState, op: F) -> Result<Value, AppError>
+where
+    F: Fn(SocialSession) -> Fut,
+    Fut: std::future::Future<Output = Result<Value, AppError>>,
+{
+    let session = get_or_create_session(state).await?;
+    match op(session).await {
+        Ok(v) => Ok(v),
+        Err(e) if is_unauthorized(&e) => {
+            invalidate_session(state);
+            let session = get_or_create_session(state).await?;
+            op(session).await.map_err(humanize_api_error)
+        }
+        Err(e) => Err(humanize_api_error(e)),
+    }
+}
+
 pub async fn ensure_session(uuid: &str, username: &str, offline: bool) -> Result<SocialSession, AppError> {
     let api_base = std::env::var("PRIME_API_BASE").unwrap_or_else(|_| DEFAULT_API.into());
     let client = reqwest::Client::new();
@@ -38,7 +124,13 @@ pub async fn ensure_session(uuid: &str, username: &str, offline: bool) -> Result
         .await
         .map_err(|e| AppError::Message(e.to_string()))?;
     if !res.status().is_success() {
-        return Err(AppError::Message(format!("Auth failed ({})", res.status())));
+        let text = res.text().await.unwrap_or_default();
+        let detail = extract_error_message(&text);
+        return Err(AppError::Message(if detail.is_empty() {
+            "Could not create Prime session. Check your connection and try again.".into()
+        } else {
+            format!("Could not create Prime session: {detail}")
+        }));
     }
     let body: AuthResponse = res.json().await.map_err(|e| AppError::Message(e.to_string()))?;
     Ok(SocialSession {
@@ -59,7 +151,7 @@ pub async fn get_json(session: &SocialSession, path: &str) -> Result<Value, AppE
     let status = res.status();
     let body = res.text().await.map_err(|e| AppError::Message(e.to_string()))?;
     if !status.is_success() {
-        return Err(AppError::Message(body));
+        return Err(AppError::Message(extract_error_message(&body)));
     }
     Ok(serde_json::from_str(&body).unwrap_or(Value::Null))
 }
@@ -76,11 +168,7 @@ pub async fn post_json(session: &SocialSession, path: &str, body: Value) -> Resu
     let status = res.status();
     let text = res.text().await.map_err(|e| AppError::Message(e.to_string()))?;
     if !status.is_success() {
-        let err = serde_json::from_str::<Value>(&text)
-            .ok()
-            .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(str::to_string))
-            .unwrap_or(text);
-        return Err(AppError::Message(err));
+        return Err(AppError::Message(extract_error_message(&text)));
     }
     Ok(serde_json::from_str(&text).unwrap_or(Value::Null))
 }
@@ -97,11 +185,7 @@ pub async fn put_json(session: &SocialSession, path: &str, body: Value) -> Resul
     let status = res.status();
     let text = res.text().await.map_err(|e| AppError::Message(e.to_string()))?;
     if !status.is_success() {
-        let err = serde_json::from_str::<Value>(&text)
-            .ok()
-            .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(str::to_string))
-            .unwrap_or(text);
-        return Err(AppError::Message(err));
+        return Err(AppError::Message(extract_error_message(&text)));
     }
     Ok(serde_json::from_str(&text).unwrap_or(Value::Null))
 }
@@ -117,9 +201,47 @@ pub async fn delete(session: &SocialSession, path: &str) -> Result<Value, AppErr
     let status = res.status();
     let text = res.text().await.map_err(|e| AppError::Message(e.to_string()))?;
     if !status.is_success() {
-        return Err(AppError::Message(text));
+        return Err(AppError::Message(extract_error_message(&text)));
     }
     Ok(serde_json::from_str(&text).unwrap_or(json!({ "ok": true })))
+}
+
+pub async fn get_json_authed(state: &AppState, path: &str) -> Result<Value, AppError> {
+    let path = path.to_string();
+    with_session_retry(state, move |session| {
+        let path = path.clone();
+        async move { get_json(&session, &path).await }
+    })
+    .await
+}
+
+pub async fn post_json_authed(state: &AppState, path: &str, body: Value) -> Result<Value, AppError> {
+    let path = path.to_string();
+    with_session_retry(state, move |session| {
+        let path = path.clone();
+        let body = body.clone();
+        async move { post_json(&session, &path, body).await }
+    })
+    .await
+}
+
+pub async fn put_json_authed(state: &AppState, path: &str, body: Value) -> Result<Value, AppError> {
+    let path = path.to_string();
+    with_session_retry(state, move |session| {
+        let path = path.clone();
+        let body = body.clone();
+        async move { put_json(&session, &path, body).await }
+    })
+    .await
+}
+
+pub async fn delete_authed(state: &AppState, path: &str) -> Result<Value, AppError> {
+    let path = path.to_string();
+    with_session_retry(state, move |session| {
+        let path = path.clone();
+        async move { delete(&session, &path).await }
+    })
+    .await
 }
 
 #[derive(Debug, Serialize)]

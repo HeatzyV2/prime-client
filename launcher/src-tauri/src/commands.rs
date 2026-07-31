@@ -112,27 +112,32 @@ pub fn account_get_active() -> Result<Option<Value>, AppError> {
 }
 
 #[tauri::command]
-pub fn account_set_active(account_id: String) -> Result<Option<Value>, AppError> {
+pub fn account_set_active(state: State<'_, AppState>, account_id: String) -> Result<Option<Value>, AppError> {
+    social::invalidate_session(&state);
     accounts::set_active(account_id)
 }
 
 #[tauri::command]
-pub fn account_add_offline(username: String) -> Result<OkResult, AppError> {
+pub fn account_add_offline(state: State<'_, AppState>, username: String) -> Result<OkResult, AppError> {
+    social::invalidate_session(&state);
     accounts::add_offline(username)
 }
 
 #[tauri::command]
-pub fn account_remove(account_id: String) -> Result<OkResult, AppError> {
+pub fn account_remove(state: State<'_, AppState>, account_id: String) -> Result<OkResult, AppError> {
+    social::invalidate_session(&state);
     accounts::remove(account_id)
 }
 
 #[tauri::command]
-pub fn account_login_microsoft() -> Result<OkResult, AppError> {
+pub fn account_login_microsoft(state: State<'_, AppState>) -> Result<OkResult, AppError> {
+    social::invalidate_session(&state);
     accounts::login_microsoft()
 }
 
 #[tauri::command]
-pub fn account_refresh_microsoft(account_id: String) -> Result<OkResult, AppError> {
+pub fn account_refresh_microsoft(state: State<'_, AppState>, account_id: String) -> Result<OkResult, AppError> {
+    social::invalidate_session(&state);
     accounts::refresh_microsoft(account_id)
 }
 
@@ -306,19 +311,7 @@ pub async fn update_install_mod(
 }
 
 async fn social_session(state: &AppState) -> Result<social::SocialSession, AppError> {
-    {
-        let guard = state.inner.lock();
-        if let Some(session) = guard.social.clone() {
-            return Ok(session);
-        }
-    }
-    let active = accounts::get_active()?.ok_or_else(|| AppError::Message("No Minecraft account. Log in first.".into()))?;
-    let uuid = active.get("uuid").and_then(|v| v.as_str()).unwrap_or("");
-    let username = active.get("username").and_then(|v| v.as_str()).unwrap_or("Player");
-    let offline = active.get("type").and_then(|v| v.as_str()) == Some("offline");
-    let session = social::ensure_session(uuid, username, offline).await?;
-    state.inner.lock().social = Some(session.clone());
-    Ok(session)
+    social::get_or_create_session(state).await
 }
 
 #[tauri::command]
@@ -347,15 +340,13 @@ pub async fn social_connect(app: AppHandle, state: State<'_, AppState>) -> Resul
 
 #[tauri::command]
 pub async fn friends_list(state: State<'_, AppState>) -> Result<Vec<social::FriendEntry>, AppError> {
-    let session = social_session(&state).await?;
-    let payload = social::get_json(&session, "/v1/friends").await?;
+    let payload = social::get_json_authed(&state, "/v1/friends").await?;
     Ok(social::map_friends(&payload))
 }
 
 #[tauri::command]
 pub async fn friends_add(state: State<'_, AppState>, username: String, _note: Option<String>) -> Result<OkResult, AppError> {
-    let session = social_session(&state).await?;
-    match social::post_json(&session, "/v1/friends/request", json!({ "username": username })).await {
+    match social::post_json_authed(&state, "/v1/friends/request", json!({ "username": username })).await {
         Ok(_) => Ok(OkResult::ok()),
         Err(e) => Ok(OkResult::err(e.to_string())),
     }
@@ -363,8 +354,7 @@ pub async fn friends_add(state: State<'_, AppState>, username: String, _note: Op
 
 #[tauri::command]
 pub async fn friends_accept(state: State<'_, AppState>, friend_id: String) -> Result<OkResult, AppError> {
-    let session = social_session(&state).await?;
-    match social::post_json(&session, "/v1/friends/accept", json!({ "uuid": friend_id })).await {
+    match social::post_json_authed(&state, "/v1/friends/accept", json!({ "uuid": friend_id })).await {
         Ok(_) => Ok(OkResult::ok()),
         Err(e) => Ok(OkResult::err(e.to_string())),
     }
@@ -372,8 +362,7 @@ pub async fn friends_accept(state: State<'_, AppState>, friend_id: String) -> Re
 
 #[tauri::command]
 pub async fn friends_remove(state: State<'_, AppState>, friend_id: String) -> Result<OkResult, AppError> {
-    let session = social_session(&state).await?;
-    match social::delete(&session, &format!("/v1/friends/{friend_id}")).await {
+    match social::delete_authed(&state, &format!("/v1/friends/{friend_id}")).await {
         Ok(_) => Ok(OkResult::ok()),
         Err(e) => Ok(OkResult::err(e.to_string())),
     }
@@ -385,9 +374,8 @@ pub async fn friends_update_note(
     friend_id: String,
     note: String,
 ) -> Result<OkResult, AppError> {
-    let session = social_session(&state).await?;
-    match social::put_json(
-        &session,
+    match social::put_json_authed(
+        &state,
         &format!("/v1/friends/{friend_id}/note"),
         json!({ "note": note }),
     )
@@ -414,8 +402,7 @@ pub async fn friends_refresh(
 
 #[tauri::command]
 pub async fn chat_conversations(state: State<'_, AppState>) -> Result<Vec<Value>, AppError> {
-    let session = social_session(&state).await?;
-    let payload = social::get_json(&session, "/v1/conversations").await?;
+    let payload = social::get_json_authed(&state, "/v1/conversations").await?;
     Ok(payload
         .get("conversations")
         .and_then(|v| v.as_array())
@@ -425,16 +412,14 @@ pub async fn chat_conversations(state: State<'_, AppState>) -> Result<Vec<Value>
 
 #[tauri::command]
 pub async fn chat_open_dm(state: State<'_, AppState>, uuid: String) -> Result<Value, AppError> {
-    let session = social_session(&state).await?;
-    let payload = social::post_json(&session, "/v1/conversations/dm", json!({ "uuid": uuid })).await?;
+    let payload = social::post_json_authed(&state, "/v1/conversations/dm", json!({ "uuid": uuid })).await?;
     Ok(payload.get("conversation").cloned().unwrap_or(payload))
 }
 
 #[tauri::command]
 pub async fn chat_messages(state: State<'_, AppState>, conversation_id: String) -> Result<Vec<Value>, AppError> {
-    let session = social_session(&state).await?;
-    let payload = social::get_json(
-        &session,
+    let payload = social::get_json_authed(
+        &state,
         &format!("/v1/conversations/{conversation_id}/messages"),
     )
     .await?;
@@ -452,9 +437,8 @@ pub async fn chat_send(
     text: String,
     image_url: Option<String>,
 ) -> Result<Value, AppError> {
-    let session = social_session(&state).await?;
-    let payload = social::post_json(
-        &session,
+    let payload = social::post_json_authed(
+        &state,
         &format!("/v1/conversations/{conversation_id}/messages"),
         json!({ "text": text, "imageUrl": image_url }),
     )
@@ -464,33 +448,28 @@ pub async fn chat_send(
 
 #[tauri::command]
 pub async fn party_get(state: State<'_, AppState>) -> Result<Value, AppError> {
-    let session = social_session(&state).await?;
-    social::get_json(&session, "/v1/party").await
+    social::get_json_authed(&state, "/v1/party").await
 }
 
 #[tauri::command]
 pub async fn party_create(state: State<'_, AppState>) -> Result<Value, AppError> {
-    let session = social_session(&state).await?;
-    social::post_json(&session, "/v1/party", json!({})).await
+    social::post_json_authed(&state, "/v1/party", json!({})).await
 }
 
 #[tauri::command]
 pub async fn party_invite(state: State<'_, AppState>, uuid: String) -> Result<Value, AppError> {
-    let session = social_session(&state).await?;
-    social::post_json(&session, "/v1/party/invite", json!({ "uuid": uuid })).await
+    social::post_json_authed(&state, "/v1/party/invite", json!({ "uuid": uuid })).await
 }
 
 #[tauri::command]
 pub async fn party_leave(state: State<'_, AppState>) -> Result<Value, AppError> {
-    let session = social_session(&state).await?;
-    social::post_json(&session, "/v1/party/leave", json!({})).await
+    social::post_json_authed(&state, "/v1/party/leave", json!({})).await
 }
 
 #[tauri::command]
 pub async fn party_accept(state: State<'_, AppState>, invite_id: String) -> Result<Value, AppError> {
-    let session = social_session(&state).await?;
-    social::post_json(
-        &session,
+    social::post_json_authed(
+        &state,
         "/v1/party/accept",
         json!({ "inviteId": invite_id }),
     )
@@ -499,9 +478,8 @@ pub async fn party_accept(state: State<'_, AppState>, invite_id: String) -> Resu
 
 #[tauri::command]
 pub async fn party_decline(state: State<'_, AppState>, invite_id: String) -> Result<Value, AppError> {
-    let session = social_session(&state).await?;
-    social::post_json(
-        &session,
+    social::post_json_authed(
+        &state,
         "/v1/party/decline",
         json!({ "inviteId": invite_id }),
     )
@@ -513,9 +491,8 @@ pub async fn party_set_server(
     state: State<'_, AppState>,
     server_address: String,
 ) -> Result<Value, AppError> {
-    let session = social_session(&state).await?;
-    social::post_json(
-        &session,
+    social::post_json_authed(
+        &state,
         "/v1/party/server",
         json!({ "serverAddress": server_address }),
     )
@@ -747,33 +724,33 @@ pub async fn content_shader_import(
 }
 
 #[tauri::command]
-pub async fn store_catalog() -> Result<Vec<Value>, AppError> {
-    ecosystem::store_catalog_cloud().await
+pub async fn store_catalog(state: State<'_, AppState>) -> Result<Vec<Value>, AppError> {
+    ecosystem::store_catalog_cloud(&state).await
 }
 
 #[tauri::command]
-pub async fn store_balance() -> Result<i64, AppError> {
-    ecosystem::store_balance_cloud().await
+pub async fn store_balance(state: State<'_, AppState>) -> Result<i64, AppError> {
+    ecosystem::store_balance_cloud(&state).await
 }
 
 #[tauri::command]
-pub async fn store_purchase(item_id: String) -> Result<Value, AppError> {
-    ecosystem::store_purchase_cloud(item_id).await
+pub async fn store_purchase(state: State<'_, AppState>, item_id: String) -> Result<Value, AppError> {
+    ecosystem::store_purchase_cloud(&state, item_id).await
 }
 
 #[tauri::command]
-pub async fn store_history() -> Result<Vec<Value>, AppError> {
-    ecosystem::store_history().await
+pub async fn store_history(state: State<'_, AppState>) -> Result<Vec<Value>, AppError> {
+    ecosystem::store_history(&state).await
 }
 
 #[tauri::command]
-pub async fn store_promos() -> Result<Vec<Value>, AppError> {
-    ecosystem::store_promos().await
+pub async fn store_promos(state: State<'_, AppState>) -> Result<Vec<Value>, AppError> {
+    ecosystem::store_promos(&state).await
 }
 
 #[tauri::command]
-pub async fn store_redeem(code: String) -> Result<Value, AppError> {
-    ecosystem::store_redeem(code).await
+pub async fn store_redeem(state: State<'_, AppState>, code: String) -> Result<Value, AppError> {
+    ecosystem::store_redeem(&state, code).await
 }
 
 #[tauri::command]
