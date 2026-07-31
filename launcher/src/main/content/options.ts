@@ -2,13 +2,35 @@ import { mkdir, readFile, writeFile } from 'fs/promises'
 import { dirname } from 'path'
 import { getOptionsPath } from './paths'
 import type { GameDisplayMode } from '../storage/SettingsStore'
+import {
+  getOptionValue,
+  mergePresetGameOptions,
+  presetGameOptions,
+  setOptionValue,
+  setOptionValueIfAbsent,
+  type PresetGameOptions
+} from './optionsMerge'
+
+export {
+  getOptionValue,
+  mergePresetGameOptions,
+  presetGameOptions,
+  setOptionValue,
+  setOptionValueIfAbsent
+}
+export type { PresetGameOptions }
 
 export async function readOptionsLines(instanceId: string): Promise<string[]> {
   try {
     const raw = await readFile(getOptionsPath(instanceId), 'utf8')
     return raw.split(/\r?\n/)
-  } catch {
-    return []
+  } catch (err) {
+    // Missing file is fine (new instance). Any other error must not look like "empty"
+    // or callers that rewrite options.txt would wipe FPS / keybinds.
+    if (isNotFound(err)) {
+      return []
+    }
+    throw err
   }
 }
 
@@ -16,28 +38,6 @@ export async function writeOptionsLines(instanceId: string, lines: string[]): Pr
   const path = getOptionsPath(instanceId)
   await mkdir(dirname(path), { recursive: true })
   await writeFile(path, lines.join('\n'), 'utf8')
-}
-
-export function getOptionValue(lines: string[], key: string): string | undefined {
-  const prefix = `${key}:`
-  const line = lines.find((l) => l.startsWith(prefix))
-  return line ? line.slice(prefix.length) : undefined
-}
-
-export function setOptionValue(lines: string[], key: string, value: string): string[] {
-  const prefix = `${key}:`
-  let found = false
-  const next = lines.map((line) => {
-    if (line.startsWith(prefix)) {
-      found = true
-      return `${prefix}${value}`
-    }
-    return line
-  })
-  if (!found) {
-    next.push(`${prefix}${value}`)
-  }
-  return next
 }
 
 export function parseResourcePackList(raw: string | undefined): string[] {
@@ -122,4 +122,8 @@ export async function syncMinecraftDisplaySettings(
   }
   lines = setOptionValue(lines, 'fullscreen', mode === 'fullscreen' ? 'true' : 'false')
   await writeOptionsLines(instanceId, lines)
+}
+
+function isNotFound(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'ENOENT'
 }

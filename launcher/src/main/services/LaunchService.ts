@@ -27,7 +27,15 @@ export class LaunchService {
       const settings = await settingsStore.load()
       launchLogService.append('info', `Launching instance ${instanceId}…`, 'start')
 
-      await performanceService.applyPreset(settings.performancePreset, instanceId)
+      // Seed missing performance keys only — never re-apply the preset on every launch
+      // (that was resetting maxFps / render distance / graphics over user options.txt).
+      const seed = await performanceService.seedPresetOptionsIfNeeded(
+        settings.performancePreset,
+        instanceId
+      )
+      if (!seed.ok) {
+        launchLogService.append('warn', seed.error ?? 'Could not seed options.txt', 'start')
+      }
       const bridge = await launcherBridgeService.syncToInstance(instanceId)
       if (!bridge.ok) {
         launchLogService.append('warn', bridge.error ?? 'Bridge sync failed.', 'start')

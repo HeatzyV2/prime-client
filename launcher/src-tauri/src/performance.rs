@@ -27,7 +27,7 @@ fn sys_info_ram_mb() -> f64 {
         .ok()
         .and_then(|s| {
             s.lines()
-                .find(|l| l.starts_with("MemTotal:"))
+                .find(|l| l.startsWith("MemTotal:"))
                 .and_then(|l| l.split_whitespace().nth(1))
                 .and_then(|n| n.parse::<f64>().ok())
                 .map(|kb| kb / 1024.0)
@@ -107,6 +107,8 @@ pub fn selected() -> Result<String, AppError> {
     Ok(settings::load()?.performance_preset)
 }
 
+/// Explicit user action — overwrites performance-related options only, preserving
+/// every other options.txt line (keybinds, FOV, language, …).
 pub fn apply(preset_id: String, instance_id: Option<String>) -> Result<Value, AppError> {
     let Some(&(_, _, ram_mb, render_distance, _)) = PRESETS.iter().find(|(id, ..)| *id == preset_id) else {
         return Ok(json!({ "ok": false, "error": "Unknown preset." }));
@@ -133,32 +135,35 @@ pub fn apply(preset_id: String, instance_id: Option<String>) -> Result<Value, Ap
     if let Some(parent) = options.parent() {
         fs::create_dir_all(parent)?;
     }
-    let mut map = std::collections::BTreeMap::<String, String>::new();
-    if options.exists() {
-        for line in fs::read_to_string(&options)?.lines() {
-            if let Some((k, v)) = line.split_once(':') {
-                map.insert(k.to_string(), v.to_string());
-            }
-        }
-    }
-    map.insert("renderDistance".into(), render_distance.to_string());
-    map.insert(
-        "simulationDistance".into(),
-        render_distance.min(12).to_string(),
-    );
+    let mut lines: Vec<String> = if options.exists() {
+        fs::read_to_string(&options)?
+            .lines()
+            .map(str::to_string)
+            .collect()
+    } else {
+        Vec::new()
+    };
+
     let max_fps = match preset_id.as_str() {
-        "ultra" => 260,
-        "performance" => 240,
-        _ => 120,
+        "ultra" => "260",
+        "performance" => "240",
+        _ => "120",
     };
-    map.insert("maxFps".into(), max_fps.to_string());
     let graphics = match preset_id.as_str() {
-        "low" => 0,
-        "ultra" => 2,
-        _ => 1,
+        "low" => "0",
+        "ultra" => "2",
+        _ => "1",
     };
-    map.insert("graphicsMode".into(), graphics.to_string());
-    let body: String = map.iter().map(|(k, v)| format!("{k}:{v}\n")).collect();
+    let sim = render_distance.min(12).to_string();
+    set_option_value(&mut lines, "renderDistance", &render_distance.to_string());
+    set_option_value(&mut lines, "simulationDistance", &sim);
+    set_option_value(&mut lines, "maxFps", max_fps);
+    set_option_value(&mut lines, "graphicsMode", graphics);
+
+    let mut body = lines.join("\n");
+    if !body.ends_with('\n') {
+        body.push('\n');
+    }
     fs::write(options, body)?;
 
     let mut s = settings::load()?;
@@ -166,4 +171,15 @@ pub fn apply(preset_id: String, instance_id: Option<String>) -> Result<Value, Ap
     s.default_ram_mb = capped;
     settings::save(&s)?;
     Ok(json!({ "ok": true }))
+}
+
+fn set_option_value(lines: &mut Vec<String>, key: &str, value: &str) {
+    let prefix = format!("{key}:");
+    for line in lines.iter_mut() {
+        if line.starts_with(&prefix) {
+            *line = format!("{prefix}{value}");
+            return;
+        }
+    }
+    lines.push(format!("{prefix}{value}"));
 }
