@@ -1,121 +1,126 @@
-//! Microsoft → Xbox Live → Minecraft Services OAuth (Prism-compatible client).
-use crate::accounts::{save, load, StoredMinecraftAccount};
+//! Microsoft Live → Xbox Live → Minecraft Services OAuth.
+//! Matches Electron msmc: Mojang public client + login.live.com (not Azure Prism).
+use crate::accounts::{load, save, StoredMinecraftAccount};
 use crate::error::{AppError, OkResult};
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use chrono::Utc;
-use md5::{Digest, Md5};
 use serde_json::{json, Value};
-use sha2::Sha256;
-use std::io::{Read, Write};
-use std::net::TcpListener;
 use std::sync::mpsc;
-use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 use uuid::Uuid;
 
-/// Public client used by many open-source Minecraft launchers (Prism / MultiMC family).
-const CLIENT_ID: &str = "1ce91f64-568a-42b5-b1c3-4e6871f5b8c5";
+/// Mojang / official Minecraft launcher public client — same as msmc's default.
+const CLIENT_ID: &str = "00000000402b5328";
+/// Desktop redirect used by msmc `Auth.launch('electron')`.
+const REDIRECT_URI: &str = "https://login.live.com/oauth20_desktop.srf";
 const SCOPE: &str = "XboxLive.signin offline_access";
+const LOGIN_WINDOW: &str = "ms-login";
 
 fn skin_url(uuid: &str) -> String {
     format!("https://mc-heads.net/avatar/{}/64", uuid.replace('-', ""))
 }
 
-fn pkce() -> (String, String) {
-    let mut verifier_bytes = [0u8; 32];
-    getrandom_fill(&mut verifier_bytes);
-    let verifier = URL_SAFE_NO_PAD.encode(verifier_bytes);
-    let mut hasher = Sha256::new();
-    hasher.update(verifier.as_bytes());
-    let challenge = URL_SAFE_NO_PAD.encode(hasher.finalize());
-    (verifier, challenge)
-}
-
-fn getrandom_fill(buf: &mut [u8]) {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    let mut h = DefaultHasher::new();
-    SystemTime::now().hash(&mut h);
-    Uuid::new_v4().hash(&mut h);
-    let mut state = h.finish();
-    for b in buf.iter_mut() {
-        state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
-        *b = (state >> 33) as u8;
-    }
-}
-
 fn http_client() -> Result<reqwest::Client, AppError> {
     reqwest::Client::builder()
         .timeout(Duration::from_secs(60))
-        .user_agent("Prime-Launcher/0.9.11")
+        .user_agent("Prime-Launcher/2.3.3")
         .build()
         .map_err(|e| AppError::Message(e.to_string()))
 }
 
-/// Blocking OAuth with local redirect (opens system browser).
-pub fn login_interactive() -> Result<OkResult, AppError> {
-    let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| AppError::Message(e.to_string()))?;
-    let port = listener.local_addr()?.port();
-    let redirect = format!("http://127.0.0.1:{port}/");
-    let (verifier, challenge) = pkce();
-    let state = Uuid::new_v4().to_string();
-    let auth_url = format!(
-        "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id={}&response_type=code&redirect_uri={}&scope={}&state={}&code_challenge={}&code_challenge_method=S256&prompt=select_account",
+fn auth_url() -> String {
+    format!(
+        "https://login.live.com/oauth20_authorize.srf?client_id={}&response_type=code&redirect_uri={}&scope={}&prompt=select_account",
         CLIENT_ID,
-        urlencoding::encode(&redirect),
+        urlencoding::encode(REDIRECT_URI),
         urlencoding::encode(SCOPE),
-        urlencoding::encode(&state),
-        urlencoding::encode(&challenge),
-    );
-    open::that(&auth_url).map_err(|e| AppError::Message(e.to_string()))?;
+    )
+}
 
-    let (tx, rx) = mpsc::channel();
-    thread::spawn(move || {
-        let _ = listener.set_nonblocking(false);
-        if let Ok((mut stream, _)) = listener.accept() {
-            let mut buf = [0u8; 4096];
-            let n = stream.read(&mut buf).unwrap_or(0);
-            let req = String::from_utf8_lossy(&buf[..n]);
-            let first = req.lines().next().unwrap_or("");
-            let code = first
-                .split(' ')
-                .nth(1)
-                .and_then(|path| path.split('?').nth(1))
-                .unwrap_or("")
-                .split('&')
-                .find_map(|p| p.strip_prefix("code=").map(|c| c.to_string()));
-            let body = if code.is_some() {
-                "<html><body style='font-family:sans-serif;background:#060608;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh'><div>Prime — you can close this tab.</div></body></html>"
-            } else {
-                "<html><body>Login failed.</body></html>"
-            };
-            let resp = format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-                body.len(),
-                body
-            );
-            let _ = stream.write_all(resp.as_bytes());
-            let _ = tx.send(code);
+fn extract_code(url: &url::Url) -> Option<String> {
+    url.query_pairs()
+        .find(|(k, _)| k == "code")
+        .map(|(_, v)| v.into_owned())
+}
+
+/// Interactive OAuth via an embedded webview (Electron msmc BrowserWindow equivalent).
+pub fn login_interactive(app: AppHandle) -> Result<OkResult, AppError> {
+    let (code_tx, code_rx) = mpsc::channel::<Option<String>>();
+    let (built_tx, built_rx) = mpsc::channel::<Result<(), String>>();
+
+    let app_build = app.clone();
+    app.run_on_main_thread(move || {
+        if let Some(existing) = app_build.get_webview_window(LOGIN_WINDOW) {
+            let _ = existing.close();
         }
-    });
 
-    let code = rx
+        let parsed = match auth_url().parse::<url::Url>() {
+            Ok(u) => u,
+            Err(e) => {
+                let _ = built_tx.send(Err(e.to_string()));
+                return;
+            }
+        };
+
+        let app_nav = app_build.clone();
+        let tx_nav = code_tx.clone();
+        let tx_close = code_tx;
+
+        let built = WebviewWindowBuilder::new(&app_build, LOGIN_WINDOW, WebviewUrl::External(parsed))
+            .title("Sign in with Microsoft")
+            .inner_size(520.0, 720.0)
+            .center()
+            .focused(true)
+            .on_navigation(move |nav_url| {
+                let href = nav_url.as_str();
+                if !href.starts_with(REDIRECT_URI) {
+                    return true;
+                }
+                let code = extract_code(&nav_url);
+                let _ = tx_nav.send(code);
+                if let Some(w) = app_nav.get_webview_window(LOGIN_WINDOW) {
+                    let _ = w.close();
+                }
+                false
+            })
+            .build();
+
+        match built {
+            Ok(win) => {
+                win.on_window_event(move |event| {
+                    if let tauri::WindowEvent::Destroyed = event {
+                        let _ = tx_close.send(None);
+                    }
+                });
+                let _ = built_tx.send(Ok(()));
+            }
+            Err(e) => {
+                let _ = built_tx.send(Err(e.to_string()));
+            }
+        }
+    })
+    .map_err(|e| AppError::Message(format!("Failed to open Microsoft login: {e}")))?;
+
+    built_rx
+        .recv_timeout(Duration::from_secs(15))
+        .map_err(|_| AppError::Message("Failed to open Microsoft login window.".into()))?
+        .map_err(AppError::Message)?;
+
+    let code = code_rx
         .recv_timeout(Duration::from_secs(300))
         .map_err(|_| AppError::Message("Microsoft login timed out.".into()))?
         .ok_or_else(|| AppError::Message("Microsoft login cancelled or failed.".into()))?;
 
-    let rt = tokio::runtime::Handle::try_current();
-    let tokens = if let Ok(handle) = rt {
-        handle.block_on(exchange_code(&code, &redirect, &verifier))?
-    } else {
-        tokio::runtime::Runtime::new()
-            .map_err(|e| AppError::Message(e.to_string()))?
-            .block_on(exchange_code(&code, &redirect, &verifier))?
-    };
+    // Drop late None from window Destroyed after a successful code.
+    while let Ok(extra) = code_rx.try_recv() {
+        if extra.is_some() {
+            // ignore
+        }
+    }
 
+    let tokens = block_on(exchange_code(&code))??;
     let account = tokens_to_account(tokens)?;
     let mut db = load()?;
-    // Replace existing MS account with same uuid
     db.accounts.retain(|a| a.uuid != account.uuid);
     let id = account.id.clone();
     db.active_account_id = Some(id.clone());
@@ -134,23 +139,32 @@ pub fn login_interactive() -> Result<OkResult, AppError> {
     })
 }
 
+fn block_on<T>(fut: impl std::future::Future<Output = T>) -> Result<T, AppError> {
+    if let Ok(handle) = tokio::runtime::Handle::try_current() {
+        Ok(handle.block_on(fut))
+    } else {
+        Ok(tokio::runtime::Runtime::new()
+            .map_err(|e| AppError::Message(e.to_string()))?
+            .block_on(fut))
+    }
+}
+
 struct MsTokens {
     access_token: String,
     refresh_token: String,
 }
 
-async fn exchange_code(code: &str, redirect: &str, verifier: &str) -> Result<MsTokens, AppError> {
+async fn exchange_code(code: &str) -> Result<MsTokens, AppError> {
     let client = http_client()?;
     let res = client
-        .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
-        .form(&[
-            ("client_id", CLIENT_ID),
-            ("code", code),
-            ("redirect_uri", redirect),
-            ("grant_type", "authorization_code"),
-            ("code_verifier", verifier),
-            ("scope", SCOPE),
-        ])
+        .post("https://login.live.com/oauth20_token.srf")
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(format!(
+            "client_id={}&code={}&grant_type=authorization_code&redirect_uri={}",
+            CLIENT_ID,
+            urlencoding::encode(code),
+            urlencoding::encode(REDIRECT_URI),
+        ))
         .send()
         .await
         .map_err(|e| AppError::Message(e.to_string()))?;
@@ -174,13 +188,13 @@ async fn exchange_code(code: &str, redirect: &str, verifier: &str) -> Result<MsT
 async fn refresh_ms(refresh_token: &str) -> Result<MsTokens, AppError> {
     let client = http_client()?;
     let res = client
-        .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
-        .form(&[
-            ("client_id", CLIENT_ID),
-            ("refresh_token", refresh_token),
-            ("grant_type", "refresh_token"),
-            ("scope", SCOPE),
-        ])
+        .post("https://login.live.com/oauth20_token.srf")
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(format!(
+            "client_id={}&refresh_token={}&grant_type=refresh_token",
+            CLIENT_ID,
+            urlencoding::encode(refresh_token),
+        ))
         .send()
         .await
         .map_err(|e| AppError::Message(e.to_string()))?;
@@ -188,7 +202,15 @@ async fn refresh_ms(refresh_token: &str) -> Result<MsTokens, AppError> {
     let access = body
         .get("access_token")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| AppError::Message("Refresh failed — sign in again.".into()))?
+        .ok_or_else(|| {
+            AppError::Message(format!(
+                "Refresh failed — sign in again. ({})",
+                body.get("error_description")
+                    .or_else(|| body.get("error"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown")
+            ))
+        })?
         .to_string();
     let refresh = body
         .get("refresh_token")
@@ -201,9 +223,10 @@ async fn refresh_ms(refresh_token: &str) -> Result<MsTokens, AppError> {
     })
 }
 
-async fn xbox_minecraft(ms_access: &str) -> Result<(String, String, String, Option<String>, Option<String>), AppError> {
+async fn xbox_minecraft(
+    ms_access: &str,
+) -> Result<(String, String, String, Option<String>, Option<String>), AppError> {
     let client = http_client()?;
-    // Xbox Live
     let xbox_body = json!({
         "Properties": {
             "AuthMethod": "RPS",
@@ -231,7 +254,6 @@ async fn xbox_minecraft(ms_access: &str) -> Result<(String, String, String, Opti
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::Message("Xbox UHS missing.".into()))?;
 
-    // XSTS
     let xsts_body = json!({
         "Properties": {
             "SandboxId": "RETAIL",
@@ -254,7 +276,6 @@ async fn xbox_minecraft(ms_access: &str) -> Result<(String, String, String, Opti
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::Message("XSTS auth failed (no Minecraft?).".into()))?;
 
-    // Minecraft
     let mc_login = json!({
         "identityToken": format!("XBL3.0 x={uhs};{xsts_token}")
     });
@@ -285,7 +306,9 @@ async fn xbox_minecraft(ms_access: &str) -> Result<(String, String, String, Opti
     let uuid = profile
         .get("id")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| AppError::Message("No Minecraft profile — buy the game on this account.".into()))?
+        .ok_or_else(|| {
+            AppError::Message("No Minecraft profile — buy the game on this account.".into())
+        })?
         .to_string();
     let name = profile
         .get("name")
@@ -308,24 +331,25 @@ async fn xbox_minecraft(ms_access: &str) -> Result<(String, String, String, Opti
         .get("skins")
         .and_then(|v| v.as_array())
         .and_then(|arr| {
-            arr.iter().find(|s| s.get("state").and_then(|x| x.as_str()) == Some("ACTIVE"))
+            arr.iter()
+                .find(|s| s.get("state").and_then(|x| x.as_str()) == Some("ACTIVE"))
         })
         .and_then(|s| s.get("url").and_then(|u| u.as_str()).map(str::to_string));
     let cape = profile
         .get("capes")
         .and_then(|v| v.as_array())
         .and_then(|arr| {
-            arr.iter().find(|s| s.get("state").and_then(|x| x.as_str()) == Some("ACTIVE"))
+            arr.iter()
+                .find(|s| s.get("state").and_then(|x| x.as_str()) == Some("ACTIVE"))
         })
         .and_then(|s| s.get("url").and_then(|u| u.as_str()).map(str::to_string));
     Ok((mc_token, dashed, name, skin, cape))
 }
 
 fn tokens_to_account(tokens: MsTokens) -> Result<StoredMinecraftAccount, AppError> {
-    let rt = tokio::runtime::Runtime::new().map_err(|e| AppError::Message(e.to_string()))?;
     let (mc_token, uuid, name, skin, cape) =
-        rt.block_on(xbox_minecraft(&tokens.access_token))?;
-    let _ = mc_token; // access for launch obtained via refresh later
+        block_on(xbox_minecraft(&tokens.access_token))??;
+    let _ = mc_token;
     Ok(StoredMinecraftAccount {
         id: Uuid::new_v4().to_string(),
         account_type: "microsoft".into(),
@@ -334,7 +358,7 @@ fn tokens_to_account(tokens: MsTokens) -> Result<StoredMinecraftAccount, AppErro
         skin_url: Some(skin.unwrap_or_else(|| skin_url(&uuid))),
         cape_url: cape,
         ms_refresh_token: Some(tokens.refresh_token),
-        ms_auth_provider: Some("azure".into()),
+        ms_auth_provider: Some("live".into()),
         added_at: Utc::now().to_rfc3339(),
         last_used_at: Some(Utc::now().to_rfc3339()),
     })
@@ -345,25 +369,29 @@ pub fn refresh_account(account_id: &str) -> Result<OkResult, AppError> {
     let Some(account) = db.accounts.iter_mut().find(|a| a.id == account_id) else {
         return Ok(OkResult::err("Account not found."));
     };
-    if account.ms_auth_provider.as_deref() == Some("live") {
-        return Ok(OkResult::err(
-            "This Microsoft account was signed in with the old Electron flow. Sign in again with Microsoft.",
-        ));
-    }
     let Some(refresh) = account.ms_refresh_token.clone() else {
         return Ok(OkResult::err("No Microsoft refresh token — sign in again."));
     };
-    let rt = tokio::runtime::Runtime::new().map_err(|e| AppError::Message(e.to_string()))?;
-    let tokens = rt.block_on(refresh_ms(&refresh))?;
+    let tokens = match block_on(refresh_ms(&refresh))? {
+        Ok(t) => t,
+        Err(e) => {
+            return Ok(OkResult::err(format!(
+                "Microsoft session expired — sign in again. ({e})"
+            )));
+        }
+    };
     let (mc_token, uuid, name, skin, cape) =
-        rt.block_on(xbox_minecraft(&tokens.access_token))?;
+        match block_on(xbox_minecraft(&tokens.access_token))? {
+            Ok(v) => v,
+            Err(e) => return Ok(OkResult::err(e.to_string())),
+        };
     let _ = mc_token;
     account.username = name;
     account.uuid = uuid.clone();
     account.skin_url = Some(skin.unwrap_or_else(|| skin_url(&uuid)));
     account.cape_url = cape;
     account.ms_refresh_token = Some(tokens.refresh_token);
-    account.ms_auth_provider = Some("azure".into());
+    account.ms_auth_provider = Some("live".into());
     account.last_used_at = Some(Utc::now().to_rfc3339());
     save(&db)?;
     Ok(OkResult::ok())
@@ -381,48 +409,28 @@ pub async fn launch_authenticator(account: &StoredMinecraftAccount) -> Result<Va
             "meta": { "type": "offline", "online": false }
         }));
     }
-    let refresh = account
-        .ms_refresh_token
-        .as_deref()
-        .ok_or_else(|| {
-            AppError::Message(
-                "No Microsoft session — open Accounts and sign in with Microsoft again.".into(),
-            )
-        })?;
+    let refresh = account.ms_refresh_token.as_deref().ok_or_else(|| {
+        AppError::Message(
+            "No Microsoft session — open Accounts and sign in with Microsoft again.".into(),
+        )
+    })?;
 
-    // Electron used msmc ("live"). Try Prism Azure refresh anyway; migrate on success.
-    let legacy_live = account.ms_auth_provider.as_deref() == Some("live");
-    let tokens = match refresh_ms(refresh).await {
-        Ok(t) => t,
-        Err(e) if legacy_live => {
-            return Err(AppError::Message(format!(
-                "Your Microsoft account was signed in with the old Electron launcher and must be re-linked. Open Accounts → remove the account → Sign in with Microsoft. ({e})"
-            )));
-        }
-        Err(e) => {
-            return Err(AppError::Message(format!(
-                "Microsoft session expired — sign in again. ({e})"
-            )));
-        }
-    };
-    // Persist rotated refresh + mark migrated away from msmc "live"
+    let tokens = refresh_ms(refresh).await.map_err(|e| {
+        AppError::Message(format!(
+            "Microsoft session expired — sign in again. ({e})"
+        ))
+    })?;
+
     {
         let mut db = load()?;
         if let Some(a) = db.accounts.iter_mut().find(|a| a.id == account.id) {
             a.ms_refresh_token = Some(tokens.refresh_token.clone());
-            a.ms_auth_provider = Some("azure".into());
+            a.ms_auth_provider = Some("live".into());
             save(&db)?;
         }
     }
-    let (mc_token, uuid, name, _, _) = xbox_minecraft(&tokens.access_token).await.map_err(|e| {
-        if legacy_live {
-            AppError::Message(format!(
-                "Your Microsoft account was signed in with the old Electron launcher and must be re-linked. Open Accounts → Sign in with Microsoft again. ({e})"
-            ))
-        } else {
-            e
-        }
-    })?;
+
+    let (mc_token, uuid, name, _, _) = xbox_minecraft(&tokens.access_token).await?;
     Ok(json!({
         "name": name,
         "uuid": uuid.replace('-', ""),
@@ -431,12 +439,4 @@ pub async fn launch_authenticator(account: &StoredMinecraftAccount) -> Result<Va
         "user_properties": "{}",
         "meta": { "type": "Xbox", "demo": false }
     }))
-}
-
-// silence unused md5 import if any
-#[allow(dead_code)]
-fn _md5_unused(s: &str) -> String {
-    let mut h = Md5::new();
-    h.update(s.as_bytes());
-    hex::encode(h.finalize())
 }

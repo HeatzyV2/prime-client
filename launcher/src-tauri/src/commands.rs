@@ -130,9 +130,9 @@ pub fn account_remove(state: State<'_, AppState>, account_id: String) -> Result<
 }
 
 #[tauri::command]
-pub fn account_login_microsoft(state: State<'_, AppState>) -> Result<OkResult, AppError> {
+pub fn account_login_microsoft(app: AppHandle, state: State<'_, AppState>) -> Result<OkResult, AppError> {
     social::invalidate_session(&state);
-    accounts::login_microsoft()
+    accounts::login_microsoft(app)
 }
 
 #[tauri::command]

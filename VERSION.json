@@ -1,7 +1,7 @@
 {
   "mod": "2.2.0",
-  "launcher": "2.3.2",
+  "launcher": "2.3.3",
   "backend": "2.2.0",
   "apiBase": "http://194.9.172.102:26005",
-  "notes": "Launcher 2.3.2 = unstick mod install hang (progress/auth), fix Modrinth URL encoding, Tauri NSIS update assets."
+  "notes": "Launcher 2.3.3 = restore Electron-compatible Microsoft Live login (msmc / Mojang client) on Tauri."
 }

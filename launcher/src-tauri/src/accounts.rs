@@ -235,8 +235,8 @@ pub fn remove(account_id: String) -> Result<OkResult, AppError> {
     Ok(OkResult::ok())
 }
 
-pub fn login_microsoft() -> Result<OkResult, AppError> {
-    crate::microsoft::login_interactive()
+pub fn login_microsoft(app: tauri::AppHandle) -> Result<OkResult, AppError> {
+    crate::microsoft::login_interactive(app)
 }
 
 pub fn refresh_microsoft(account_id: String) -> Result<OkResult, AppError> {
