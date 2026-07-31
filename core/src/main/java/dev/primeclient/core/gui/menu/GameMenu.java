@@ -43,6 +43,7 @@ public final class GameMenu {
         }
         switch (action) {
             case BACK_TO_GAME -> adapter.closeCurrentScreen();
+            case SOCIAL_HUB -> adapter.openSocialHub();
             case ADVANCEMENTS -> adapter.openAdvancements();
             case STATISTICS -> adapter.openStatistics();
             case GIVE_FEEDBACK -> adapter.openFeedbackLink();

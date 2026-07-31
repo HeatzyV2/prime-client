@@ -15,6 +15,10 @@ record GameMenuLayout(
         int primaryY,
         int primaryW,
         int primaryH,
+        int socialX,
+        int socialY,
+        int socialW,
+        int socialH,
         int gridX,
         int gridY,
         int cellW,
@@ -28,13 +32,14 @@ record GameMenuLayout(
         int footerY,
         int footerH
 ) {
-    static final int PANEL_W = 280;
-    static final int PRIMARY_H = 28;
-    static final int CELL_H = 24;
-    static final int QUIT_H = 26;
-    static final int INNER_PAD = 14;
+    static final int PANEL_W = 288;
+    static final int PRIMARY_H = 30;
+    static final int SOCIAL_H = 26;
+    static final int CELL_H = 26;
+    static final int QUIT_H = 28;
+    static final int INNER_PAD = 16;
     static final int GAP = 8;
-    static final int FOOTER_H = 28;
+    static final int FOOTER_H = 22;
     /** Space after logo before PRIME wordmark. */
     static final int LOGO_TO_BRAND = 4;
     /** PRIME + CLIENT stack height (two lines). */
@@ -44,14 +49,15 @@ record GameMenuLayout(
     /** Glyph room for the GAME MENU line (top of text → bottom of glyphs). */
     static final int TITLE_LINE_H = 9;
     /** Breath between GAME MENU glyphs and panel top edge. */
-    static final int TITLE_TO_PANEL = 2;
+    static final int TITLE_TO_PANEL = 4;
     /**
      * Slight upward nudge from true vertical center so the block does not feel
      * heavy toward the sticky footer (optical center, not math center).
      */
     static final int OPTICAL_UPWARD_BIAS = 12;
     /** Minimum clear gap between panel bottom and sticky footer. */
-    static final int FOOTER_CLEARANCE = 24;
+    static final int FOOTER_CLEARANCE = 20;
+    static final int GRID_ROWS = 3;
 
     static GameMenuLayout compute(int screenWidth, int screenHeight) {
         int footerH = FOOTER_H;
@@ -66,11 +72,13 @@ record GameMenuLayout(
         // titleY is text top; reserve glyph height then a tight gap to the panel.
         int header = titleY + TITLE_LINE_H + TITLE_TO_PANEL;
 
-        int panelInner = INNER_PAD * 2 + PRIMARY_H + GAP
-                + CELL_H * 3 + GAP * 2
+        int panelInner = INNER_PAD * 2
+                + PRIMARY_H + GAP
+                + SOCIAL_H + GAP
+                + CELL_H * GRID_ROWS + GAP * (GRID_ROWS - 1)
                 + GAP + QUIT_H;
         int panelH = panelInner;
-        int panelW = Math.min(PANEL_W, Math.max(240, screenWidth - 48));
+        int panelW = Math.min(PANEL_W, Math.max(248, screenWidth - 48));
 
         int compositionH = header + panelH;
         int free = Math.max(0, usableH - compositionH);
@@ -85,10 +93,11 @@ record GameMenuLayout(
         int contentX = panelX + INNER_PAD;
         int contentW = panelW - INNER_PAD * 2;
         int primaryY = panelY + INNER_PAD;
-        int gridY = primaryY + PRIMARY_H + GAP;
+        int socialY = primaryY + PRIMARY_H + GAP;
+        int gridY = socialY + SOCIAL_H + GAP;
         int cellGapX = 8;
         int cellW = (contentW - cellGapX) / 2;
-        int quitY = gridY + CELL_H * 3 + GAP * 2 + GAP;
+        int quitY = gridY + CELL_H * GRID_ROWS + GAP * (GRID_ROWS - 1) + GAP;
 
         return new GameMenuLayout(
                 startY,
@@ -105,6 +114,10 @@ record GameMenuLayout(
                 contentW,
                 PRIMARY_H,
                 contentX,
+                socialY,
+                contentW,
+                SOCIAL_H,
+                contentX,
                 gridY,
                 cellW,
                 CELL_H,
@@ -117,6 +130,10 @@ record GameMenuLayout(
                 footerY,
                 footerH
         );
+    }
+
+    int contentW() {
+        return primaryW;
     }
 
     int gridCellX(int col) {
