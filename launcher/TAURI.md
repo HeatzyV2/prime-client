@@ -1,6 +1,8 @@
-# Prime Launcher — Tauri 2
+# Prime Launcher — Tauri (experimental)
 
-Pixel-identical React UI. Shell is **Rust + WebView2**.
+Pixel-identical React UI. Shell is **Rust + WebView2** (low RAM).
+
+**Production / release path is Electron** (`npm run dev` / `npm run dist`). Use these scripts only for the experimental Tauri shell.
 
 ## Run
 
@@ -8,36 +10,17 @@ Pixel-identical React UI. Shell is **Rust + WebView2**.
 cd launcher
 npm install
 npm install --prefix resources/launch-bridge
-npm run dev
+npm run dev:tauri
 ```
 
-## Features
+## Build (experimental)
 
-| Feature | Implementation |
-|---------|----------------|
-| Same UI (React/CSS) | Vite + renderer |
-| Window chrome / settings / accounts | Rust |
-| Microsoft OAuth (Azure / Prism) | Rust |
-| Instances CRUD + import | Rust |
-| Play (Fabric) | Rust + short-lived Node `launch-bridge` |
-| Modrinth + CurseForge | Rust |
-| Skin library / wallpaper | Rust |
-| Friends / chat / party | Rust → Prime backend |
-| Store / promos / history (cloud + local) | Rust |
-| AI assistant (Groq proxy) | Rust |
-| Crash analysis DTO | Rust |
-| GitHub updates (mod + NSIS) | Rust |
+```bash
+npm run dist:tauri
+```
 
-## Data
+## Notes
 
-`%APPDATA%\prime-launcher\`
-
-**Note:** Microsoft accounts created with the old Electron/msmc flow need a **one-time re-login**.
-
-## Scripts
-
-| Command | Role |
-|---------|------|
-| `npm run dev` | Tauri + Vite UI |
-| `npm run dist` | Native NSIS installer |
-| `npm run build:ui` | Frontend only |
+- Same React renderer; in Tauri, `window.primeLauncher` is installed from `bridge/tauriPrimeApi.ts`.
+- In Electron, the preload `contextBridge` owns `window.primeLauncher` (msmc Microsoft login).
+- Do not ship Tauri NSIS as the primary GitHub Release asset — CI uses `npm run dist` (electron-builder → `Prime-Launcher-Setup-*.exe`).

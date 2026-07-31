@@ -67,6 +67,12 @@ export function WhatsNewModal({ entry, onClose }: WhatsNewModalProps) {
 
 /** In-app release notes keyed by launcher version. */
 export const WHATS_NEW_BY_VERSION: Record<string, string[]> = {
+  '2.4.0': [
+    'Electron is back as the official launcher (stable Microsoft login via msmc)',
+    'Same Prime UI — accounts, instances, cosmetics, Social Hub',
+    'Auto-update picks Prime-Launcher-Setup-*.exe again',
+    'Tauri remains available experimentally (npm run dev:tauri)'
+  ],
   '0.9.16': [
     'Premium home play hub — account, instance & server in one place',
     'Pro 3D skin viewer with cape, fullscreen & camera reset',

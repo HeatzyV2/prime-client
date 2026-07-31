@@ -8,47 +8,107 @@ Official launcher for **Prime Client** — premium Minecraft platform.
 
 | Layer | Tech |
 |-------|------|
-| Shell | Tauri 2 (Rust) |
+| Shell | Electron 37 |
 | UI | React 19 + TypeScript |
 | Routing | React Router 7 |
 | Motion | Framer Motion |
 | Icons | Lucide React |
-| Build | Vite 7 + `@tauri-apps/cli` |
+| Build | electron-vite + Vite 7 |
 
 ## Structure
 
 ```
 launcher/
 ├── src/
-│   ├── shared/               # Types + shared constants
-│   └── renderer/             # React UI
+│   ├── main/                 # Electron main process
+│   │   ├── index.ts          # Window, lifecycle
+│   │   ├── ipc/handlers.ts   # IPC registration
+│   │   └── services/         # Backend services (stubs → full impl)
+│   ├── preload/              # Secure contextBridge API
+│   ├── shared/               # Types + IPC channels (main ↔ renderer)
+│   └── renderer/
 │       └── src/
-│           ├── bridge/       # Tauri invoke API (window.primeLauncher)
-│           ├── design-system/
-│           ├── layouts/
-│           └── pages/
-├── src-tauri/                # Rust backend (auth, launch, store, AI, …)
-└── resources/launch-bridge/  # Node helper for Minecraft process spawn
+│           ├── design-system/   # Tokens, components, motion
+│           ├── layouts/         # TitleBar, Sidebar, AppShell
+│           ├── pages/           # Splash, Dashboard, placeholders
+│           └── hooks/
 ```
+
+## Design System
+
+Prime identity:
+
+- **Colors**: deep black `#060608`, premium red `#e11d2e`, bright red `#ff2d42`
+- **Typography**: Inter (UI) + JetBrains Mono (status/code)
+- **Components**: Button, Card, Badge, Avatar, ProgressBar, PrimeLogo
+- **Effects**: glow, particles, glass blur, spring transitions
 
 ## Development
 
 ```bash
 cd launcher
 npm install
-npm run dev          # Tauri + Vite UI
+npm run dev
 ```
 
 ```bash
-npm run build:ui     # Frontend only
-npm run dist         # Full Tauri NSIS installer (Windows)
+npm run build    # Production build
 npm run typecheck
 ```
 
-## Auth note
+## Roadmap
 
-Microsoft accounts must use Azure/Prism OAuth (built into Tauri). Accounts created with the old Electron/msmc flow need a one-time re-login.
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **1** | Architecture + Design System + Splash + Dashboard shell | ✅ Done |
+| **2** | Full UI — all pages (Instances, Mods, Store, Settings…) | ✅ Done |
+| **3** | Account System (Microsoft OAuth, offline, Prime Account, PLAY prep) | ✅ Done |
+| **4** | Minecraft Engine (local launch, Fabric, downloader) | ✅ Done |
+| **5** | Instance Manager (CRUD, per-folder saves/mods) | ✅ Done |
+| **6** | Mods / Resource Packs / Shaders (local + Modrinth) | ✅ Done |
+| **7** | Prime Ecosystem (Store, Cosmetics, Friends, News, Media — local) | ✅ Done |
+| **8** | Performance, Downloads, Settings, Updates | ✅ Done |
+
+## Security
+
+- `contextIsolation: true`
+- `nodeIntegration: false`
+- `sandbox: true`
+- All main-process access via typed preload bridge
 
 ## Relation to Prime Client
 
-The launcher installs and updates the Fabric mod jars published with each GitHub release, manages instances, Prime Store / cosmetics, friends, and launches Minecraft via Fabric + Prime Client.
+This launcher:
+
+1. Downloads Minecraft + Fabric from official CDNs (first launch)
+2. Installs the Prime Client mod from **GitHub Releases** (latest `prime-client-1.21.11*.jar`)
+3. Uses your **local Gradle build** when developing from the monorepo (takes priority)
+4. Downloads Fabric API from Modrinth (public API)
+5. Removes stale Prime Client jars from the instance `mods/` folder on each launch
+6. Keeps Prime profile / sync data **on disk only** — no Prime cloud server
+7. Launches the game with Microsoft or offline auth
+
+**Development** (optional local mod build):
+
+```powershell
+cd ..
+.\gradlew :mc-1.21.11:build
+```
+
+When `mc-1.21.11/build/libs/` contains a jar, the launcher uses it instead of GitHub.
+
+Optional override: `PRIME_CLIENT_JAR=C:\path\to\prime-client-1.21.11-1.2.0.jar`
+
+Runtime data lives in `%APPDATA%\prime-launcher\`:
+
+| File / folder | Purpose |
+|---------------|---------|
+| `accounts.json` | Microsoft / offline accounts |
+| `instances.json` | Instance configs |
+| `ecosystem.json` | Store ownership, cosmetics, friends, Prime Coins |
+| `settings.json` | Launcher preferences |
+| `downloads.json` | Recent launch/download progress |
+| `runtime/` | Shared Minecraft versions |
+| `instances/<id>/game/` | Per-instance saves, mods, screenshots |
+
+The mod project lives in the parent repo (`core/`, `mc-*/`).
