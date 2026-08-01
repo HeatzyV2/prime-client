@@ -8,6 +8,7 @@ export function useBootSequence() {
   useEffect(() => {
     let cancelled = false
     let step = 0
+    let finishTimer: ReturnType<typeof setTimeout> | null = null
     const timer = setInterval(() => {
       if (step < 3) {
         step += 1
@@ -24,7 +25,9 @@ export function useBootSequence() {
         if (!cancelled) {
           setStepIndex(3)
           setProgress(100)
-          setTimeout(() => setBooting(false), 300)
+          finishTimer = setTimeout(() => {
+            if (!cancelled) setBooting(false)
+          }, 300)
         }
       }
     })()
@@ -32,6 +35,7 @@ export function useBootSequence() {
     return () => {
       cancelled = true
       clearInterval(timer)
+      if (finishTimer) clearTimeout(finishTimer)
     }
   }, [])
 

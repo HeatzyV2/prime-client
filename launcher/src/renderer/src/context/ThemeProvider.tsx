@@ -6,11 +6,19 @@ import { setUiSoundsEnabled } from '@renderer/lib/uiSounds'
 
 interface ThemeContextValue {
   refreshTheme: () => Promise<void>
+  /** User setting — lighter UI for low-end PCs. */
+  performanceMode: boolean
+  /** True when performance mode OR OS prefers-reduced-motion. */
+  reduceMotion: boolean
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-async function applyThemeFromSettings(): Promise<void> {
+function applyReduceMotionFlag(reduce: boolean): void {
+  document.documentElement.dataset.reduceMotion = reduce ? 'true' : 'false'
+}
+
+async function applyThemeFromSettings(): Promise<{ performanceMode: boolean }> {
   const [settings, catalog, wallpaperData] = await Promise.all([
     window.primeLauncher.settings.get(),
     window.primeLauncher.store.catalog(),
@@ -22,7 +30,7 @@ async function applyThemeFromSettings(): Promise<void> {
   const theme: PrimeThemeId = normalizePrimeTheme(settings.theme)
   document.documentElement.dataset.theme = theme
   document.documentElement.dataset.background =
-    ownsNebula && settings.backgroundNebula ? 'nebula' : 'default'
+    ownsNebula && settings.backgroundNebula && !settings.performanceMode ? 'nebula' : 'default'
 
   const root = document.documentElement
   if (settings.accentColor) {
@@ -49,22 +57,45 @@ async function applyThemeFromSettings(): Promise<void> {
     delete root.dataset.wallpaper
   }
 
-  setUiSoundsEnabled(settings.uiSounds !== false)
+  setUiSoundsEnabled(settings.uiSounds !== false && !settings.performanceMode)
+
+  return { performanceMode: Boolean(settings.performanceMode) }
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [, setTick] = useState(0)
+  const [performanceMode, setPerformanceMode] = useState(false)
+  const [osReducedMotion, setOsReducedMotion] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return false
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  })
 
   const refreshTheme = useCallback(async () => {
-    await applyThemeFromSettings()
-    setTick((n) => n + 1)
+    const { performanceMode: mode } = await applyThemeFromSettings()
+    setPerformanceMode(mode)
   }, [])
 
   useEffect(() => {
     void refreshTheme()
   }, [refreshTheme])
 
-  const value = useMemo(() => ({ refreshTheme }), [refreshTheme])
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const onChange = (): void => setOsReducedMotion(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  const reduceMotion = performanceMode || osReducedMotion
+
+  useEffect(() => {
+    applyReduceMotionFlag(reduceMotion)
+  }, [reduceMotion])
+
+  const value = useMemo(
+    () => ({ refreshTheme, performanceMode, reduceMotion }),
+    [refreshTheme, performanceMode, reduceMotion]
+  )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }

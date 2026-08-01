@@ -7,6 +7,7 @@ import {
 } from 'skinview3d'
 import { Maximize2, Minimize2, RotateCcw, Image as ImageIcon } from 'lucide-react'
 import { playerSkinUrl } from '@shared/format'
+import { useTheme } from '@renderer/context/ThemeProvider'
 import './SkinViewer3D.css'
 
 export type SkinViewerPose = 'idle' | 'walk' | 'run'
@@ -58,10 +59,15 @@ export function SkinViewer3D({
   backdrop: backdropProp = 'none',
   onBackdropChange
 }: SkinViewer3DProps) {
+  const { reduceMotion } = useTheme()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<SkinViewer | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
+  const [inView, setInView] = useState(true)
+  const [pageVisible, setPageVisible] = useState(
+    () => typeof document === 'undefined' || document.visibilityState === 'visible'
+  )
   const [localBackdrop, setLocalBackdrop] = useState<SkinViewerBackdrop>(backdropProp)
   const backdrop = onBackdropChange ? backdropProp : localBackdrop
 
@@ -77,6 +83,29 @@ export function SkinViewer3D({
   const effectiveHeight = fullscreen
     ? Math.min(680, typeof window !== 'undefined' ? window.innerHeight - 120 : 680)
     : height
+
+  const active = inView && pageVisible
+
+  useEffect(() => {
+    const el = rootRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        setInView(entry?.isIntersecting ?? true)
+      },
+      { threshold: 0.05, rootMargin: '40px' }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  useEffect(() => {
+    function onVis(): void {
+      setPageVisible(document.visibilityState === 'visible')
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -100,8 +129,9 @@ export function SkinViewer3D({
     viewer.controls.enableZoom = true
     viewer.controls.minDistance = 25
     viewer.controls.maxDistance = 90
-    viewer.autoRotate = true
+    viewer.autoRotate = !reduceMotion
     viewer.autoRotateSpeed = 0.6
+    viewer.renderPaused = !active
 
     if (capeUrl) {
       void viewer.loadCape(capeUrl)
@@ -113,7 +143,7 @@ export function SkinViewer3D({
       viewer.dispose()
       viewerRef.current = null
     }
-    // Recreate when identity / size / skin source changes — pose/cape handled below.
+    // Recreate when identity / size / skin source changes — pose/cape/pause handled below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uuid, username, skinUrl, effectiveWidth, effectiveHeight])
 
@@ -136,8 +166,9 @@ export function SkinViewer3D({
   useEffect(() => {
     const viewer = viewerRef.current
     if (!viewer) return
-    void viewer.loadSkin(resolveSkin(uuid, username, skinUrl))
-  }, [skinUrl, uuid, username])
+    viewer.autoRotate = !reduceMotion && active
+    viewer.renderPaused = !active
+  }, [reduceMotion, active])
 
   useEffect(() => {
     const viewer = viewerRef.current

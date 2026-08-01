@@ -14,6 +14,8 @@ export interface LauncherSettings {
   theme: PrimeThemeId
   backgroundNebula: boolean
   hardwareAccel: boolean
+  /** Low-end mode: skip heavy animations, pause skin auto-rotate, slower polls. */
+  performanceMode: boolean
   defaultRamMb: number
   performancePreset: PerformancePreset
   analytics: boolean
@@ -57,6 +59,7 @@ const DEFAULT_SETTINGS = (): LauncherSettings => ({
   theme: 'prime-crimson',
   backgroundNebula: false,
   hardwareAccel: true,
+  performanceMode: false,
   defaultRamMb: 4096,
   performancePreset: 'balanced',
   analytics: false,

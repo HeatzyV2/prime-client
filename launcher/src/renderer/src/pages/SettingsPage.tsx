@@ -37,6 +37,7 @@ interface SettingsState {
   theme: PrimeThemeId
   backgroundNebula: boolean
   hardwareAccel: boolean
+  performanceMode: boolean
   defaultRamMb: number
   defaultJavaPath: string | null
   performancePreset: PerformancePreset
@@ -89,6 +90,7 @@ export function SettingsPage() {
       theme: s.theme,
       backgroundNebula: s.backgroundNebula,
       hardwareAccel: s.hardwareAccel,
+      performanceMode: Boolean(s.performanceMode),
       defaultRamMb: s.defaultRamMb,
       defaultJavaPath: s.defaultJavaPath,
       performancePreset: s.performancePreset,
@@ -136,6 +138,7 @@ export function SettingsPage() {
       theme: next.theme,
       backgroundNebula: next.backgroundNebula,
       hardwareAccel: next.hardwareAccel,
+      performanceMode: next.performanceMode,
       defaultRamMb: next.defaultRamMb,
       defaultJavaPath: next.defaultJavaPath,
       performancePreset: next.performancePreset,
@@ -162,14 +165,15 @@ export function SettingsPage() {
       partial.wallpaperPath !== undefined ||
       partial.accentColor !== undefined ||
       clearedAccent.accentColor !== undefined ||
-      partial.uiSounds !== undefined
+      partial.uiSounds !== undefined ||
+      partial.performanceMode !== undefined
     ) {
       await refreshTheme()
     }
 
     setRestartRequired(Boolean(result.restartRequired))
     setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    window.setTimeout(() => setSaved(false), 2000)
   }
 
   async function handleCheckUpdate(force = true) {
@@ -423,6 +427,17 @@ export function SettingsPage() {
                   checked={settings.hardwareAccel}
                   onChange={(v) => void patch({ hardwareAccel: v })}
                   label={t('settings.hardwareAccel.toggle')}
+                />
+              </div>
+              <div className="settings__row">
+                <div>
+                  <div className="settings__label">{t('settings.performanceMode.label')}</div>
+                  <div className="settings__hint">{t('settings.performanceMode.hint')}</div>
+                </div>
+                <Toggle
+                  checked={settings.performanceMode}
+                  onChange={(v) => void patch({ performanceMode: v })}
+                  label={t('settings.performanceMode.toggle')}
                 />
               </div>
             </>

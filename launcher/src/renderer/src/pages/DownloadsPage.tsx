@@ -13,6 +13,8 @@ const STATUS_VARIANT: Record<string, 'default' | 'red' | 'success' | 'prime'> = 
   failed: 'red'
 }
 
+const ACTIVE_STATUSES = new Set(['downloading', 'queued', 'paused'])
+
 export function DownloadsPage() {
   const { t } = useI18n()
   const [tasks, setTasks] = useState<DownloadTask[]>([])
@@ -23,15 +25,21 @@ export function DownloadsPage() {
 
   useEffect(() => {
     void refresh()
-    const unsubscribe = window.primeLauncher.launch.onProgress(() => {
-      void refresh()
+    const unsubscribe = window.primeLauncher.launch.onProgress((payload) => {
+      if (payload.phase === 'download' || payload.phase === 'mods') {
+        void refresh()
+      }
     })
-    const timer = setInterval(() => void refresh(), 3000)
-    return () => {
-      unsubscribe()
-      clearInterval(timer)
-    }
+    return unsubscribe
   }, [refresh])
+
+  const hasActive = tasks.some((task) => ACTIVE_STATUSES.has(task.status))
+
+  useEffect(() => {
+    if (!hasActive) return
+    const timer = setInterval(() => void refresh(), 3000)
+    return () => clearInterval(timer)
+  }, [hasActive, refresh])
 
   return (
     <PageShell

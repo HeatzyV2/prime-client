@@ -159,6 +159,11 @@ export const fr: LocaleCatalog = {
       label: 'Accélération matérielle',
       toggle: 'Accélération matérielle'
     },
+    performanceMode: {
+      label: 'Mode performance',
+      hint: 'Pour les petits PC — moins d’animations, skin figé, sondages plus lents',
+      toggle: 'Mode performance'
+    },
     backgroundNebula: {
       label: 'Fond nébuleuse',
       hint: 'Fond animé débloqué dans la Boutique',
@@ -595,7 +600,8 @@ export const fr: LocaleCatalog = {
     installing: 'Installation…',
     importJar: 'Importer .jar',
     close: 'Fermer',
-    create: 'Créer'
+    create: 'Créer',
+    showAll: 'Tout afficher'
   },
   mods: {
     all: 'Tout',

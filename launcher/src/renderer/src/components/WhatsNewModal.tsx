@@ -67,6 +67,12 @@ export function WhatsNewModal({ entry, onClose }: WhatsNewModalProps) {
 
 /** In-app release notes keyed by launcher version. */
 export const WHATS_NEW_BY_VERSION: Record<string, string[]> = {
+  '2.4.1': [
+    'Faster startup — stores load in parallel, Discord RPC deferred until after window show',
+    'Performance mode in Settings — lighter animations, paused skin rotation, slower polls',
+    'Fewer freezes — process crash guards, smarter launch polling, SkinViewer pauses when off-screen',
+    'Lighter Home — lazy routes, CSS page fades, softer glow'
+  ],
   '2.4.0': [
     'Electron is back as the official launcher (stable Microsoft login via msmc)',
     'Same Prime UI — accounts, instances, cosmetics, Social Hub',

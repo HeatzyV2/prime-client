@@ -1,8 +1,9 @@
 .home {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 24px;
   min-height: calc(100vh - var(--titlebar-height) - 48px);
+  animation: page-shell-fade-in var(--duration-slow) var(--ease-out) both;
 }
 
 .home__alert,
@@ -44,13 +45,14 @@
 
 .home__character-glow {
   position: absolute;
-  width: 240px;
-  height: 200px;
-  bottom: 10px;
+  width: 200px;
+  height: 160px;
+  bottom: 16px;
   border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--prime-red-bright) 28%, transparent), transparent 70%);
-  filter: blur(12px);
+  background: radial-gradient(circle, color-mix(in srgb, var(--prime-red-bright) 18%, transparent), transparent 72%);
+  filter: blur(10px);
   pointer-events: none;
+  opacity: 0.85;
 }
 
 .home__body,

@@ -74,6 +74,15 @@ export function FriendsPage() {
   }, [refresh])
 
   useEffect(() => {
+    let debounceTimer: number | null = null
+    const scheduleRefresh = (): void => {
+      if (debounceTimer != null) window.clearTimeout(debounceTimer)
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null
+        void refresh()
+      }, 250)
+    }
+
     const unsub = window.primeLauncher.social.onEvent((event) => {
       if (
         event.t === 'presence' ||
@@ -107,7 +116,7 @@ export function FriendsPage() {
             setParty(event.party as typeof party)
           }
         }
-        void refresh()
+        scheduleRefresh()
         return
       }
       if (event.t === 'party') {
@@ -140,10 +149,13 @@ export function FriendsPage() {
           setJoinPrompt(addr)
           setParty((prev) => (prev ? { ...prev, serverAddress: addr } : { serverAddress: addr }))
         }
-        void refresh()
+        scheduleRefresh()
       }
     })
-    return unsub
+    return () => {
+      if (debounceTimer != null) window.clearTimeout(debounceTimer)
+      unsub()
+    }
   }, [refresh])
 
   async function handleAdd() {

@@ -6,6 +6,16 @@
   animation: page-shell-fade-in var(--duration-slow) var(--ease-out) both;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .page-shell {
+    animation: none;
+  }
+}
+
+html[data-reduce-motion='true'] .page-shell {
+  animation: none;
+}
+
 @keyframes page-shell-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }

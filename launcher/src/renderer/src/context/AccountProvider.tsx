@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { AuthResultDto, LaunchProgressDto, LaunchResultDto, SyncResultDto } from '@shared/ipc'
 import type { LauncherProfile, MinecraftAccount, PrimeAccount } from '@shared/types'
+import { useTheme } from '@renderer/context/ThemeProvider'
 
 interface AccountContextValue {
   loading: boolean
@@ -25,7 +26,10 @@ interface AccountContextValue {
 
 const AccountContext = createContext<AccountContextValue | null>(null)
 
+const IDLE_PHASES = new Set(['stopped', 'crashed', 'error'])
+
 export function AccountProvider({ children }: { children: ReactNode }) {
+  const { performanceMode } = useTheme()
   const [loading, setLoading] = useState(true)
   const [prime, setPrime] = useState<PrimeAccount | null>(null)
   const [accounts, setAccounts] = useState<MinecraftAccount[]>([])
@@ -67,14 +71,19 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     return unsubscribe
   }, [syncRunning])
 
-  // Process-truth poll — prevents "In game" when Minecraft already quit (or the reverse).
+  // Process-truth poll — faster while launching/in-game, slow when idle to spare IPC.
   useEffect(() => {
     void syncRunning()
+    const phase = launchProgress?.phase
+    const busy =
+      gameRunning ||
+      (phase != null && phase !== 'log' && !IDLE_PHASES.has(phase))
+    const intervalMs = busy ? (performanceMode ? 4000 : 2000) : performanceMode ? 15000 : 8000
     const id = window.setInterval(() => {
       void syncRunning()
-    }, 2000)
+    }, intervalMs)
     return () => window.clearInterval(id)
-  }, [syncRunning])
+  }, [syncRunning, gameRunning, launchProgress?.phase, performanceMode])
 
   const refresh = useCallback(async () => {
     const [p, list, active, prof] = await Promise.all([

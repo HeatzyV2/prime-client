@@ -13,7 +13,20 @@ if (!bootSettings.hardwareAccel) {
   app.disableHardwareAcceleration()
 }
 
+/** Keep the process alive on unexpected errors — log instead of silent death. */
+function installProcessGuards(): void {
+  process.on('uncaughtException', (error) => {
+    console.error('[prime] uncaughtException', error)
+  })
+  process.on('unhandledRejection', (reason) => {
+    console.error('[prime] unhandledRejection', reason)
+  })
+}
+
+installProcessGuards()
+
 let mainWindow: BrowserWindow | null = null
+let discordStarted = false
 
 function resolveWindowIcon(): string | undefined {
   const candidates = [
@@ -55,6 +68,8 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
     void openDevToolsIfNeeded()
+    // Non-critical: Discord RPC after first paint so startup stays responsive.
+    void startDiscordWhenReady()
   })
 
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -75,30 +90,43 @@ import { launcherDiscordService } from './services/LauncherDiscordService'
 import { minecraftEngine } from './minecraft/MinecraftEngine'
 import { socialService } from './services/SocialService'
 
+async function startDiscordWhenReady(): Promise<void> {
+  if (discordStarted) return
+  discordStarted = true
+  try {
+    await launcherDiscordService.start()
+  } catch (err) {
+    console.error('[prime] Discord RPC start failed', err)
+  }
+}
+
 app.whenReady().then(async () => {
   registerMediaProtocol()
-  await accountStore.load()
-  await instanceStore.load()
-  await ecosystemStore.load()
-  await settingsStore.load()
-  await downloadStore.load()
+
+  // Parallel store loads — independent JSON files, safe to race.
+  await Promise.all([
+    accountStore.load(),
+    instanceStore.load(),
+    ecosystemStore.load(),
+    settingsStore.load(),
+    downloadStore.load()
+  ])
+
   registerServiceHandlers()
   registerSocialEventBridge()
   registerWindowHandlers()
   createWindow()
 
+  // Deferred non-critical network — never block window creation.
   void socialService.ensureSession().catch(() => {
     // offline — social features degrade gracefully
   })
 
-  // Anonymous usage ping — fail silent
   void fetch(`${(process.env.PRIME_API_BASE || 'http://194.9.172.102:26005').replace(/\/$/, '')}/v1/stats/launch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ client: 'launcher' })
   }).catch(() => {})
-
-  await launcherDiscordService.start()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

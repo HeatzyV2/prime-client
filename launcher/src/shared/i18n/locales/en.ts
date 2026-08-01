@@ -157,6 +157,11 @@ export const en = {
       label: 'Hardware acceleration',
       toggle: 'Hardware acceleration'
     },
+    performanceMode: {
+      label: 'Performance mode',
+      hint: 'For low-end PCs — reduces animations, pauses skin rotation, slows status polling',
+      toggle: 'Performance mode'
+    },
     backgroundNebula: {
       label: 'Nebula background',
       hint: 'Animated space background from the Store',
@@ -593,7 +598,8 @@ export const en = {
     installing: 'Installing…',
     importJar: 'Import .jar',
     close: 'Close',
-    create: 'Create'
+    create: 'Create',
+    showAll: 'Show all'
   },
   mods: {
     all: 'All',

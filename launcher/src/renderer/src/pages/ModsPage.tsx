@@ -16,6 +16,7 @@ export function ModsPage() {
   const [filter, setFilter] = useState('all')
   const [showBrowse, setShowBrowse] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [showAllMods, setShowAllMods] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!instanceId) {
@@ -39,6 +40,11 @@ export function ModsPage() {
       return matchSearch && matchFilter
     })
   }, [mods, search, filter])
+
+  const visibleMods = useMemo(() => {
+    if (showAllMods || filtered.length <= 100) return filtered
+    return filtered.slice(0, 100)
+  }, [filtered, showAllMods])
 
   async function handleToggle(mod: ModEntry, enabled: boolean) {
     if (!instanceId) {
@@ -114,7 +120,7 @@ export function ModsPage() {
         <p className="text-caption">{t('empty.noMods')}</p>
       ) : (
         <div className="page-list">
-          {filtered.map((mod) => (
+          {visibleMods.map((mod) => (
             <div key={mod.id} className="list-row">
               <div className="list-row__icon">
                 <Puzzle size={18} />
@@ -137,6 +143,11 @@ export function ModsPage() {
               </div>
             </div>
           ))}
+          {!showAllMods && filtered.length > 100 && (
+            <Button variant="secondary" size="sm" onClick={() => setShowAllMods(true)}>
+              {t('actions.showAll')} ({filtered.length})
+            </Button>
+          )}
         </div>
       )}
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { Play, UserCog, Box, Shirt, ChevronRight, Globe, Users } from 'lucide-react'
 import { Badge, Button, Select } from '@renderer/design-system/components'
 import { useAccounts } from '@renderer/context/AccountProvider'
@@ -206,12 +206,7 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
   }
 
   return (
-    <motion.div
-      className="home"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.35 }}
-    >
+    <div className="home">
       {!activeAccount && (
         <div className="home__alert">
           <div>
@@ -471,6 +466,6 @@ export function DashboardPage({ news, servers }: DashboardPageProps) {
           />
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   )
 }

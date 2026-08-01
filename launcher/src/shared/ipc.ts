@@ -342,6 +342,8 @@ export interface LauncherSettingsDto {
   theme: import('./theme').PrimeThemeId
   backgroundNebula: boolean
   hardwareAccel: boolean
+  /** Low-end mode: lighter UI animations, pause skin auto-rotate, slower status polls. */
+  performanceMode: boolean
   defaultRamMb: number
   performancePreset: string
   analytics: boolean

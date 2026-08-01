@@ -48,6 +48,14 @@ export function SocialDrawer({ open, onClose }: SocialDrawerProps) {
 
   useEffect(() => {
     if (!open) return
+    let debounceTimer: number | null = null
+    const scheduleRefresh = (): void => {
+      if (debounceTimer != null) window.clearTimeout(debounceTimer)
+      debounceTimer = window.setTimeout(() => {
+        debounceTimer = null
+        void refresh()
+      }, 250)
+    }
     const unsub = window.primeLauncher.social.onEvent((event) => {
       if (
         event.t === 'presence' ||
@@ -59,10 +67,13 @@ export function SocialDrawer({ open, onClose }: SocialDrawerProps) {
         event.t === 'party' ||
         event.t === 'party_invite'
       ) {
-        void refresh()
+        scheduleRefresh()
       }
     })
-    return unsub
+    return () => {
+      if (debounceTimer != null) window.clearTimeout(debounceTimer)
+      unsub()
+    }
   }, [open, refresh])
 
   async function joinFriend(friend: FriendRow) {

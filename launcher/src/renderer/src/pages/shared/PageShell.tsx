@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { motion } from 'framer-motion'
 import './page-shell.css'
 
 interface PageShellProps {
@@ -9,14 +8,10 @@ interface PageShellProps {
   children: ReactNode
 }
 
+/** CSS-only page enter fade — avoids Framer Motion cost on every route. */
 export function PageShell({ title, subtitle, actions, children }: PageShellProps) {
   return (
-    <motion.div
-      className="page-shell"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-    >
+    <div className="page-shell">
       <header className="page-shell__header">
         <div>
           <h1 className="page-shell__title">{title}</h1>
@@ -25,6 +20,6 @@ export function PageShell({ title, subtitle, actions, children }: PageShellProps
         {actions && <div className="page-shell__actions">{actions}</div>}
       </header>
       {children}
-    </motion.div>
+    </div>
   )
 }

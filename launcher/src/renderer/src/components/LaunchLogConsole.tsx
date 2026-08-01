@@ -6,6 +6,9 @@ import './LaunchLogConsole.css'
 
 type LogFilter = 'all' | LaunchLogEntryDto['level']
 
+const ROW_HEIGHT = 22
+const OVERSCAN = 24
+
 function formatTime(iso: string): string {
   return iso.slice(11, 19)
 }
@@ -34,6 +37,8 @@ export function LaunchLogConsole() {
   const [filter, setFilter] = useState<LogFilter>('all')
   const [entries, setEntries] = useState<LaunchLogEntryDto[]>([])
   const [copied, setCopied] = useState(false)
+  const [scrollTop, setScrollTop] = useState(0)
+  const [viewHeight, setViewHeight] = useState(400)
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinnedBottom = useRef(true)
 
@@ -50,6 +55,17 @@ export function LaunchLogConsole() {
       unsubAppend()
       unsubReset()
     }
+  }, [])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      setViewHeight(el.clientHeight)
+    })
+    ro.observe(el)
+    setViewHeight(el.clientHeight)
+    return () => ro.disconnect()
   }, [])
 
   const counts = useMemo(() => {
@@ -78,6 +94,7 @@ export function LaunchLogConsole() {
       return
     }
     pinnedBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+    setScrollTop(el.scrollTop)
   }, [])
 
   const filterLabel = (key: LogFilter): string => {
@@ -104,6 +121,12 @@ export function LaunchLogConsole() {
     setCopied(true)
     window.setTimeout(() => setCopied(false), 2000)
   }, [filtered])
+
+  const total = filtered.length
+  const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN)
+  const visibleCount = Math.ceil(viewHeight / ROW_HEIGHT) + OVERSCAN * 2
+  const end = Math.min(total, start + visibleCount)
+  const windowed = filtered.slice(start, end)
 
   return (
     <section className="launch-log launch-log--page">
@@ -135,13 +158,21 @@ export function LaunchLogConsole() {
         {filtered.length === 0 ? (
           <p className="launch-log__empty">{t('logs.empty')}</p>
         ) : (
-          filtered.map((entry) => (
-            <div key={entry.id} className={`launch-log__line ${levelClass(entry.level)}`}>
-              <span className="launch-log__time">{formatTime(entry.timestamp)}</span>
-              <span className="launch-log__level">{entry.level.toUpperCase()}</span>
-              <span className="launch-log__msg">{entry.message}</span>
+          <div style={{ height: total * ROW_HEIGHT, position: 'relative' }}>
+            <div style={{ position: 'absolute', top: start * ROW_HEIGHT, left: 0, right: 0 }}>
+              {windowed.map((entry) => (
+                <div
+                  key={entry.id}
+                  className={`launch-log__line ${levelClass(entry.level)}`}
+                  style={{ height: ROW_HEIGHT }}
+                >
+                  <span className="launch-log__time">{formatTime(entry.timestamp)}</span>
+                  <span className="launch-log__level">{entry.level.toUpperCase()}</span>
+                  <span className="launch-log__msg">{entry.message}</span>
+                </div>
+              ))}
             </div>
-          ))
+          </div>
         )}
       </div>
     </section>
