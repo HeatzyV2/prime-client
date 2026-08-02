@@ -117,11 +117,16 @@ public final class VoiceChatModule extends Module {
         }
         syncSettings();
         applyGroupActions();
-        voice.start(adapter);
+        // Solo worlds have no peers — opening mic/speakers here can hang Save & Quit
+        // when JavaSound drain/close blocks the disconnect thread.
+        if (adapter.isMultiplayer()) {
+            voice.start(adapter);
+        }
     }
 
     private void onWorldLeave() {
-        voice.stop();
+        // Must stay fast: WorldLeave runs inside Minecraft.disconnect().
+        voice.stopAsync();
     }
 
     private void onTick() {

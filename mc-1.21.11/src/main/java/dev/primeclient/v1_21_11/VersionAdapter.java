@@ -237,7 +237,9 @@ public final class VersionAdapter implements MinecraftAdapter {
     @Override
     public void disconnectToTitle() {
         Minecraft mc = Minecraft.getInstance();
-        boolean local = mc.isLocalServer();
+        // Prefer hasSingleplayerServer(): isLocalServer() can be false mid-teardown
+        // while the integrated server is still alive and needs a proper save halt.
+        boolean local = mc.isLocalServer() || mc.hasSingleplayerServer();
         if (local) {
             // Shows saving progress then TitleScreen — TitleScreenMixin redirects to Prime.
             mc.disconnectWithSavingScreen();

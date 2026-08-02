@@ -22,6 +22,7 @@ import dev.primeclient.core.event.EventBus;
 import dev.primeclient.core.event.WorldJoinEvent;
 import dev.primeclient.core.event.WorldLeaveEvent;
 import dev.primeclient.core.module.ModuleToggleEvent;
+import dev.primeclient.core.gui.BlurBackdrop;
 import dev.primeclient.core.gui.FavoritesManager;
 import dev.primeclient.core.gui.TooltipRenderer;
 import dev.primeclient.core.gui.clickgui.ClickGui;
@@ -29,6 +30,7 @@ import dev.primeclient.core.gui.menu.LoadingOverlay;
 import dev.primeclient.core.gui.menu.OnboardingManager;
 import dev.primeclient.core.hud.HudManager;
 import dev.primeclient.core.hud.editor.HudEditor;
+import dev.primeclient.core.hud.editor.HudEditorState;
 import dev.primeclient.core.hud.elements.NotificationsElement;
 import dev.primeclient.core.hud.elements.WatermarkElement;
 import dev.primeclient.core.hud.vanilla.VanillaHudElements;
@@ -268,14 +270,59 @@ public final class PrimeClient {
     }
 
     public void onWorldLeave() {
-        crosshairProfiles.saveCurrentForServer(adapter.serverAddress());
-        if (cloudSync.autoSync() && account.loggedIn()) {
-            cloudSync.uploadNow(profiles.activeProfile());
+        // Keep this path allocation-light and non-blocking: Fabric fires DISCONNECT
+        // inside Minecraft.disconnect(), which must still halt the integrated server.
+        try {
+            HudEditorState.setActive(false);
+            BlurBackdrop.setActive(false);
+        } catch (Exception ignored) {
         }
-        presence.onWorldLeave();
-        social.onWorldLeave();
-        serverApi.onWorldLeave();
-        eventBus.post(WorldLeaveEvent.INSTANCE);
+        try {
+            crosshairProfiles.saveCurrentForServer(adapter.serverAddress());
+        } catch (Exception e) {
+            LOGGER.warn("Crosshair profile save on leave failed", e);
+        }
+        try {
+            presence.onWorldLeave();
+        } catch (Exception e) {
+            LOGGER.warn("Presence leave failed", e);
+        }
+        try {
+            serverApi.onWorldLeave();
+        } catch (Exception e) {
+            LOGGER.warn("Server API leave failed", e);
+        }
+        try {
+            eventBus.post(WorldLeaveEvent.INSTANCE);
+        } catch (Exception e) {
+            LOGGER.warn("WorldLeave listeners failed", e);
+        }
+        // Defer network / disk work off the disconnect thread.
+        final boolean syncCloud = cloudSync.autoSync() && account.loggedIn();
+        final String profile = profiles.activeProfile();
+        Thread defer = new Thread(() -> {
+            try {
+                social.onWorldLeave();
+            } catch (Exception e) {
+                LOGGER.warn("Social leave failed", e);
+            }
+            if (syncCloud) {
+                try {
+                    cloudSync.uploadNow(profile);
+                } catch (Exception e) {
+                    LOGGER.warn("Cloud sync on leave failed", e);
+                }
+            }
+            try {
+                if (clipRecorder.isRecording()) {
+                    clipRecorder.stop(adapter);
+                }
+            } catch (Exception e) {
+                LOGGER.warn("Clip recorder stop on leave failed", e);
+            }
+        }, "Prime-WorldLeave");
+        defer.setDaemon(true);
+        defer.start();
     }
 
     public void shutdown() {

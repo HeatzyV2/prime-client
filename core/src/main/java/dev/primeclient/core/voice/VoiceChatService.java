@@ -226,12 +226,35 @@ public final class VoiceChatService {
 
     public void stop() {
         active.set(false);
-        capture.close();
-        playback.close();
-        relay.disconnect("stop");
+        try {
+            capture.close();
+        } catch (Exception e) {
+            LOGGER.debug("Voice capture close: {}", e.getMessage());
+        }
+        try {
+            playback.close();
+        } catch (Exception e) {
+            LOGGER.debug("Voice playback close: {}", e.getMessage());
+        }
+        try {
+            relay.disconnect("stop");
+        } catch (Exception e) {
+            LOGGER.debug("Voice relay disconnect: {}", e.getMessage());
+        }
         participants.clear();
         state = State.OFF;
         statusMessage = "";
+    }
+
+    /**
+     * Non-blocking stop for world leave / disconnect. Audio line close can stall
+     * the client thread and freeze singleplayer Save & Quit.
+     */
+    public void stopAsync() {
+        active.set(false);
+        Thread t = new Thread(this::stop, "Prime-Voice-Stop");
+        t.setDaemon(true);
+        t.start();
     }
 
     public void tick(MinecraftAdapter adapter, boolean talkKeyDown) {

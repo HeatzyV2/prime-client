@@ -178,3 +178,46 @@ textarea.settings__input {
   background: var(--swatch, var(--prime-red));
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
 }
+
+.settings--skeleton {
+  pointer-events: none;
+}
+
+.settings__skel-nav,
+.settings__skel-row {
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: settings-skel 1.1s ease-in-out infinite;
+}
+
+.settings__skel-nav {
+  height: 34px;
+  margin-bottom: 2px;
+}
+
+.settings__skel-row {
+  height: 52px;
+  margin-bottom: 8px;
+}
+
+@keyframes settings-skel {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings__skel-nav,
+  .settings__skel-row {
+    animation: none;
+  }
+}

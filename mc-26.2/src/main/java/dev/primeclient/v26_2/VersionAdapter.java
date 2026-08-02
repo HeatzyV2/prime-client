@@ -241,7 +241,7 @@ public final class VersionAdapter implements MinecraftAdapter {
     @Override
     public void disconnectToTitle() {
         Minecraft mc = Minecraft.getInstance();
-        boolean local = mc.isLocalServer();
+        boolean local = mc.isLocalServer() || mc.hasSingleplayerServer();
         if (local) {
             mc.disconnectWithSavingScreen();
         } else {

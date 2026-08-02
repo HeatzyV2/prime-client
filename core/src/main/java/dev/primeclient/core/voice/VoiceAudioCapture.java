@@ -57,10 +57,31 @@ final class VoiceAudioCapture implements AutoCloseable {
     @Override
     public void close() {
         running.set(false);
-        if (line != null) {
-            line.stop();
-            line.close();
-            line = null;
+        TargetDataLine current = line;
+        line = null;
+        if (current == null) {
+            return;
+        }
+        try {
+            current.stop();
+        } catch (Exception ignored) {
+        }
+        try {
+            current.flush();
+        } catch (Exception ignored) {
+        }
+        try {
+            current.close();
+        } catch (Exception ignored) {
+        }
+        Thread t = thread;
+        thread = null;
+        if (t != null && t.isAlive() && t != Thread.currentThread()) {
+            try {
+                t.join(250);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 }

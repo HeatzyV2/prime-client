@@ -82,11 +82,24 @@ final class VoiceAudioPlayback implements AutoCloseable {
     @Override
     public void close() {
         pending.clear();
-        if (line != null) {
-            line.drain();
-            line.stop();
-            line.close();
-            line = null;
+        SourceDataLine current = line;
+        line = null;
+        if (current == null) {
+            return;
+        }
+        // Never call drain() here — it can block forever on some Windows drivers
+    // and freezes singleplayer Save & Quit (disconnect runs on the client thread).
+        try {
+            current.stop();
+        } catch (Exception ignored) {
+        }
+        try {
+            current.flush();
+        } catch (Exception ignored) {
+        }
+        try {
+            current.close();
+        } catch (Exception ignored) {
         }
     }
 }

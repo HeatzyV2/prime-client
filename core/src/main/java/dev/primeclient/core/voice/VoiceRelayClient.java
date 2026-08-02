@@ -124,11 +124,17 @@ final class VoiceRelayClient implements WebSocket.Listener {
                 ws.sendText(leave.toString(), true);
             } catch (Exception ignored) {
             }
-            ws.sendClose(WebSocket.NORMAL_CLOSURE, reason);
+            try {
+                ws.sendClose(WebSocket.NORMAL_CLOSURE, reason);
+            } catch (Exception ignored) {
+            }
         }
         participants.clear();
         if (listener != null) {
-            listener.onDisconnected(reason);
+            try {
+                listener.onDisconnected(reason);
+            } catch (Exception ignored) {
+            }
         }
     }
 
