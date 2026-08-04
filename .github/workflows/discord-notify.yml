@@ -1,0 +1,78 @@
+name: Notify Discord
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to announce (e.g. v2.4.3)
+        required: true
+        type: string
+
+jobs:
+  notify:
+    runs-on: windows-latest
+    steps:
+      - name: Post Discord embed
+        shell: pwsh
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:DISCORD_WEBHOOK)) {
+            Write-Host "DISCORD_RELEASE_WEBHOOK secret not set"
+            exit 1
+          }
+
+          $tag = $env:TAG.Trim()
+          if (-not $tag.StartsWith("v")) { $tag = "v$tag" }
+
+          $headers = @{
+            Authorization = "Bearer $($env:GITHUB_TOKEN)"
+            Accept = "application/vnd.github+json"
+            "X-GitHub-Api-Version" = "2022-11-28"
+          }
+
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$($env:REPO)/releases/tags/$tag" -Headers $headers
+          $releaseUrl = [string]$release.html_url
+          $body = if ($release.body) { [string]$release.body } else { "New Prime Client build is live." }
+          if ($body.Length -gt 1800) { $body = $body.Substring(0, 1800) + "…" }
+
+          $assetLines = New-Object System.Collections.Generic.List[string]
+          foreach ($asset in @($release.assets)) {
+            if ($asset.name -and $asset.browser_download_url) {
+              $assetLines.Add("[$($asset.name)]($($asset.browser_download_url))")
+            }
+          }
+          $assetsField = if ($assetLines.Count -gt 0) {
+            ($assetLines | Select-Object -First 8) -join "`n"
+          } else {
+            "[Open release]($releaseUrl)"
+          }
+          if ($assetsField.Length -gt 1000) { $assetsField = $assetsField.Substring(0, 1000) + "…" }
+
+          $logo = "https://raw.githubusercontent.com/HeatzyV2/prime-client/main/website/public/logo.png"
+          $payload = @{
+            username = "Prime Client"
+            avatar_url = $logo
+            embeds = @(
+              @{
+                title = "Prime Client Update — $tag"
+                description = $body
+                url = $releaseUrl
+                color = 14758190
+                thumbnail = @{ url = $logo }
+                fields = @(
+                  @{ name = "Version"; value = $tag; inline = $true }
+                  @{ name = "Release"; value = "[GitHub]($releaseUrl)"; inline = $true }
+                  @{ name = "Downloads"; value = $assetsField; inline = $false }
+                )
+                footer = @{ text = "Prime Client • red / black" }
+              }
+            )
+          }
+
+          $json = $payload | ConvertTo-Json -Depth 8 -Compress
+          Invoke-RestMethod -Method Post -Uri $env:DISCORD_WEBHOOK -ContentType "application/json" -Body $json | Out-Null
+          Write-Host "Discord notification sent for $tag"
