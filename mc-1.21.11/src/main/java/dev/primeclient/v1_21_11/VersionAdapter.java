@@ -119,6 +119,30 @@ public final class VersionAdapter implements MinecraftAdapter {
     }
 
     @Override
+    public double playerRenderX() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return 0;
+        }
+        float pt = renderPartialTick();
+        return player.xo + (player.getX() - player.xo) * pt;
+    }
+
+    @Override
+    public double playerRenderZ() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return 0;
+        }
+        float pt = renderPartialTick();
+        return player.zo + (player.getZ() - player.zo) * pt;
+    }
+
+    private static float renderPartialTick() {
+        return Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+    }
+
+    @Override
     public void runOnClientThread(Runnable task) {
         Minecraft.getInstance().execute(task);
     }
@@ -1492,8 +1516,9 @@ public final class VersionAdapter implements MinecraftAdapter {
             return false;
         }
         var level = mc.level;
-        double originX = player.getX();
-        double originZ = player.getZ();
+        float pt = renderPartialTick();
+        double originX = player.xo + (player.getX() - player.xo) * pt;
+        double originZ = player.zo + (player.getZ() - player.zo) * pt;
         float yaw = player.getYRot();
         double rad = Math.toRadians(yaw);
         float sin = (float) Math.sin(rad);
@@ -1537,6 +1562,9 @@ public final class VersionAdapter implements MinecraftAdapter {
         if (cap <= 0 || range <= 0f) {
             return 0;
         }
+        float pt = renderPartialTick();
+        double playerX = player.xo + (player.getX() - player.xo) * pt;
+        double playerZ = player.zo + (player.getZ() - player.zo) * pt;
         float yaw = player.getYRot();
         double rad = Math.toRadians(yaw);
         float sin = (float) Math.sin(rad);
@@ -1551,8 +1579,10 @@ public final class VersionAdapter implements MinecraftAdapter {
             if (entity == player || !(entity instanceof net.minecraft.world.entity.LivingEntity)) {
                 continue;
             }
-            double dx = entity.getX() - player.getX();
-            double dz = entity.getZ() - player.getZ();
+            double ex = entity.xo + (entity.getX() - entity.xo) * pt;
+            double ez = entity.zo + (entity.getZ() - entity.zo) * pt;
+            double dx = ex - playerX;
+            double dz = ez - playerZ;
             if (dx * dx + dz * dz > rangeSq) {
                 continue;
             }

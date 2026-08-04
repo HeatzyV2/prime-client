@@ -16,15 +16,19 @@ import dev.primeclient.core.util.ColorUtil;
 
 /**
  * Circular terrain minimap with entity dots, north badge, and optional mark.
- * Terrain is cached and throttled; entity dots refresh every frame.
+ * Terrain cache is throttled; camera scroll, yaw, and entity dots update every frame.
  */
 public final class MinimapModule extends Module {
 
     private static final int PRIME_RED = 0xFFE11D2E;
-    private static final long SAMPLE_INTERVAL_MS = 300L;
+    /** Base terrain rebuild interval — scroll/yaw stay continuous between rebuilds. */
+    private static final long SAMPLE_INTERVAL_MS = 120L;
+    private static final long SAMPLE_INTERVAL_FAST_MS = 80L;
     private static final int MAX_ENTITIES = 64;
     /** Cap terrain buffer side so dense sampling stays FPS-friendly. */
     private static final int MAX_TERRAIN_SIDE = 161;
+    private static final float YAW_SMOOTH_PER_SEC = 18f;
+    private static final float ENTITY_SMOOTH_PER_SEC = 22f;
 
     private final IntSetting size = addSetting(new IntSetting(
             "size", "Size", "Minimap diameter in pixels", 96, 64, 160));
@@ -109,7 +113,6 @@ public final class MinimapModule extends Module {
         private int terrainSide;
         private int lastRadius = -1;
         private int lastDensity = -1;
-        private boolean lastRotate;
         private long lastSampleMillis;
         private double lastSampleX = Double.NaN;
         private double lastSampleZ = Double.NaN;
@@ -117,7 +120,15 @@ public final class MinimapModule extends Module {
         private final float[] entX = new float[MAX_ENTITIES];
         private final float[] entZ = new float[MAX_ENTITIES];
         private final byte[] entType = new byte[MAX_ENTITIES];
+        private final float[] entDispX = new float[MAX_ENTITIES];
+        private final float[] entDispZ = new float[MAX_ENTITIES];
+        private final byte[] entDispType = new byte[MAX_ENTITIES];
         private int entCount;
+        private int entDispCount;
+
+        private float smoothYaw;
+        private boolean smoothYawInit;
+        private long lastRenderMillis;
 
         Element(ThemeManager themes, MinecraftAdapter adapter,
                 IntSetting size, IntSetting zoom,
@@ -153,9 +164,17 @@ public final class MinimapModule extends Module {
             Theme theme = themes.active();
             int accent = theme.accent() != 0 ? theme.accent() : PRIME_RED;
 
+            float dt = 1f / 60f;
+            if (lastRenderMillis > 0L) {
+                dt = Math.clamp((nowMillis - lastRenderMillis) / 1000f, 0.001f, 0.1f);
+            }
+            lastRenderMillis = nowMillis;
+
             drawFrame(ctx, diameter, radiusPx, accent);
 
             if (!adapter.hasPlayer() || !adapter.isInGame()) {
+                smoothYawInit = false;
+                entDispCount = 0;
                 drawPlayerArrow(ctx, radiusPx, radiusPx, accent);
                 return;
             }
@@ -163,15 +182,67 @@ public final class MinimapModule extends Module {
             int blockRadius = blockRadius();
             int density = sampleDensity(blockRadius);
             boolean rotate = rotateWithPlayer.get();
-            maybeResampleTerrain(nowMillis, blockRadius, density, rotate);
-            drawTerrain(ctx, diameter, radiusPx);
+            updateSmoothYaw(dt);
+            maybeResampleTerrain(nowMillis, blockRadius, density);
+
+            float scrollPxX = 0f;
+            float scrollPxZ = 0f;
+            if (terrain != null && terrainSide > 0 && !Double.isNaN(lastSampleX)) {
+                float pixelsPerBlock = (diameter / (float) terrainSide) * density;
+                scrollPxX = (float) ((adapter.playerRenderX() - lastSampleX) * pixelsPerBlock);
+                scrollPxZ = (float) ((adapter.playerRenderZ() - lastSampleZ) * pixelsPerBlock);
+            }
+
+            if (rotate) {
+                // North-up cache; rotate so look direction faces screen-up (matches baked convention).
+                float rot = -smoothYaw + 180f;
+                ctx.pushTransform(radiusPx, radiusPx, 1f, rot, 0f, 0f);
+                drawTerrain(ctx, diameter, radiusPx, scrollPxX, scrollPxZ, true);
+                ctx.popTransform();
+            } else {
+                drawTerrain(ctx, diameter, radiusPx, scrollPxX, scrollPxZ, false);
+            }
 
             float range = blockRadius + 2f;
+            // Entities use live look-relative coords when rotating (drawn in screen space).
             entCount = adapter.minimapSampleEntities(range, rotate, entX, entZ, entType);
+            smoothEntities(dt);
             drawEntities(ctx, diameter, radiusPx, blockRadius);
             drawMark(ctx, diameter, radiusPx, blockRadius, rotate, accent);
             drawNorth(ctx, diameter, radiusPx, rotate, accent);
             drawPlayerArrow(ctx, radiusPx, radiusPx, accent);
+        }
+
+        private void updateSmoothYaw(float dt) {
+            float target = adapter.playerYaw();
+            if (!smoothYawInit) {
+                smoothYaw = target;
+                smoothYawInit = true;
+                return;
+            }
+            float delta = wrapDegrees(target - smoothYaw);
+            float t = 1f - (float) Math.exp(-YAW_SMOOTH_PER_SEC * dt);
+            smoothYaw += delta * t;
+            smoothYaw = wrapDegrees(smoothYaw);
+        }
+
+        private void smoothEntities(float dt) {
+            float t = 1f - (float) Math.exp(-ENTITY_SMOOTH_PER_SEC * dt);
+            int n = entCount;
+            for (int i = 0; i < n; i++) {
+                if (i < entDispCount
+                        && entDispType[i] == entType[i]
+                        && Math.abs(entX[i] - entDispX[i]) < 8f
+                        && Math.abs(entZ[i] - entDispZ[i]) < 8f) {
+                    entDispX[i] += (entX[i] - entDispX[i]) * t;
+                    entDispZ[i] += (entZ[i] - entDispZ[i]) * t;
+                } else {
+                    entDispX[i] = entX[i];
+                    entDispZ[i] = entZ[i];
+                }
+                entDispType[i] = entType[i];
+            }
+            entDispCount = n;
         }
 
         private int blockRadius() {
@@ -205,15 +276,18 @@ public final class MinimapModule extends Module {
                     ColorUtil.withAlpha(accent, 0.92f), 0x00000000);
         }
 
-        private void maybeResampleTerrain(long nowMillis, int blockRadius, int density, boolean rotate) {
-            boolean moved = Double.isNaN(lastSampleX)
-                    || Math.abs(adapter.playerX() - lastSampleX) >= 1.25
-                    || Math.abs(adapter.playerZ() - lastSampleZ) >= 1.25;
-            boolean settingsChanged = blockRadius != lastRadius
-                    || density != lastDensity
-                    || rotate != lastRotate;
-            boolean due = nowMillis - lastSampleMillis >= SAMPLE_INTERVAL_MS;
-            if (!moved && !settingsChanged && !due && terrain != null) {
+        private void maybeResampleTerrain(long nowMillis, int blockRadius, int density) {
+            // Always sample north-up; rotation is applied at draw time for smooth yaw.
+            boolean settingsChanged = blockRadius != lastRadius || density != lastDensity;
+            double px = adapter.playerRenderX();
+            double pz = adapter.playerRenderZ();
+            double moved = Double.isNaN(lastSampleX)
+                    ? Double.POSITIVE_INFINITY
+                    : Math.hypot(px - lastSampleX, pz - lastSampleZ);
+            boolean teleported = moved > Math.max(8.0, blockRadius * 0.75);
+            long interval = moved > 2.5 ? SAMPLE_INTERVAL_FAST_MS : SAMPLE_INTERVAL_MS;
+            boolean due = nowMillis - lastSampleMillis >= interval;
+            if (!settingsChanged && !teleported && !due && terrain != null) {
                 return;
             }
             int side = blockRadius * 2 * density + 1;
@@ -221,17 +295,20 @@ public final class MinimapModule extends Module {
                 terrain = new int[side * side];
                 terrainSide = side;
             }
-            if (adapter.minimapSampleSurface(blockRadius, density, rotate, terrain)) {
+            if (adapter.minimapSampleSurface(blockRadius, density, false, terrain)) {
                 lastSampleMillis = nowMillis;
-                lastSampleX = adapter.playerX();
-                lastSampleZ = adapter.playerZ();
+                lastSampleX = px;
+                lastSampleZ = pz;
                 lastRadius = blockRadius;
                 lastDensity = density;
-                lastRotate = rotate;
             }
         }
 
-        private void drawTerrain(RenderContext ctx, int diameter, int radiusPx) {
+        /**
+         * @param centered when true, draw coords are relative to map center (0,0) for rotation pivot
+         */
+        private void drawTerrain(RenderContext ctx, int diameter, int radiusPx,
+                                 float scrollPxX, float scrollPxZ, boolean centered) {
             if (terrain == null || terrainSide <= 0) {
                 return;
             }
@@ -241,22 +318,23 @@ public final class MinimapModule extends Module {
             float rInner = rOuter - edgeSoft;
             float rOuter2 = rOuter * rOuter;
             float rInner2 = rInner * rInner;
+            float origin = centered ? -radiusPx : 0f;
 
             for (int ty = 0; ty < terrainSide; ty++) {
                 int row = ty * terrainSide;
                 int runColor = 0;
                 int runStartSx = 0;
                 boolean haveRun = false;
-                int sy = Math.round(ty * scale);
-                int sh = Math.max(1, Math.round((ty + 1) * scale) - sy);
-                float cy = sy + sh * 0.5f - radiusPx;
+                int sy = Math.round(ty * scale - scrollPxZ + origin);
+                int sh = Math.max(1, Math.round((ty + 1) * scale - scrollPxZ + origin) - sy);
+                float cy = (sy - origin) + sh * 0.5f - radiusPx;
 
                 for (int tx = 0; tx <= terrainSide; tx++) {
                     int color = 0;
-                    int sx = Math.round(tx * scale);
+                    int sx = Math.round(tx * scale - scrollPxX + origin);
                     if (tx < terrainSide) {
                         color = terrain[row + tx];
-                        float cx = sx + scale * 0.5f - radiusPx;
+                        float cx = (sx - origin) + scale * 0.5f - radiusPx;
                         float d2 = cx * cx + cy * cy;
                         if (d2 > rOuter2) {
                             color = 0;
@@ -286,8 +364,8 @@ public final class MinimapModule extends Module {
         private void drawEntities(RenderContext ctx, int diameter, int radiusPx, int blockRadius) {
             float scale = diameter / (float) (blockRadius * 2 + 1);
             int r2 = (radiusPx - 4) * (radiusPx - 4);
-            for (int i = 0; i < entCount; i++) {
-                byte type = entType[i];
+            for (int i = 0; i < entDispCount; i++) {
+                byte type = entDispType[i];
                 if (type == MinecraftAdapter.MINIMAP_ENTITY_PLAYER && !showPlayers.get()) {
                     continue;
                 }
@@ -295,8 +373,8 @@ public final class MinimapModule extends Module {
                         || type == MinecraftAdapter.MINIMAP_ENTITY_PASSIVE) && !showMobs.get()) {
                     continue;
                 }
-                float mx = entX[i];
-                float mz = entZ[i];
+                float mx = entDispX[i];
+                float mz = entDispZ[i];
                 int sx = radiusPx + Math.round(mx * scale);
                 int sy = radiusPx + Math.round(mz * scale);
                 int dx = sx - radiusPx;
@@ -312,7 +390,6 @@ public final class MinimapModule extends Module {
                     default -> 0xFFFBBF24;
                 };
                 if (player) {
-                    // Larger diamond with dark outline
                     drawDiamond(ctx, sx, sy, 3, 0xE0000000);
                     drawDiamond(ctx, sx, sy, 2, color);
                     ctx.fillRect(sx, sy, 1, 1, 0xFFFFFFFF);
@@ -336,12 +413,12 @@ public final class MinimapModule extends Module {
             if (!showMark.get() || !owner.hasMark()) {
                 return;
             }
-            double dx = owner.markX() - adapter.playerX();
-            double dz = owner.markZ() - adapter.playerZ();
+            double dx = owner.markX() - adapter.playerRenderX();
+            double dz = owner.markZ() - adapter.playerRenderZ();
             float mx;
             float mz;
             if (rotate) {
-                float yaw = adapter.playerYaw();
+                float yaw = smoothYaw;
                 double rad = Math.toRadians(yaw);
                 float sin = (float) Math.sin(rad);
                 float cos = (float) Math.cos(rad);
@@ -372,7 +449,7 @@ public final class MinimapModule extends Module {
         private void drawNorth(RenderContext ctx, int diameter, int radiusPx, boolean rotate, int accent) {
             float angle;
             if (rotate) {
-                angle = -adapter.playerYaw() - 180f;
+                angle = -smoothYaw - 180f;
             } else {
                 angle = -90f;
             }
@@ -392,13 +469,12 @@ public final class MinimapModule extends Module {
             if (rotateWithPlayer.get()) {
                 rad = Math.toRadians(-90); // tip up when map rotates with look
             } else if (adapter.hasPlayer()) {
-                rad = Math.toRadians(adapter.playerYaw() + 90);
+                rad = Math.toRadians(smoothYawInit ? smoothYaw + 90 : adapter.playerYaw() + 90);
             } else {
                 rad = Math.toRadians(-90);
             }
             float cos = (float) Math.cos(rad);
             float sin = (float) Math.sin(rad);
-            // Tip / wings in local “up” space, then rotate
             float tipLen = 6.5f;
             float wingLen = 4.2f;
             float wingSpread = 2.6f;
@@ -408,10 +484,8 @@ public final class MinimapModule extends Module {
             int leftY = cy + Math.round(sin * -wingLen + cos * wingSpread);
             int rightX = cx + Math.round(cos * -wingLen + (-sin) * -wingSpread);
             int rightY = cy + Math.round(sin * -wingLen + cos * -wingSpread);
-            // Outline then fill
             fillTriangle(ctx, tipX, tipY, leftX, leftY, rightX, rightY, 0xF0000000, 1);
             fillTriangle(ctx, tipX, tipY, leftX, leftY, rightX, rightY, 0xFFF5F5F7, 0);
-            // Accent tip notch
             int midX = (leftX + rightX) / 2;
             int midY = (leftY + rightY) / 2;
             int notchX = (tipX * 2 + midX) / 3;
@@ -459,6 +533,17 @@ public final class MinimapModule extends Module {
             int x = Math.round(x0 + (x1 - x0) * t);
             span[0] = Math.min(span[0], x);
             span[1] = Math.max(span[1], x);
+        }
+
+        private static float wrapDegrees(float degrees) {
+            float d = degrees % 360f;
+            if (d >= 180f) {
+                d -= 360f;
+            }
+            if (d < -180f) {
+                d += 360f;
+            }
+            return d;
         }
     }
 }

@@ -38,6 +38,19 @@ public interface MinecraftAdapter {
 
     double playerZ();
 
+    /**
+     * Render-tick interpolated player X for smooth HUD (minimap scroll, etc.).
+     * Defaults to {@link #playerX()}.
+     */
+    default double playerRenderX() {
+        return playerX();
+    }
+
+    /** Render-tick interpolated player Z. Defaults to {@link #playerZ()}. */
+    default double playerRenderZ() {
+        return playerZ();
+    }
+
     void runOnClientThread(Runnable task);
 
     void openHudEditor();
