@@ -19,10 +19,24 @@ git push origin v0.8.1
 
 La workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml) build automatiquement :
 
-- **Prime Client** mod jar (`mc-1.21.11`)
+- **Prime Client** mod jar (`mc-1.21.11` + `mc-26.2`)
 - **Prime Launcher** installeur Windows (`.exe`)
+- **Notification Discord** (embed stylé) si le secret webhook est configuré
 
 Assets attachés à la GitHub Release du tag.
+
+## Discord release webhook
+
+Après chaque tag `v*`, la CI peut poster un embed « Prime Client Update » (couleur `#E11D2E`, logo, liens assets).
+
+1. Crée un webhook Discord (salon → Intégrations → Webhooks).
+2. Sur le repo GitHub : **Settings → Secrets and variables → Actions → New repository secret**
+3. Nom : `DISCORD_RELEASE_WEBHOOK`
+4. Valeur : l’URL complète du webhook (`https://discord.com/api/webhooks/...`)
+
+Si le secret est **absent ou vide**, l’étape Discord est **ignorée** (`continue-on-error`) et la release GitHub réussit quand même.
+
+Ne committez **jamais** l’URL webhook dans le dépôt.
 
 ## Site web (GitHub Pages)
 

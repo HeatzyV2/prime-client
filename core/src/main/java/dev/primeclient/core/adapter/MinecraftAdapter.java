@@ -712,6 +712,38 @@ public interface MinecraftAdapter {
     default void spawnHitParticles(double x, double y, double z, int color, float size, int count) {
     }
 
+    // --- minimap ---
+
+    /** Other players on the minimap. */
+    byte MINIMAP_ENTITY_PLAYER = 0;
+    /** Hostile mobs (Enemy). */
+    byte MINIMAP_ENTITY_HOSTILE = 1;
+    /** Passive / ambient creatures. */
+    byte MINIMAP_ENTITY_PASSIVE = 2;
+
+    /**
+     * Samples surface map-colors into a square buffer centered on the player.
+     * {@code outArgb.length} must equal {@code side * side} where {@code side = radius * 2 + 1}.
+     * When {@code rotateWithYaw} is true, the top of the buffer faces the player's look direction;
+     * otherwise north is up.
+     *
+     * @return {@code false} when no world/player is available
+     */
+    default boolean minimapSampleSurface(int radius, boolean rotateWithYaw, int[] outArgb) {
+        return false;
+    }
+
+    /**
+     * Fills relative entity positions (blocks) around the player for the minimap.
+     * Coordinates use the same orientation as {@link #minimapSampleSurface}.
+     * Type codes: {@link #MINIMAP_ENTITY_PLAYER}, {@link #MINIMAP_ENTITY_HOSTILE},
+     * {@link #MINIMAP_ENTITY_PASSIVE}. Returns the number of entities written.
+     */
+    default int minimapSampleEntities(float range, boolean rotateWithYaw,
+                                      float[] outRelX, float[] outRelZ, byte[] outType) {
+        return 0;
+    }
+
     /** Resolves a Prime Client translation key using the active Minecraft language. */
     default String translate(String key, String fallback, Object... args) {
         if (args == null || args.length == 0) {

@@ -1,7 +1,7 @@
 {
-  "mod": "2.2.1",
-  "launcher": "2.4.2",
+  "mod": "2.2.2",
+  "launcher": "2.4.3",
   "backend": "2.2.0",
   "apiBase": "http://194.9.172.102:26005",
-  "notes": "Launcher 2.4.2 = Settings lazy tabs / deferred IPC / skeleton. Mod 2.2.1 = fix solo Save & Quit hang (JavaSound drain + non-blocking world leave)."
+  "notes": "Launcher 2.4.3 = Discord release webhook CI. Mod 2.2.2 = Minimap QoL module (terrain + entities HUD)."
 }

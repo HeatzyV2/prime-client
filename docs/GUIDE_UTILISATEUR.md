@@ -86,7 +86,7 @@ Right Shift = menu • H = HUD Editor
 |-----------|----------|
 | **PvP** | FPS, CPS, Keystrokes, Crosshair Editor, Target HUD, Hit Color |
 | **Performance** | FPS Booster, Entity Culling, Dynamic FPS, RAM Cleaner |
-| **QoL** | Zoom, Toggle Sprint, Waypoints, Auto Respawn, Better Chat |
+| **QoL** | Zoom, Minimap, Toggle Sprint, Waypoints, Auto Respawn, Better Chat |
 | **Creator** | Replay Tools, Cinematic Camera, Screenshot Mode |
 | **Prime** | Discord RPC, Cosmetics, Cloud, Profiles, Account |
 

@@ -57,6 +57,7 @@ jobs:
           }
 
       - name: Publish GitHub Release
+        id: release
         uses: softprops/action-gh-release@v2
         with:
           files: release-bundle/*
@@ -65,3 +66,95 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify Discord
+        continue-on-error: true
+        shell: pwsh
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:DISCORD_WEBHOOK)) {
+            Write-Host "DISCORD_RELEASE_WEBHOOK secret not set — skipping Discord notification"
+            exit 0
+          }
+
+          $tag = $env:TAG
+          $releaseUrl = $env:RELEASE_URL
+          if ([string]::IsNullOrWhiteSpace($releaseUrl)) {
+            $releaseUrl = "https://github.com/$($env:REPO)/releases/tag/$tag"
+          }
+
+          $body = ""
+          $assetLines = New-Object System.Collections.Generic.List[string]
+          try {
+            $headers = @{
+              Authorization = "Bearer $($env:GITHUB_TOKEN)"
+              Accept = "application/vnd.github+json"
+              "X-GitHub-Api-Version" = "2022-11-28"
+            }
+            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$($env:REPO)/releases/tags/$tag" -Headers $headers
+            if ($release.body) {
+              $body = [string]$release.body
+            }
+            if (-not $releaseUrl -and $release.html_url) {
+              $releaseUrl = [string]$release.html_url
+            }
+            foreach ($asset in @($release.assets)) {
+              if ($asset.name -and $asset.browser_download_url) {
+                $assetLines.Add("[$($asset.name)]($($asset.browser_download_url))")
+              }
+            }
+          } catch {
+            Write-Host "Could not fetch release metadata: $($_.Exception.Message)"
+          }
+
+          if ([string]::IsNullOrWhiteSpace($body)) {
+            $body = "New Prime Client build is live."
+          }
+          # Discord embed description max ~4096; keep a short summary
+          if ($body.Length -gt 1800) {
+            $body = $body.Substring(0, 1800) + "…"
+          }
+
+          $assetsField = if ($assetLines.Count -gt 0) {
+            ($assetLines | Select-Object -First 8) -join "`n"
+          } else {
+            "[Open release]($releaseUrl)"
+          }
+          if ($assetsField.Length -gt 1000) {
+            $assetsField = $assetsField.Substring(0, 1000) + "…"
+          }
+
+          $logo = "https://raw.githubusercontent.com/HeatzyV2/prime-client/main/website/public/logo.png"
+          $payload = @{
+            username = "Prime Client"
+            avatar_url = $logo
+            embeds = @(
+              @{
+                title = "Prime Client Update — $tag"
+                description = $body
+                url = $releaseUrl
+                color = 14758190  # 0xE11D2E
+                thumbnail = @{ url = $logo }
+                fields = @(
+                  @{ name = "Version"; value = $tag; inline = $true }
+                  @{ name = "Release"; value = "[GitHub]($releaseUrl)"; inline = $true }
+                  @{ name = "Downloads"; value = $assetsField; inline = $false }
+                )
+                footer = @{ text = "Prime Client • red / black" }
+              }
+            )
+          }
+
+          $json = $payload | ConvertTo-Json -Depth 8 -Compress
+          try {
+            Invoke-RestMethod -Method Post -Uri $env:DISCORD_WEBHOOK -ContentType "application/json" -Body $json | Out-Null
+            Write-Host "Discord release notification sent for $tag"
+          } catch {
+            Write-Host "Discord webhook failed: $($_.Exception.Message)"
+            exit 1
+          }

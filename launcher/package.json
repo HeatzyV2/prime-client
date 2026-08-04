@@ -1,6 +1,6 @@
 {
   "name": "prime-launcher",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "description": "Official launcher for Prime Client — premium Minecraft platform",
   "main": "./out/main/index.js",
   "author": "Prime Client",

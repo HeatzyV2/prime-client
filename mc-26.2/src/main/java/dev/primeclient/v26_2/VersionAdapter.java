@@ -1487,6 +1487,145 @@ public final class VersionAdapter implements MinecraftAdapter {
     }
 
     @Override
+    public boolean minimapSampleSurface(int radius, boolean rotateWithYaw, int[] outArgb) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (mc.level == null || player == null || outArgb == null || radius < 1) {
+            return false;
+        }
+        int side = radius * 2 + 1;
+        if (outArgb.length < side * side) {
+            return false;
+        }
+        var level = mc.level;
+        int originX = player.getBlockX();
+        int originZ = player.getBlockZ();
+        float yaw = player.getYRot();
+        double rad = Math.toRadians(yaw);
+        float sin = (float) Math.sin(rad);
+        float cos = (float) Math.cos(rad);
+        float forwardX = -sin;
+        float forwardZ = cos;
+        float rightX = cos;
+        float rightZ = sin;
+
+        for (int ty = 0; ty < side; ty++) {
+            for (int tx = 0; tx < side; tx++) {
+                int ox = tx - radius;
+                int oy = ty - radius;
+                int worldX;
+                int worldZ;
+                if (rotateWithYaw) {
+                    float forward = -oy;
+                    worldX = originX + Math.round(ox * rightX + forward * forwardX);
+                    worldZ = originZ + Math.round(ox * rightZ + forward * forwardZ);
+                } else {
+                    worldX = originX + ox;
+                    worldZ = originZ + oy;
+                }
+                outArgb[ty * side + tx] = sampleMapColor(level, worldX, worldZ);
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public int minimapSampleEntities(float range, boolean rotateWithYaw,
+                                     float[] outRelX, float[] outRelZ, byte[] outType) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (mc.level == null || player == null || outRelX == null || outRelZ == null || outType == null) {
+            return 0;
+        }
+        int cap = Math.min(outRelX.length, Math.min(outRelZ.length, outType.length));
+        if (cap <= 0 || range <= 0f) {
+            return 0;
+        }
+        float yaw = player.getYRot();
+        double rad = Math.toRadians(yaw);
+        float sin = (float) Math.sin(rad);
+        float cos = (float) Math.cos(rad);
+        float forwardX = -sin;
+        float forwardZ = cos;
+        float rightX = cos;
+        float rightZ = sin;
+        double rangeSq = (double) range * (double) range;
+        int count = 0;
+        for (var entity : mc.level.entitiesForRendering()) {
+            if (entity == player || !(entity instanceof net.minecraft.world.entity.LivingEntity)) {
+                continue;
+            }
+            double dx = entity.getX() - player.getX();
+            double dz = entity.getZ() - player.getZ();
+            if (dx * dx + dz * dz > rangeSq) {
+                continue;
+            }
+            byte type;
+            if (entity instanceof net.minecraft.world.entity.player.Player) {
+                type = MINIMAP_ENTITY_PLAYER;
+            } else if (entity instanceof net.minecraft.world.entity.monster.Enemy) {
+                type = MINIMAP_ENTITY_HOSTILE;
+            } else if (entity instanceof net.minecraft.world.entity.animal.Animal
+                    || entity instanceof net.minecraft.world.entity.npc.villager.AbstractVillager
+                    || entity instanceof net.minecraft.world.entity.ambient.AmbientCreature) {
+                type = MINIMAP_ENTITY_PASSIVE;
+            } else {
+                continue;
+            }
+            float mx;
+            float mz;
+            if (rotateWithYaw) {
+                mx = (float) (dx * rightX + dz * rightZ);
+                mz = (float) -(dx * forwardX + dz * forwardZ);
+            } else {
+                mx = (float) dx;
+                mz = (float) dz;
+            }
+            outRelX[count] = mx;
+            outRelZ[count] = mz;
+            outType[count] = type;
+            count++;
+            if (count >= cap) {
+                break;
+            }
+        }
+        return count;
+    }
+
+    private static int sampleMapColor(net.minecraft.client.multiplayer.ClientLevel level, int x, int z) {
+        if (!level.hasChunk(net.minecraft.core.SectionPos.blockToSectionCoord(x),
+                net.minecraft.core.SectionPos.blockToSectionCoord(z))) {
+            return 0xFF0A0A0C;
+        }
+        int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+        if (y < level.getMinY()) {
+            return 0xFF0A0A0C;
+        }
+        var pos = new net.minecraft.core.BlockPos(x, y, z);
+        var state = level.getBlockState(pos);
+        var mapColor = state.getMapColor(level, pos);
+        if (mapColor == net.minecraft.world.level.material.MapColor.NONE) {
+            return 0xFF1A1A1E;
+        }
+        int argb = mapColor.calculateARGBColor(net.minecraft.world.level.material.MapColor.Brightness.NORMAL);
+        int yN = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, x, z - 1) - 1;
+        if (y > yN) {
+            argb = brightenMap(argb, 18);
+        } else if (y < yN) {
+            argb = brightenMap(argb, -22);
+        }
+        return argb;
+    }
+
+    private static int brightenMap(int argb, int delta) {
+        int a = (argb >>> 24) & 0xFF;
+        int r = Math.clamp(((argb >> 16) & 0xFF) + delta, 0, 255);
+        int g = Math.clamp(((argb >> 8) & 0xFF) + delta, 0, 255);
+        int b = Math.clamp((argb & 0xFF) + delta, 0, 255);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    @Override
     public String translate(String key, String fallback, Object... args) {
         try {
             Component component = args.length == 0

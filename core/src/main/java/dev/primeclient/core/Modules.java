@@ -94,6 +94,7 @@ import dev.primeclient.core.modules.qol.AlwaysDayModule;
 import dev.primeclient.core.modules.qol.FullbrightModule;
 import dev.primeclient.core.modules.qol.HandShaderModule;
 import dev.primeclient.core.modules.qol.LowFireModule;
+import dev.primeclient.core.modules.qol.MinimapModule;
 import dev.primeclient.core.modules.qol.NoRainModule;
 import dev.primeclient.core.modules.qol.InventorySearchModule;
 import dev.primeclient.core.modules.qol.ItemCounterModule;
@@ -257,7 +258,7 @@ final class Modules {
         modules.register(new FastLoadingModule(adapter));
         modules.register(new PerformanceProfilesModule(adapter));
 
-        // QoL (23)
+        // QoL (24)
         modules.register(new ZoomModule(adapter));
         modules.register(new FullbrightModule(adapter));
         modules.register(new NoRainModule());
@@ -281,6 +282,7 @@ final class Modules {
         modules.register(new BetterTooltipsModule(hud, themes, adapter));
         modules.register(new InventorySearchModule(hud, themes, adapter));
         modules.register(new ServerSwitcherModule(hud, themes, adapter));
+        modules.register(new MinimapModule(hud, themes, adapter));
 
         // Streamers (6)
         modules.register(new StreamPrivacySuiteModule(modules));
