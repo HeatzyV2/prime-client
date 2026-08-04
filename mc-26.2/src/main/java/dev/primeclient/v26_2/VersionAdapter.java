@@ -1487,19 +1487,20 @@ public final class VersionAdapter implements MinecraftAdapter {
     }
 
     @Override
-    public boolean minimapSampleSurface(int radius, boolean rotateWithYaw, int[] outArgb) {
+    public boolean minimapSampleSurface(int radius, int density, boolean rotateWithYaw, int[] outArgb) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
+        int dens = Math.max(1, density);
         if (mc.level == null || player == null || outArgb == null || radius < 1) {
             return false;
         }
-        int side = radius * 2 + 1;
+        int side = radius * 2 * dens + 1;
         if (outArgb.length < side * side) {
             return false;
         }
         var level = mc.level;
-        int originX = player.getBlockX();
-        int originZ = player.getBlockZ();
+        double originX = player.getX();
+        double originZ = player.getZ();
         float yaw = player.getYRot();
         double rad = Math.toRadians(yaw);
         float sin = (float) Math.sin(rad);
@@ -1508,20 +1509,22 @@ public final class VersionAdapter implements MinecraftAdapter {
         float forwardZ = cos;
         float rightX = cos;
         float rightZ = sin;
+        float invDens = 1f / dens;
+        int half = radius * dens;
 
         for (int ty = 0; ty < side; ty++) {
             for (int tx = 0; tx < side; tx++) {
-                int ox = tx - radius;
-                int oy = ty - radius;
+                float ox = (tx - half) * invDens;
+                float oy = (ty - half) * invDens;
                 int worldX;
                 int worldZ;
                 if (rotateWithYaw) {
                     float forward = -oy;
-                    worldX = originX + Math.round(ox * rightX + forward * forwardX);
-                    worldZ = originZ + Math.round(ox * rightZ + forward * forwardZ);
+                    worldX = (int) Math.floor(originX + ox * rightX + forward * forwardX);
+                    worldZ = (int) Math.floor(originZ + ox * rightZ + forward * forwardZ);
                 } else {
-                    worldX = originX + ox;
-                    worldZ = originZ + oy;
+                    worldX = (int) Math.floor(originX + ox);
+                    worldZ = (int) Math.floor(originZ + oy);
                 }
                 outArgb[ty * side + tx] = sampleMapColor(level, worldX, worldZ);
             }
@@ -1603,18 +1606,97 @@ public final class VersionAdapter implements MinecraftAdapter {
         }
         var pos = new net.minecraft.core.BlockPos(x, y, z);
         var state = level.getBlockState(pos);
+        if (state.getFluidState().isEmpty()
+                && (state.getCollisionShape(level, pos).isEmpty()
+                || state.getBlock() instanceof net.minecraft.world.level.block.SnowLayerBlock)) {
+            var below = level.getBlockState(pos.below());
+            if (!below.isAir()) {
+                state = below;
+                pos = pos.below();
+                y--;
+            }
+        }
         var mapColor = state.getMapColor(level, pos);
         if (mapColor == net.minecraft.world.level.material.MapColor.NONE) {
             return 0xFF1A1A1E;
         }
-        int argb = mapColor.calculateARGBColor(net.minecraft.world.level.material.MapColor.Brightness.NORMAL);
-        int yN = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, x, z - 1) - 1;
-        if (y > yN) {
-            argb = brightenMap(argb, 18);
-        } else if (y < yN) {
-            argb = brightenMap(argb, -22);
+        int argb = resolveSurfaceColor(level, pos, state, mapColor);
+        int yN = surfaceY(level, x, z - 1);
+        int yS = surfaceY(level, x, z + 1);
+        int yW = surfaceY(level, x - 1, z);
+        int yE = surfaceY(level, x + 1, z);
+        int slope = (y - yN) + (yW - yE);
+        argb = brightenMap(argb, Math.clamp(slope * 7, -38, 32));
+        int mid = (yN + yS + yW + yE) / 4;
+        if (y > mid + 2) {
+            argb = brightenMap(argb, 6);
+        } else if (y < mid - 2) {
+            argb = brightenMap(argb, -8);
         }
         return argb;
+    }
+
+    private static int surfaceY(net.minecraft.client.multiplayer.ClientLevel level, int x, int z) {
+        if (!level.hasChunk(net.minecraft.core.SectionPos.blockToSectionCoord(x),
+                net.minecraft.core.SectionPos.blockToSectionCoord(z))) {
+            return level.getMinY();
+        }
+        return level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+    }
+
+    private static int resolveSurfaceColor(net.minecraft.client.multiplayer.ClientLevel level,
+                                           net.minecraft.core.BlockPos pos,
+                                           net.minecraft.world.level.block.state.BlockState state,
+                                           net.minecraft.world.level.material.MapColor mapColor) {
+        boolean water = mapColor == net.minecraft.world.level.material.MapColor.WATER
+                || state.getFluidState().is(net.minecraft.tags.FluidTags.WATER);
+        if (water) {
+            int waterColor = 0xFF3F76E4;
+            try {
+                int biome = net.minecraft.client.renderer.BiomeColors.getAverageWaterColor(level, pos);
+                waterColor = 0xFF000000 | biome;
+            } catch (Throwable ignored) {
+            }
+            int depth = 0;
+            var cursor = pos.below();
+            while (depth < 8 && level.getFluidState(cursor).is(net.minecraft.tags.FluidTags.WATER)) {
+                depth++;
+                cursor = cursor.below();
+            }
+            return brightenMap(waterColor, -depth * 8);
+        }
+        if (mapColor == net.minecraft.world.level.material.MapColor.GRASS) {
+            try {
+                int grass = net.minecraft.client.renderer.BiomeColors.getAverageGrassColor(level, pos);
+                return blendMapAndBiome(mapColor, grass, 0.72f);
+            } catch (Throwable ignored) {
+            }
+        }
+        if (mapColor == net.minecraft.world.level.material.MapColor.PLANT
+                || mapColor == net.minecraft.world.level.material.MapColor.COLOR_LIGHT_GREEN) {
+            try {
+                int foliage = net.minecraft.client.renderer.BiomeColors.getAverageFoliageColor(level, pos);
+                return blendMapAndBiome(mapColor, foliage, 0.65f);
+            } catch (Throwable ignored) {
+            }
+        }
+        return mapColor.calculateARGBColor(net.minecraft.world.level.material.MapColor.Brightness.NORMAL);
+    }
+
+    private static int blendMapAndBiome(net.minecraft.world.level.material.MapColor mapColor,
+                                        int biomeRgb, float biomeWeight) {
+        int base = mapColor.calculateARGBColor(net.minecraft.world.level.material.MapColor.Brightness.NORMAL);
+        float w = Math.clamp(biomeWeight, 0f, 1f);
+        int br = (base >> 16) & 0xFF;
+        int bg = (base >> 8) & 0xFF;
+        int bb = base & 0xFF;
+        int gr = (biomeRgb >> 16) & 0xFF;
+        int gg = (biomeRgb >> 8) & 0xFF;
+        int gb = biomeRgb & 0xFF;
+        int r = Math.round(br * (1f - w) + gr * w);
+        int g = Math.round(bg * (1f - w) + gg * w);
+        int b = Math.round(bb * (1f - w) + gb * w);
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
     private static int brightenMap(int argb, int delta) {

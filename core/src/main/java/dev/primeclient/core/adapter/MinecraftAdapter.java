@@ -723,14 +723,22 @@ public interface MinecraftAdapter {
 
     /**
      * Samples surface map-colors into a square buffer centered on the player.
-     * {@code outArgb.length} must equal {@code side * side} where {@code side = radius * 2 + 1}.
+     * {@code outArgb.length} must be at least {@code side * side} where
+     * {@code side = radius * 2 * density + 1} and {@code density >= 1}.
+     * Higher density (e.g. 2) samples sub-block positions for smoother upscaling.
      * When {@code rotateWithYaw} is true, the top of the buffer faces the player's look direction;
      * otherwise north is up.
      *
      * @return {@code false} when no world/player is available
      */
-    default boolean minimapSampleSurface(int radius, boolean rotateWithYaw, int[] outArgb) {
+    default boolean minimapSampleSurface(int radius, int density, boolean rotateWithYaw, int[] outArgb) {
         return false;
+    }
+
+    /** @deprecated Prefer {@link #minimapSampleSurface(int, int, boolean, int[])} with density. */
+    @Deprecated
+    default boolean minimapSampleSurface(int radius, boolean rotateWithYaw, int[] outArgb) {
+        return minimapSampleSurface(radius, 1, rotateWithYaw, outArgb);
     }
 
     /**
