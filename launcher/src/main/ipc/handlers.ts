@@ -3,6 +3,7 @@ import { IPC } from '../../shared/ipc'
 import { accountService } from '../services/AccountService'
 import { profileService } from '../services/ProfileService'
 import { instanceService } from '../services/InstanceService'
+import { minecraftVersionCatalog } from '../services/MinecraftVersionCatalog'
 import { instanceImportService } from '../services/InstanceImportService'
 import { modrinthImporterService } from '../services/ModrinthImporterService'
 import { serverService } from '../services/ServerService'
@@ -86,6 +87,7 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.INSTANCE_DUPLICATE, (_e, id: string) => instanceService.duplicate(id))
   ipcMain.handle(IPC.INSTANCE_SET_DEFAULT, (_e, id: string) => instanceService.setDefault(id))
   ipcMain.handle(IPC.INSTANCE_OPEN_FOLDER, (_e, id: string) => instanceService.openFolder(id))
+  ipcMain.handle(IPC.INSTANCE_LIST_VERSIONS, () => minecraftVersionCatalog.listVersions())
   ipcMain.handle(IPC.INSTANCE_IMPORT_DETECT, () => instanceImportService.detect())
   ipcMain.handle(IPC.INSTANCE_IMPORT_LIST, (_e, source: import('../../shared/ipc').ImportLauncherId) =>
     instanceImportService.list(source)

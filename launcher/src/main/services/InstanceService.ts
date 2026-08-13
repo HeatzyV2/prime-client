@@ -3,8 +3,13 @@ import { readdir, rm } from 'fs/promises'
 import { shell } from 'electron'
 import { join } from 'path'
 import type { GameInstance } from '../../shared/types'
-import { DEFAULT_MINECRAFT_TARGET, resolveTarget } from '../../shared/minecraft-targets'
+import {
+  DEFAULT_MINECRAFT_TARGET,
+  isSupportedPrimeVersion,
+  resolveTarget
+} from '../../shared/minecraft-targets'
 import { instanceStore } from '../storage/InstanceStore'
+import { minecraftVersionCatalog } from './MinecraftVersionCatalog'
 import type {
   CreateInstanceInput,
   InstanceMutationResult,
@@ -118,18 +123,32 @@ export class InstanceService {
 
     const settings = await settingsStore.load()
     const mcVersion = (input.minecraftVersion || DEFAULT_MC_VERSION).trim()
-    const target = resolveTarget(mcVersion)
-    const includePrimeMod = Boolean(input.includePrimeMod)
+    const includePrimeMod = Boolean(input.includePrimeMod) && loader === 'fabric'
+
+    if (includePrimeMod && !isSupportedPrimeVersion(mcVersion)) {
+      return {
+        ok: false,
+        error: `Prime Client is not available for Minecraft ${mcVersion}. Pick a Prime-supported version or use Fabric / Vanilla.`
+      }
+    }
+
+    const fabricMeta =
+      loader === 'fabric'
+        ? await minecraftVersionCatalog.resolveFabricMeta(mcVersion, includePrimeMod)
+        : null
+
     const stored: StoredInstance = {
       id: randomUUID(),
       name,
       minecraftVersion: mcVersion,
       loader,
       fabricLoaderVersion:
-        loader === 'fabric' ? input.fabricLoaderVersion ?? target.fabricLoader : undefined,
+        loader === 'fabric'
+          ? input.fabricLoaderVersion ?? fabricMeta?.fabricLoader ?? 'latest'
+          : undefined,
       fabricApiVersion:
         loader === 'fabric' && includePrimeMod
-          ? input.fabricApiVersion ?? target.fabricApi
+          ? input.fabricApiVersion ?? fabricMeta?.fabricApi
           : input.fabricApiVersion,
       includePrimeMod,
       ramMb: clampRam(input.ramMb || settings.defaultRamMb),

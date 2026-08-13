@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import {
   Plus,
@@ -9,7 +9,6 @@ import {
   Trash2,
   Star,
   Settings2,
-  ChevronDown,
   Import
 } from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
@@ -47,8 +46,6 @@ export function InstancesPage() {
   const [showLogin, setShowLogin] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
-  const createRef = useRef<HTMLDivElement>(null)
 
   const refresh = useCallback(async () => {
     const list = await window.primeLauncher.instance.list()
@@ -59,17 +56,6 @@ export function InstancesPage() {
   useEffect(() => {
     void refresh()
   }, [refresh])
-
-  useEffect(() => {
-    if (!createOpen) return
-    function onPointerDown(e: PointerEvent) {
-      if (createRef.current && !createRef.current.contains(e.target as Node)) {
-        setCreateOpen(false)
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [createOpen])
 
   async function handlePlay(inst: GameInstance) {
     if (!activeAccount) {
@@ -110,9 +96,8 @@ export function InstancesPage() {
     await refresh()
   }
 
-  function openCreate(preset: InstancePreset, initialMcVersion?: string) {
-    setCreateOpen(false)
-    setModal({ mode: 'create', preset, initialMcVersion })
+  function openCreate(preset: InstancePreset = 'prime') {
+    setModal({ mode: 'create', preset })
   }
 
   function loaderLabel(inst: GameInstance): string {
@@ -134,36 +119,9 @@ export function InstancesPage() {
           >
             {t('instances.import')}
           </Button>
-          <div className="instances__create" ref={createRef}>
-            <Button
-              variant="primary"
-              icon={<Plus size={16} />}
-              onClick={() => setCreateOpen((v) => !v)}
-            >
-              {t('instances.newInstance')}
-              <ChevronDown size={14} />
-            </Button>
-            {createOpen && (
-              <div className="instances__create-menu">
-                <button type="button" onClick={() => openCreate('prime', '26.2')}>
-                  <strong>{t('instances.createPrime26')}</strong>
-                  <span>Minecraft 26.2 · Prime</span>
-                </button>
-                <button type="button" onClick={() => openCreate('prime', '1.21.11')}>
-                  <strong>{t('instances.createPrime121')}</strong>
-                  <span>Minecraft 1.21.11 · Prime</span>
-                </button>
-                <button type="button" onClick={() => openCreate('fabric', '26.2')}>
-                  <strong>{t('instances.fabric')}</strong>
-                  <span>Minecraft 26.2 · Fabric</span>
-                </button>
-                <button type="button" onClick={() => openCreate('vanilla', '26.2')}>
-                  <strong>{t('instances.vanilla')}</strong>
-                  <span>Minecraft 26.2 · Vanilla</span>
-                </button>
-              </div>
-            )}
-          </div>
+          <Button variant="primary" icon={<Plus size={16} />} onClick={() => openCreate('prime')}>
+            {t('instances.newInstance')}
+          </Button>
         </div>
       }
     >
@@ -179,8 +137,8 @@ export function InstancesPage() {
             title={t('instances.emptyTitle')}
             description={t('instances.emptyDesc')}
             action={
-              <Button variant="primary" icon={<Plus size={16} />} onClick={() => openCreate('prime', '26.2')}>
-                {t('instances.createPrime26')}
+              <Button variant="primary" icon={<Plus size={16} />} onClick={() => openCreate('prime')}>
+                {t('instances.createPrime')}
               </Button>
             }
           />

@@ -3,7 +3,7 @@ import { join } from 'path'
 import { downloadService } from '../DownloadService'
 import type { HostPluginHitDto, HostPluginSource, InstalledHostPluginDto } from '../../../shared/host-types'
 
-const UA = 'Prime-Launcher/2.5.0 (Local Server Host)'
+const UA = 'Prime-Launcher/2.5.1 (Local Server Host)'
 const MODRINTH_API = 'https://api.modrinth.com/v2'
 const HANGAR_API = 'https://hangar.papermc.io/api/v1'
 const SPIGET_API = 'https://api.spiget.org/v2'

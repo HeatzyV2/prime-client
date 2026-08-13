@@ -1,6 +1,6 @@
 .instance-modal {
   width: min(560px, 100%);
-  max-height: min(90vh, 720px);
+  max-height: min(90vh, 760px);
   overflow-y: auto;
 }
 
@@ -9,10 +9,6 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin: 8px 0 16px;
-}
-
-.instance-modal__cards--versions {
-  grid-template-columns: repeat(2, 1fr);
 }
 
 .instance-modal__card {
@@ -35,10 +31,16 @@
   background: color-mix(in srgb, var(--prime-accent) 14%, transparent);
 }
 
+.instance-modal__card--prime.is-active {
+  border-color: var(--prime-red-bright, var(--prime-accent));
+  background: color-mix(in srgb, var(--prime-red-bright, var(--prime-accent)) 16%, transparent);
+}
+
 .instance-modal__card-title {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   font-weight: 600;
   font-size: var(--text-sm);
   margin-bottom: 4px;
@@ -61,8 +63,16 @@
 }
 
 .instance-modal__note {
-  margin: -8px 0 16px;
+  margin: 6px 0 12px;
   color: var(--prime-muted);
+}
+
+.instance-modal__version-filter {
+  margin-bottom: 8px;
+}
+
+.instance-modal__version-select {
+  margin-bottom: 4px;
 }
 
 .instance-modal__advanced-toggle {

@@ -496,7 +496,7 @@ export class HostServerService {
         url,
         destPath: jarPath(serverId),
         sha256,
-        headers: { 'User-Agent': 'Prime-Launcher/2.5.0 (Local Server Host)' },
+        headers: { 'User-Agent': 'Prime-Launcher/2.5.1 (Local Server Host)' },
         onProgress: (percent, speed) => {
           broadcastDownload({
             serverId,

@@ -67,6 +67,11 @@ export function WhatsNewModal({ entry, onClose }: WhatsNewModalProps) {
 
 /** In-app release notes keyed by launcher version. */
 export const WHATS_NEW_BY_VERSION: Record<string, string[]> = {
+  '2.5.1': [
+    'Simpler New Instance flow — name, version, then type (Prime recommended)',
+    'Full Minecraft release list from Mojang + Fabric Meta (searchable)',
+    'Advanced options (RAM / Java) collapsed by default'
+  ],
   '2.4.1': [
     'Faster startup — stores load in parallel, Discord RPC deferred until after window show',
     'Performance mode in Settings — lighter animations, paused skin rotation, slower polls',

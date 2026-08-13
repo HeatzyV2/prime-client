@@ -101,6 +101,27 @@ export function createTauriPrimeApi() {
       duplicate: (id: string) => invoke('instance_duplicate', { id }),
       setDefault: (id: string) => invoke('instance_set_default', { id }),
       openFolder: (id: string) => invoke('instance_open_folder', { id }),
+      listVersions: () =>
+        invoke<import('@shared/ipc').MinecraftVersionOptionDto[]>('instance_list_versions').catch(
+          () =>
+            (
+              [
+                {
+                  id: '26.2',
+                  type: 'release',
+                  fabricAvailable: true,
+                  primeAvailable: true,
+                  recommended: true
+                },
+                {
+                  id: '1.21.11',
+                  type: 'release',
+                  fabricAvailable: true,
+                  primeAvailable: true
+                }
+              ] as import('@shared/ipc').MinecraftVersionOptionDto[]
+            )
+        ),
       importDetect: () => invoke('instance_import_detect'),
       importList: (source: import('@shared/ipc').ImportLauncherId) =>
         invoke('instance_import_list', { source }),

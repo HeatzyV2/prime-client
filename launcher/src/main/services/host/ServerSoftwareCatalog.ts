@@ -1,6 +1,6 @@
 import type { HostSoftware, HostSoftwareBuildDto } from '../../../shared/host-types'
 
-const UA = 'Prime-Launcher/2.5.0 (Local Server Host)'
+const UA = 'Prime-Launcher/2.5.1 (Local Server Host)'
 
 /**
  * Catalog of Paper-family server JARs.

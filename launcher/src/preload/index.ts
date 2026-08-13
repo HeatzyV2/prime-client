@@ -72,6 +72,10 @@ const api = {
     duplicate: (id: string) => ipcRenderer.invoke(IPC.INSTANCE_DUPLICATE, id),
     setDefault: (id: string) => ipcRenderer.invoke(IPC.INSTANCE_SET_DEFAULT, id),
     openFolder: (id: string) => ipcRenderer.invoke(IPC.INSTANCE_OPEN_FOLDER, id),
+    listVersions: () =>
+      ipcRenderer.invoke(IPC.INSTANCE_LIST_VERSIONS) as Promise<
+        import('../shared/ipc').MinecraftVersionOptionDto[]
+      >,
     importDetect: () =>
       ipcRenderer.invoke(IPC.INSTANCE_IMPORT_DETECT) as Promise<
         import('../shared/ipc').DetectedImportLauncherDto[]

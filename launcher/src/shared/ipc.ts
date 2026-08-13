@@ -41,6 +41,7 @@ export const IPC = {
   INSTANCE_DUPLICATE: 'instance:duplicate',
   INSTANCE_SET_DEFAULT: 'instance:set-default',
   INSTANCE_OPEN_FOLDER: 'instance:open-folder',
+  INSTANCE_LIST_VERSIONS: 'instance:list-versions',
   INSTANCE_IMPORT_DETECT: 'instance:import-detect',
   INSTANCE_IMPORT_LIST: 'instance:import-list',
   INSTANCE_IMPORT_RUN: 'instance:import-run',
@@ -256,6 +257,17 @@ export interface LaunchLogEntryDto {
   level: 'info' | 'warn' | 'error' | 'debug'
   phase?: LaunchProgressDto['phase']
   message: string
+}
+
+export interface MinecraftVersionOptionDto {
+  id: string
+  type: 'release' | 'snapshot'
+  fabricAvailable: boolean
+  primeAvailable: boolean
+  recommended?: boolean
+  javaMajor?: number
+  fabricLoader?: string
+  fabricApi?: string
 }
 
 export interface CreateInstanceDto {
