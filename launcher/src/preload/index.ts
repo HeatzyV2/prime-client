@@ -252,6 +252,119 @@ const api = {
     refresh: (serverId: string) => ipcRenderer.invoke(IPC.SERVERS_REFRESH, serverId),
     refreshAll: () => ipcRenderer.invoke(IPC.SERVERS_REFRESH_ALL)
   },
+  host: {
+    list: () => ipcRenderer.invoke(IPC.HOST_LIST) as Promise<import('../shared/host-types').HostServerView[]>,
+    get: (id: string) =>
+      ipcRenderer.invoke(IPC.HOST_GET, id) as Promise<import('../shared/host-types').HostServerView | null>,
+    create: (input: import('../shared/host-types').CreateHostServerDto) =>
+      ipcRenderer.invoke(IPC.HOST_CREATE, input) as Promise<import('../shared/host-types').HostMutationDto>,
+    update: (input: import('../shared/host-types').UpdateHostServerDto) =>
+      ipcRenderer.invoke(IPC.HOST_UPDATE, input) as Promise<import('../shared/host-types').HostMutationDto>,
+    remove: (id: string, deleteFiles?: boolean) =>
+      ipcRenderer.invoke(IPC.HOST_DELETE, id, deleteFiles) as Promise<
+        import('../shared/host-types').HostMutationDto
+      >,
+    acceptEula: (id: string) =>
+      ipcRenderer.invoke(IPC.HOST_ACCEPT_EULA, id) as Promise<import('../shared/host-types').HostMutationDto>,
+    getProperties: (id: string) =>
+      ipcRenderer.invoke(IPC.HOST_GET_PROPERTIES, id) as Promise<
+        import('../shared/host-types').HostPropertiesDto | null
+      >,
+    updateProperties: (
+      id: string,
+      patch: Partial<Record<import('../shared/host-types').HostEditablePropertyKey, string>>
+    ) =>
+      ipcRenderer.invoke(IPC.HOST_UPDATE_PROPERTIES, id, patch) as Promise<
+        import('../shared/host-types').HostMutationDto
+      >,
+    start: (id: string) =>
+      ipcRenderer.invoke(IPC.HOST_START, id) as Promise<import('../shared/host-types').HostMutationDto>,
+    stop: (id: string) =>
+      ipcRenderer.invoke(IPC.HOST_STOP, id) as Promise<import('../shared/host-types').HostMutationDto>,
+    restart: (id: string) =>
+      ipcRenderer.invoke(IPC.HOST_RESTART, id) as Promise<import('../shared/host-types').HostMutationDto>,
+    sendCommand: (id: string, command: string) =>
+      ipcRenderer.invoke(IPC.HOST_SEND_COMMAND, id, command) as Promise<{ ok: boolean; error?: string }>,
+    openFolder: (id: string) =>
+      ipcRenderer.invoke(IPC.HOST_OPEN_FOLDER, id) as Promise<{ ok: boolean; error?: string }>,
+    listWorlds: (id: string) =>
+      ipcRenderer.invoke(IPC.HOST_LIST_WORLDS, id) as Promise<import('../shared/host-types').HostWorldEntryDto[]>,
+    listVersions: (software: import('../shared/host-types').HostSoftware) =>
+      ipcRenderer.invoke(IPC.HOST_SOFTWARE_VERSIONS, software) as Promise<string[]>,
+    listBuilds: (software: import('../shared/host-types').HostSoftware, version: string) =>
+      ipcRenderer.invoke(IPC.HOST_SOFTWARE_BUILDS, software, version) as Promise<
+        import('../shared/host-types').HostSoftwareBuildDto[]
+      >,
+    listPlugins: (serverId: string) =>
+      ipcRenderer.invoke(IPC.HOST_PLUGINS_LIST, serverId) as Promise<
+        import('../shared/host-types').InstalledHostPluginDto[]
+      >,
+    searchPlugins: (
+      query: string,
+      sources?: import('../shared/host-types').HostPluginSource[],
+      mcVersion?: string
+    ) =>
+      ipcRenderer.invoke(IPC.HOST_PLUGINS_SEARCH, query, sources, mcVersion) as Promise<
+        import('../shared/host-types').HostPluginHitDto[]
+      >,
+    installPlugin: (
+      serverId: string,
+      source: import('../shared/host-types').HostPluginSource,
+      projectId: string
+    ) =>
+      ipcRenderer.invoke(IPC.HOST_PLUGINS_INSTALL, serverId, source, projectId) as Promise<{
+        ok: boolean
+        fileName?: string
+        error?: string
+      }>,
+    setPluginEnabled: (serverId: string, fileName: string, enabled: boolean) =>
+      ipcRenderer.invoke(IPC.HOST_PLUGINS_SET_ENABLED, serverId, fileName, enabled) as Promise<{
+        ok: boolean
+        error?: string
+        fileName?: string
+      }>,
+    removePlugin: (serverId: string, fileName: string) =>
+      ipcRenderer.invoke(IPC.HOST_PLUGINS_REMOVE, serverId, fileName) as Promise<{
+        ok: boolean
+        error?: string
+      }>,
+    onConsole: (
+      listener: (payload: import('../shared/host-types').HostConsoleLineDto) => void
+    ): (() => void) => {
+      const handler = (
+        _event: IpcRendererEvent,
+        payload: import('../shared/host-types').HostConsoleLineDto
+      ): void => {
+        listener(payload)
+      }
+      ipcRenderer.on(IPC.HOST_CONSOLE, handler)
+      return () => ipcRenderer.removeListener(IPC.HOST_CONSOLE, handler)
+    },
+    onStatus: (
+      listener: (payload: import('../shared/host-types').HostStatusEventDto) => void
+    ): (() => void) => {
+      const handler = (
+        _event: IpcRendererEvent,
+        payload: import('../shared/host-types').HostStatusEventDto
+      ): void => {
+        listener(payload)
+      }
+      ipcRenderer.on(IPC.HOST_STATUS, handler)
+      return () => ipcRenderer.removeListener(IPC.HOST_STATUS, handler)
+    },
+    onDownloadProgress: (
+      listener: (payload: import('../shared/host-types').HostDownloadProgressDto) => void
+    ): (() => void) => {
+      const handler = (
+        _event: IpcRendererEvent,
+        payload: import('../shared/host-types').HostDownloadProgressDto
+      ): void => {
+        listener(payload)
+      }
+      ipcRenderer.on(IPC.HOST_DOWNLOAD_PROGRESS, handler)
+      return () => ipcRenderer.removeListener(IPC.HOST_DOWNLOAD_PROGRESS, handler)
+    }
+  },
   media: {
     list: (instanceId?: string) => ipcRenderer.invoke(IPC.MEDIA_LIST, instanceId),
     openFolder: (instanceId?: string) => ipcRenderer.invoke(IPC.MEDIA_OPEN_FOLDER, instanceId),

@@ -28,6 +28,7 @@ const ResourcesPage = lazyNamed(() => import('@renderer/pages/ResourcesPage'), '
 const ShadersPage = lazyNamed(() => import('@renderer/pages/ShadersPage'), 'ShadersPage')
 const StorePage = lazyNamed(() => import('@renderer/pages/StorePage'), 'StorePage')
 const ServersPage = lazyNamed(() => import('@renderer/pages/ServersPage'), 'ServersPage')
+const HostPage = lazyNamed(() => import('@renderer/pages/HostPage'), 'HostPage')
 const FriendsPage = lazyNamed(() => import('@renderer/pages/FriendsPage'), 'FriendsPage')
 const ChatPage = lazyNamed(() => import('@renderer/pages/ChatPage'), 'ChatPage')
 const NewsPage = lazyNamed(() => import('@renderer/pages/NewsPage'), 'NewsPage')
@@ -57,6 +58,7 @@ export function AppRoutes({ news, servers }: AppRoutesProps) {
         <Route path="store" element={<StorePage />} />
         <Route path="cosmetics" element={<Navigate to="/skins" replace />} />
         <Route path="servers" element={<ServersPage />} />
+        <Route path="host" element={<HostPage />} />
         <Route path="friends" element={<FriendsPage />} />
         <Route path="chat" element={<ChatPage />} />
         <Route path="news" element={<NewsPage />} />

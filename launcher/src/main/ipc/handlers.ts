@@ -6,6 +6,15 @@ import { instanceService } from '../services/InstanceService'
 import { instanceImportService } from '../services/InstanceImportService'
 import { modrinthImporterService } from '../services/ModrinthImporterService'
 import { serverService } from '../services/ServerService'
+import { hostServerService } from '../services/host/HostServerService'
+import { pluginInstallService } from '../services/host/PluginInstallService'
+import { serverSoftwareCatalog } from '../services/host/ServerSoftwareCatalog'
+import type {
+  CreateHostServerDto,
+  HostEditablePropertyKey,
+  HostPluginSource,
+  UpdateHostServerDto
+} from '../../shared/host-types'
 import { contentService } from '../services/ContentService'
 import { cloudService } from '../services/CloudService'
 import { cosmeticService } from '../services/CosmeticService'
@@ -106,6 +115,61 @@ export function registerServiceHandlers(): void {
   ipcMain.handle(IPC.SERVERS_REMOVE, (_e, serverId: string) => serverService.remove(serverId))
   ipcMain.handle(IPC.SERVERS_REFRESH, (_e, serverId: string) => serverService.refreshStatus(serverId))
   ipcMain.handle(IPC.SERVERS_REFRESH_ALL, () => serverService.refreshAll())
+
+  ipcMain.handle(IPC.HOST_LIST, () => hostServerService.list())
+  ipcMain.handle(IPC.HOST_GET, (_e, id: string) => hostServerService.get(id))
+  ipcMain.handle(IPC.HOST_CREATE, (_e, input: CreateHostServerDto) => hostServerService.create(input))
+  ipcMain.handle(IPC.HOST_UPDATE, (_e, input: UpdateHostServerDto) => hostServerService.update(input))
+  ipcMain.handle(IPC.HOST_DELETE, (_e, id: string, deleteFiles?: boolean) =>
+    hostServerService.remove(id, deleteFiles !== false)
+  )
+  ipcMain.handle(IPC.HOST_ACCEPT_EULA, (_e, id: string) => hostServerService.acceptEula(id))
+  ipcMain.handle(IPC.HOST_GET_PROPERTIES, (_e, id: string) => hostServerService.getProperties(id))
+  ipcMain.handle(
+    IPC.HOST_UPDATE_PROPERTIES,
+    (_e, id: string, patch: Partial<Record<HostEditablePropertyKey, string>>) =>
+      hostServerService.updateProperties(id, patch)
+  )
+  ipcMain.handle(IPC.HOST_START, (_e, id: string) => hostServerService.start(id))
+  ipcMain.handle(IPC.HOST_STOP, (_e, id: string) => hostServerService.stop(id))
+  ipcMain.handle(IPC.HOST_RESTART, (_e, id: string) => hostServerService.restart(id))
+  ipcMain.handle(IPC.HOST_SEND_COMMAND, (_e, id: string, command: string) =>
+    hostServerService.sendCommand(id, command)
+  )
+  ipcMain.handle(IPC.HOST_OPEN_FOLDER, (_e, id: string) => hostServerService.openFolder(id))
+  ipcMain.handle(IPC.HOST_LIST_WORLDS, (_e, id: string) => hostServerService.listWorlds(id))
+  ipcMain.handle(IPC.HOST_SOFTWARE_VERSIONS, (_e, software: import('../../shared/host-types').HostSoftware) =>
+    serverSoftwareCatalog.listVersions(software)
+  )
+  ipcMain.handle(
+    IPC.HOST_SOFTWARE_BUILDS,
+    (_e, software: import('../../shared/host-types').HostSoftware, version: string) =>
+      serverSoftwareCatalog.listBuilds(software, version)
+  )
+  ipcMain.handle(IPC.HOST_PLUGINS_LIST, (_e, serverId: string) =>
+    pluginInstallService.listInstalled(hostServerService.getServerDir(serverId))
+  )
+  ipcMain.handle(
+    IPC.HOST_PLUGINS_SEARCH,
+    (_e, query: string, sources?: HostPluginSource[], mcVersion?: string) =>
+      pluginInstallService.search(query, sources, mcVersion)
+  )
+  ipcMain.handle(
+    IPC.HOST_PLUGINS_INSTALL,
+    async (_e, serverId: string, source: HostPluginSource, projectId: string) => {
+      const server = await hostServerService.get(serverId)
+      if (!server) return { ok: false, error: 'Server not found.' }
+      return pluginInstallService.install(server.dir, source, projectId, server.mcVersion)
+    }
+  )
+  ipcMain.handle(
+    IPC.HOST_PLUGINS_SET_ENABLED,
+    (_e, serverId: string, fileName: string, enabled: boolean) =>
+      pluginInstallService.setEnabled(hostServerService.getServerDir(serverId), fileName, enabled)
+  )
+  ipcMain.handle(IPC.HOST_PLUGINS_REMOVE, (_e, serverId: string, fileName: string) =>
+    pluginInstallService.remove(hostServerService.getServerDir(serverId), fileName)
+  )
 
   ipcMain.handle(IPC.CONTENT_MODS_LIST, (_e, instanceId?: string) => contentService.listMods(instanceId))
   ipcMain.handle(IPC.CONTENT_MODS_SET_ENABLED, (_e, fileName: string, enabled: boolean, instanceId?: string) =>

@@ -17,6 +17,7 @@ export const en = {
     store: 'Store',
     cosmetics: 'Cosmetics',
     servers: 'Servers',
+    host: 'Host',
     friends: 'Friends',
     chat: 'Chat',
     news: 'News',
@@ -357,6 +358,10 @@ export const en = {
       title: 'Server Hub',
       subtitle: 'Banners, live players, ping, and full server info sheets.'
     },
+    host: {
+      title: 'Host',
+      subtitle: 'Run a local Paper-family server from the launcher.'
+    },
     friends: {
       title: 'Friends',
       subtitle: 'Prime friends synced launcher ↔ game — live presence and requests.'
@@ -519,6 +524,71 @@ export const en = {
       instagram: 'Instagram',
       facebook: 'Facebook',
       x: 'X'
+    }
+  },
+  host: {
+    title: 'Local Server Host',
+    subtitle: 'Create and run Paper, Purpur, Folia, Leaf, or Canvas servers locally.',
+    create: 'Create server',
+    createTitle: 'Create local server',
+    createSubtitle: 'Pick software, version, RAM, and port — then download the JAR.',
+    creating: 'Creating…',
+    createFailed: 'Could not create the server.',
+    empty: 'No local servers yet. Create one to host for friends on LAN.',
+    back: 'Back',
+    start: 'Start',
+    stop: 'Stop',
+    restart: 'Restart',
+    delete: 'Delete',
+    save: 'Save settings',
+    search: 'Search',
+    install: 'Install',
+    enable: 'Enable',
+    disable: 'Disable',
+    send: 'Send',
+    openFolder: 'Open folder',
+    startFailed: 'Could not start the server.',
+    deleteFailed: 'Could not delete the server.',
+    commandFailed: 'Could not send the command.',
+    saveFailed: 'Could not save properties.',
+    confirmDelete: 'Delete this local server and all its files?',
+    noInstance: 'Create a Minecraft instance first, then Join.',
+    eulaRequired: 'Accept the Minecraft EULA to continue.',
+    eulaAccept: 'I accept the',
+    eulaBanner: 'This server has not accepted the Minecraft EULA yet.',
+    acceptEula: 'Accept EULA',
+    latestBuild: 'Latest',
+    consoleEmpty: 'Console output will appear here when the server starts.',
+    commandPlaceholder: 'say Hello / op Steve / stop',
+    pluginSearch: 'Search Modrinth, Hangar, Spiget…',
+    installedPlugins: 'Installed plugins',
+    noPlugins: 'No plugins installed yet.',
+    pluginInstalled: 'Plugin installed.',
+    pluginInstallFailed: 'Plugin install failed.',
+    noWorlds: 'No worlds generated yet — start the server once.',
+    worldReady: 'World',
+    worldFolder: 'Folder',
+    field: {
+      name: 'Name',
+      software: 'Software',
+      version: 'Minecraft version',
+      build: 'Build',
+      ram: 'RAM (MB)',
+      port: 'Port'
+    },
+    tabs: {
+      console: 'Console',
+      settings: 'Settings',
+      plugins: 'Plugins',
+      worlds: 'Worlds',
+      files: 'Files'
+    },
+    status: {
+      stopped: 'Stopped',
+      starting: 'Starting',
+      online: 'Online',
+      stopping: 'Stopping',
+      crashed: 'Crashed'
     }
   },
   friends: {

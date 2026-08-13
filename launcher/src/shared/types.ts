@@ -116,6 +116,7 @@ export type NavSection =
   | 'store'
   | 'cosmetics'
   | 'servers'
+  | 'host'
   | 'friends'
   | 'chat'
   | 'news'
@@ -139,6 +140,7 @@ export const PRIMARY_NAV: NavSection[] = [
   'store',
   'library',
   'servers',
+  'host',
   'friends'
 ]
 
@@ -162,6 +164,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'store', label: 'Prime Store', phase: 3 },
   { id: 'library', label: 'Library', phase: 3 },
   { id: 'servers', label: 'Servers', phase: 3 },
+  { id: 'host', label: 'Host', phase: 3 },
   { id: 'friends', label: 'Friends', phase: 3 },
   { id: 'profile', label: 'Profile', phase: 3 },
   { id: 'accounts', label: 'Accounts', phase: 3 },

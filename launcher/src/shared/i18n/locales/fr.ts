@@ -19,6 +19,7 @@ export const fr: LocaleCatalog = {
     store: 'Boutique',
     cosmetics: 'Cosmétiques',
     servers: 'Serveurs',
+    host: 'Héberger',
     friends: 'Amis',
     chat: 'Chat',
     news: 'Actualités',
@@ -359,6 +360,10 @@ export const fr: LocaleCatalog = {
       title: 'Hub Serveurs',
       subtitle: 'Bannières, joueurs en direct, ping et fiches serveur complètes.'
     },
+    host: {
+      title: 'Héberger',
+      subtitle: 'Lancez un serveur Paper-family local depuis le launcher.'
+    },
     friends: {
       title: 'Amis',
       subtitle: 'Amis Prime sync launcher ↔ jeu — demandes et présence en direct.'
@@ -521,6 +526,71 @@ export const fr: LocaleCatalog = {
       instagram: 'Instagram',
       facebook: 'Facebook',
       x: 'X'
+    }
+  },
+  host: {
+    title: 'Hébergement local',
+    subtitle: 'Créez et lancez des serveurs Paper, Purpur, Folia, Leaf ou Canvas en local.',
+    create: 'Créer un serveur',
+    createTitle: 'Créer un serveur local',
+    createSubtitle: 'Choisissez le logiciel, la version, la RAM et le port — puis téléchargez le JAR.',
+    creating: 'Création…',
+    createFailed: 'Impossible de créer le serveur.',
+    empty: 'Aucun serveur local. Créez-en un pour héberger en LAN.',
+    back: 'Retour',
+    start: 'Démarrer',
+    stop: 'Arrêter',
+    restart: 'Redémarrer',
+    delete: 'Supprimer',
+    save: 'Enregistrer',
+    search: 'Rechercher',
+    install: 'Installer',
+    enable: 'Activer',
+    disable: 'Désactiver',
+    send: 'Envoyer',
+    openFolder: 'Ouvrir le dossier',
+    startFailed: 'Impossible de démarrer le serveur.',
+    deleteFailed: 'Impossible de supprimer le serveur.',
+    commandFailed: 'Impossible d\'envoyer la commande.',
+    saveFailed: 'Impossible d\'enregistrer les propriétés.',
+    confirmDelete: 'Supprimer ce serveur local et tous ses fichiers ?',
+    noInstance: 'Créez d\'abord une instance Minecraft, puis Rejoindre.',
+    eulaRequired: 'Acceptez le EULA Minecraft pour continuer.',
+    eulaAccept: 'J\'accepte le',
+    eulaBanner: 'Ce serveur n\'a pas encore accepté le EULA Minecraft.',
+    acceptEula: 'Accepter le EULA',
+    latestBuild: 'Dernier',
+    consoleEmpty: 'La console apparaîtra ici au démarrage du serveur.',
+    commandPlaceholder: 'say Bonjour / op Steve / stop',
+    pluginSearch: 'Rechercher Modrinth, Hangar, Spiget…',
+    installedPlugins: 'Plugins installés',
+    noPlugins: 'Aucun plugin installé.',
+    pluginInstalled: 'Plugin installé.',
+    pluginInstallFailed: 'Échec de l\'installation du plugin.',
+    noWorlds: 'Aucun monde généré — démarrez le serveur une fois.',
+    worldReady: 'Monde',
+    worldFolder: 'Dossier',
+    field: {
+      name: 'Nom',
+      software: 'Logiciel',
+      version: 'Version Minecraft',
+      build: 'Build',
+      ram: 'RAM (Mo)',
+      port: 'Port'
+    },
+    tabs: {
+      console: 'Console',
+      settings: 'Paramètres',
+      plugins: 'Plugins',
+      worlds: 'Mondes',
+      files: 'Fichiers'
+    },
+    status: {
+      stopped: 'Arrêté',
+      starting: 'Démarrage',
+      online: 'En ligne',
+      stopping: 'Arrêt',
+      crashed: 'Crash'
     }
   },
   friends: {
