@@ -27,6 +27,7 @@ public abstract class HudElement {
     private float opacity = 1.0f;
     private int tintArgb;
     private boolean visible = true;
+    private boolean locked;
 
     private float lastX;
     private float lastY;
@@ -54,6 +55,7 @@ public abstract class HudElement {
         this.opacity = 1.0f;
         this.tintArgb = 0;
         this.visible = true;
+        this.locked = false;
     }
 
     public abstract int measureWidth(RenderContext ctx);
@@ -104,6 +106,14 @@ public abstract class HudElement {
 
     public final void setVisible(boolean visible) {
         this.visible = visible;
+    }
+
+    public final boolean isLocked() {
+        return locked;
+    }
+
+    public final void setLocked(boolean locked) {
+        this.locked = locked;
     }
 
     public final void setLayout(HudAnchor anchor, float offsetX, float offsetY) {

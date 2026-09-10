@@ -27,7 +27,7 @@ public final class UiAnimator {
     public void tick(String key, float deltaSeconds, float speed) {
         float current = values.getOrDefault(key, targets.getOrDefault(key, 0f));
         float target = targets.getOrDefault(key, current);
-        values.put(key, Easing.lerp(current, target, deltaSeconds * speed));
+        values.put(key, dev.primeclient.core.design.PrimeDesign.animate(current, target, deltaSeconds, speed));
     }
 
     public void tickAll(float deltaSeconds, float speed) {

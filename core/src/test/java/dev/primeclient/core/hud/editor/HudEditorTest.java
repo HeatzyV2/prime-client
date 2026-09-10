@@ -18,7 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HudEditorTest {
 
+    private static final int GLFW_E = 69;
     private static final int GLFW_G = 71;
+    private static final int GLFW_H = 72;
+    private static final int GLFW_L = 76;
     private static final int GLFW_R = 82;
     private static final int GLFW_S = 83;
     private static final int GLFW_V = 86;
@@ -262,6 +265,74 @@ class HudEditorTest {
         assertEquals(0f, box.offsetX());
     }
 
+    @Test
+    void lockedElementCannotBeDraggedOrNudged() {
+        editor.mousePressed(5, 5);
+        assertTrue(editor.keyPressed(GLFW_L));
+        assertTrue(box.isLocked());
+
+        editor.mousePressed(5, 5);
+        editor.mouseDragged(50, 50, 200, 100);
+        editor.mouseReleased();
+        assertEquals(0f, box.offsetX());
+        assertEquals(0f, box.offsetY());
+
+        assertTrue(editor.keyPressed(GLFW_RIGHT));
+        assertEquals(0f, box.offsetX());
+    }
+
+    @Test
+    void guidesToggleIndependentOfGrid() {
+        assertFalse(editor.gridShown());
+        assertTrue(editor.guidesOn());
+        assertTrue(editor.keyPressed(GLFW_H));
+        assertFalse(editor.guidesOn());
+        assertFalse(editor.gridShown());
+        assertTrue(editor.keyPressed(GLFW_G));
+        assertTrue(editor.gridShown());
+        assertFalse(editor.guidesOn());
+    }
+
+    @Test
+    void guidesOffSkipsMagneticSnapWhileSnapOn() {
+        BoxElement other = hud.register(new BoxElement("other", 20, 10));
+        other.setLayout(HudAnchor.TOP_LEFT, 100, 20);
+        hud.render(new FakeRenderContext(200, 100));
+
+        assertTrue(editor.keyPressed(GLFW_H)); // guides off
+        editor.mousePressed(5, 5);
+        editor.mouseDragged(102, 60, 200, 100);
+        editor.mouseReleased();
+        hud.render(new FakeRenderContext(200, 100));
+
+        assertEquals(97f, box.lastX()); // no guide snap, grid still off
+    }
+
+    @Test
+    void altClickCyclesOverlappingElements() {
+        BoxElement top = hud.register(new BoxElement("top", 20, 10));
+        top.setLayout(HudAnchor.TOP_LEFT, 0, 0);
+        hud.render(new FakeRenderContext(200, 100));
+
+        assertTrue(editor.mousePressed(5, 5, false));
+        assertSame(top, editor.selected()); // topmost first
+
+        assertTrue(editor.mousePressed(5, 5, true));
+        assertSame(box, editor.selected()); // Alt cycles to next
+
+        assertTrue(editor.mousePressed(5, 5, true));
+        assertSame(top, editor.selected());
+    }
+
+    @Test
+    void eKeyTogglesElementList() {
+        assertTrue(editor.listOpen());
+        assertTrue(editor.keyPressed(GLFW_E));
+        assertFalse(editor.listOpen());
+        assertTrue(editor.keyPressed(GLFW_E));
+        assertTrue(editor.listOpen());
+    }
+
     /**
      * Panel geometry below assumes FakeRenderContext metrics (6px glyphs, 9px lines)
      * on a 400x300 screen; renderOverlay must run once to lay the panels out.
@@ -317,7 +388,7 @@ class HudEditorTest {
 
         @Test
         void toolbarGridButtonTogglesLikeGKey() {
-            assertTrue(editor.mousePressed(121, 11)); // "Grid" button
+            assertTrue(editor.mousePressed(162, 11)); // "Grid" button
             assertTrue(editor.keyPressed(GLFW_G));    // both paths flip the same flag
         }
 
@@ -327,7 +398,7 @@ class HudEditorTest {
             box.setScale(2f);
             box.setVisible(false);
 
-            assertTrue(editor.mousePressed(281, 11)); // "Reset All" button
+            assertTrue(editor.mousePressed(389, 11)); // "Reset All" button
             assertEquals(HudAnchor.TOP_LEFT, box.anchor());
             assertEquals(0f, box.offsetX());
             assertEquals(1f, box.scale(), 1e-5);

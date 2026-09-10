@@ -3,6 +3,10 @@ package dev.primeclient.core.gui.clickgui;
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.gui.FavoritesManager;
 import dev.primeclient.core.design.PrimeDesign;
+import java.util.Map;
+import java.util.IdentityHashMap;
+import dev.primeclient.core.gui.component.SliderWidget;
+import dev.primeclient.core.gui.component.ToggleWidget;
 import dev.primeclient.core.gui.GuiLayout;
 import dev.primeclient.core.gui.UiChrome;
 import dev.primeclient.core.module.BooleanSetting;
@@ -15,18 +19,19 @@ import dev.primeclient.core.module.Setting;
 import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.module.StringSetting;
 import dev.primeclient.core.theme.Theme;
-import dev.primeclient.core.util.Easing;
 
 import java.util.List;
 
 /** One draggable ClickGUI category panel. */
 final class Panel {
 
-    static final int WIDTH = 160;
-    static final int HEADER_HEIGHT = 18;
-    static final int ROW_HEIGHT = 16;
-    private static final int PADDING = 6;
+    static final int WIDTH = PrimeDesign.PANEL_WIDTH;
+    static final int HEADER_HEIGHT = PrimeDesign.PANEL_HEADER;
+    static final int ROW_HEIGHT = PrimeDesign.ROW_HEIGHT;
+    private static final int PADDING = PrimeDesign.SPACE_MD - 2;
     private static final int SETTING_INDENT = 10;
+    private final Map<BooleanSetting, ToggleWidget> toggles = new IdentityHashMap<>();
+    private final SliderWidget slider = new SliderWidget();
 
     private final String title;
     private final List<Module> modules;
@@ -61,7 +66,10 @@ final class Panel {
 
     void tick(float deltaSeconds) {
         float target = collapsed ? 0f : 1f;
-        collapseProgress = Easing.lerp(collapseProgress, target, deltaSeconds * 12f);
+        collapseProgress = PrimeDesign.animate(collapseProgress, target, deltaSeconds, PrimeDesign.MOTION_NORMAL);
+        for (var entry : toggles.entrySet()) {
+            entry.getValue().tick(entry.getKey().get(), deltaSeconds);
+        }
     }
 
     int height() {
@@ -155,16 +163,13 @@ final class Panel {
         int textX = px + SETTING_INDENT;
         switch (setting) {
             case BooleanSetting bool -> {
-                int boxSize = 8;
-                int boxX = px + WIDTH - PADDING - boxSize;
-                int nameMaxW = boxX - textX - 4;
+                ToggleWidget toggle = toggles.computeIfAbsent(bool, b -> new ToggleWidget());
+                int toggleX = px + WIDTH - PADDING - PrimeDesign.TOGGLE_WIDTH;
+                int nameMaxW = toggleX - textX - 4;
                 GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, setting.name(), nameMaxW),
                         textX, textY, theme.foreground());
-                int boxY = rowY + (ROW_HEIGHT - boxSize) / 2;
-                ctx.fillRect(boxX, boxY, boxSize, boxSize, theme.backgroundLight());
-                if (bool.get()) {
-                    ctx.fillRect(boxX + 2, boxY + 2, boxSize - 4, boxSize - 4, theme.accent());
-                }
+                int toggleY = rowY + (ROW_HEIGHT - PrimeDesign.TOGGLE_HEIGHT) / 2;
+                toggle.render(ctx, theme, toggleX, toggleY, bool.get());
             }
             case IntSetting number -> renderSlider(ctx, theme, setting.name(), String.valueOf(number.get()),
                     (number.get() - number.min()) / (float) (number.max() - number.min()), px, rowY, textX, textY);
@@ -201,15 +206,13 @@ final class Panel {
     private void renderSlider(RenderContext ctx, Theme theme, String name, String value, float fraction,
                               int px, int rowY, int textX, int textY) {
         int valueW = GuiLayout.labelWidth(ctx, value);
-        GuiLayout.label(ctx, value, px + WIDTH - PADDING - valueW, textY, theme.foregroundMuted());
+        int valueX = px + WIDTH - PADDING - valueW;
         int nameMaxW = WIDTH - SETTING_INDENT - PADDING - valueW - 4;
-        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, name, nameMaxW), textX, textY, theme.foreground());
-
+        String trimmed = GuiLayout.trimToWidth(ctx, name, nameMaxW);
         int barX = sliderBarX(px);
         int barWidth = sliderBarWidth();
         int barY = rowY + ROW_HEIGHT - 5;
-        ctx.fillRect(barX, barY, barWidth, 2, theme.backgroundLight());
-        ctx.fillRect(barX, barY, Math.round(barWidth * fraction), 2, theme.accent());
+        slider.renderCompact(ctx, theme, textX, textY, trimmed, value, valueX, barX, barY, barWidth, fraction);
     }
 
     private static int sliderBarX(int px) {
@@ -305,8 +308,8 @@ final class Panel {
         setting.set(setting.min() + fraction * (setting.max() - setting.min()));
     }
 
-    private static float sliderFraction(double mouseX, int px) {
-        return Math.clamp((float) (mouseX - sliderBarX(px)) / sliderBarWidth(), 0f, 1f);
+    private float sliderFraction(double mouseX, int px) {
+        return slider.fractionFromMouse(mouseX, sliderBarX(px), sliderBarWidth());
     }
 
     void mouseDragged(double mouseX, double mouseY, int screenWidth, int screenHeight) {

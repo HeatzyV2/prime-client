@@ -2,6 +2,9 @@ package dev.primeclient.core.gui.clickgui;
 
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.design.PrimeDesign;
+import dev.primeclient.core.gui.component.ToggleWidget;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import dev.primeclient.core.gui.FavoritesManager;
 import dev.primeclient.core.gui.GuiLayout;
 import dev.primeclient.core.gui.UiChrome;
@@ -10,7 +13,6 @@ import dev.primeclient.core.module.ModuleCategory;
 import dev.primeclient.core.module.ModuleManager;
 import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.util.ColorUtil;
-import dev.primeclient.core.util.Easing;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +31,7 @@ public final class ModuleCardBrowser {
 
     private final ModuleManager modules;
     private final FavoritesManager favorites;
+    private final Map<Module, ToggleWidget> toggles = new IdentityHashMap<>();
 
     private ModuleCategory activeCategory = ModuleCategory.PVP;
     private Module selected;
@@ -45,7 +48,10 @@ public final class ModuleCardBrowser {
     }
 
     public void tick(float deltaSeconds) {
-        scrollY = Easing.lerp(scrollY, targetScrollY, deltaSeconds * 14f);
+        scrollY = PrimeDesign.animate(scrollY, targetScrollY, deltaSeconds, 14f);
+        for (var entry : toggles.entrySet()) {
+            entry.getValue().tick(entry.getKey().isEnabled(), deltaSeconds);
+        }
     }
 
     public void render(RenderContext ctx, Theme theme, int x, int y, int width, int height,
@@ -133,23 +139,14 @@ public final class ModuleCardBrowser {
         GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, module.description(), textMax),
                 x + TITLE_X, y + 20, theme.foregroundMuted());
 
-        drawCardToggle(ctx, theme, toggleX, toggleY, module.isEnabled());
+        ToggleWidget toggle = toggles.computeIfAbsent(module, m -> new ToggleWidget());
+        toggle.render(ctx, theme, toggleX, toggleY, module.isEnabled());
 
         if (favorites.isFavorite(module.id())) {
             GuiLayout.label(ctx, "★", x + 6, y + CARD_H - 11, theme.accent());
         }
     }
 
-    private void drawCardToggle(RenderContext ctx, Theme theme, int x, int y, boolean on) {
-        int w = PrimeDesign.TOGGLE_WIDTH;
-        int h = PrimeDesign.TOGGLE_HEIGHT;
-        int radius = h / 2;
-        int track = on ? theme.accent() : ColorUtil.withAlpha(theme.backgroundLight(), 0.95f);
-        ctx.fillRoundedRect(x, y, w, h, radius, track);
-        int knob = h - 4;
-        int knobX = on ? x + w - knob - 2 : x + 2;
-        ctx.fillRoundedRect(knobX, y + 2, knob, knob, knob / 2, 0xFFFFFFFF);
-    }
 
     public boolean mousePressed(RenderContext ctx, double mouseX, double mouseY, int x, int y, int width, int height, int button) {
         if (mouseY >= y && mouseY < y + TAB_H) {

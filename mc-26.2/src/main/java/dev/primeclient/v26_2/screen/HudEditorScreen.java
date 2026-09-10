@@ -55,7 +55,8 @@ public final class HudEditorScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0 && PrimeClient.get().hudEditor().mousePressed(event.x(), event.y())) {
+        if (event.button() == 0 && PrimeClient.get().hudEditor().mousePressed(
+                event.x(), event.y(), isAltDown())) {
             return true;
         }
         return super.mouseClicked(event, doubleClick);
@@ -111,5 +112,11 @@ public final class HudEditorScreen extends Screen {
         long window = Minecraft.getInstance().getWindow().handle();
         return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS
                 || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_CONTROL) == GLFW.GLFW_PRESS;
+    }
+
+    private static boolean isAltDown() {
+        long window = Minecraft.getInstance().getWindow().handle();
+        return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_ALT) == GLFW.GLFW_PRESS
+                || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_ALT) == GLFW.GLFW_PRESS;
     }
 }

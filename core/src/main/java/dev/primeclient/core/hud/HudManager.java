@@ -148,6 +148,19 @@ public final class HudManager implements ConfigBinding {
         return null;
     }
 
+    /** All hit elements under the cursor, topmost first (for Alt-cycle selection). */
+    public java.util.List<HudElement> elementsAt(double x, double y, boolean includeHidden) {
+        java.util.ArrayList<HudElement> hits = new java.util.ArrayList<>();
+        HudElement[] elements = this.renderList;
+        for (int i = elements.length - 1; i >= 0; i--) {
+            HudElement element = elements[i];
+            if ((includeHidden || element.isVisible()) && element.containsPoint(x, y)) {
+                hits.add(element);
+            }
+        }
+        return hits;
+    }
+
     @Override
     public String configKey() {
         return "hud";
@@ -165,6 +178,9 @@ public final class HudManager implements ConfigBinding {
             section.addProperty("rotation", element.rotation());
             section.addProperty("opacity", element.opacity());
             section.addProperty("visible", element.isVisible());
+            if (element.isLocked()) {
+                section.addProperty("locked", true);
+            }
             if (element.tintArgb() != 0) {
                 section.addProperty("tint", element.tintArgb());
             }
@@ -208,6 +224,9 @@ public final class HudManager implements ConfigBinding {
         }
         if (json.has("visible")) {
             element.setVisible(json.get("visible").getAsBoolean());
+        }
+        if (json.has("locked")) {
+            element.setLocked(json.get("locked").getAsBoolean());
         }
         if (json.has("tint")) {
             element.setTintArgb(json.get("tint").getAsInt());

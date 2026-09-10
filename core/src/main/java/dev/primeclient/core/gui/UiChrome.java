@@ -73,7 +73,7 @@ public final class UiChrome {
                               boolean hover, boolean primary) {
         int radius = PrimeDesign.RADIUS_MD;
         if (primary) {
-            RoundedRect.softShadow(ctx, x, y, w, h, radius, 0x55E11D2E);
+            RoundedRect.softShadow(ctx, x, y, w, h, radius, ColorUtil.withAlpha(theme.accent(), 0.33f));
             RoundedRect.fill(ctx, x, y, w, h, radius, theme.accentSecondary());
             ctx.fillGradientVertical(x + 1, y + 1, w - 2, h - 2,
                     ColorUtil.withAlpha(theme.accent(), hover ? 1f : 0.95f),

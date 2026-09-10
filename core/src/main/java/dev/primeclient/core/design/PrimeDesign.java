@@ -1,8 +1,8 @@
 package dev.primeclient.core.design;
 
 /**
- * Prime Client v1.1 design tokens — spacing, radii, motion, typography scale.
- * Colors live on {@link dev.primeclient.core.theme.Theme}; this class holds layout and motion.
+ * Prime Client v1.1 design tokens — spacing, radii, motion, component sizes.
+ * Colors live on {@link dev.primeclient.core.theme.Theme}.
  */
 public final class PrimeDesign {
 
@@ -23,7 +23,7 @@ public final class PrimeDesign {
     public static final int RADIUS_MD = 4;
     public static final int RADIUS_LG = 8;
 
-    // Motion (seconds-ish lerp factors are applied per tick in UiAnimator)
+    // Motion (lerp speed factors applied per second of delta)
     public static final float MOTION_FAST = 18f;
     public static final float MOTION_NORMAL = 12f;
     public static final float MOTION_SLOW = 8f;
@@ -38,11 +38,22 @@ public final class PrimeDesign {
     public static final int INPUT_HEIGHT = 14;
     public static final int CARD_MIN_HEIGHT = 52;
     public static final int MENU_BUTTON_HEIGHT = 22;
+    public static final int PANEL_WIDTH = 160;
+    public static final int PANEL_HEADER = 18;
 
     // HUD Editor
     public static final int GRID_SIZE = 8;
     public static final int SNAP_THRESHOLD = 4;
 
     private PrimeDesign() {
+    }
+
+    /** Frame-rate independent lerp that snaps instantly when reduced motion is on. */
+    public static float animate(float from, float to, float deltaSeconds, float speed) {
+        if (reducedMotion) {
+            return to;
+        }
+        float t = Math.clamp(deltaSeconds * speed, 0f, 1f);
+        return from + (to - from) * t;
     }
 }

@@ -64,7 +64,8 @@ public final class HudEditorScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0 && PrimeClient.get().hudEditor().mousePressed(event.x(), event.y())) {
+        if (event.button() == 0 && PrimeClient.get().hudEditor().mousePressed(
+                event.x(), event.y(), Minecraft.getInstance().hasAltDown())) {
             return true;
         }
         return super.mouseClicked(event, doubleClick);

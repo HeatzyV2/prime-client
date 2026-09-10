@@ -4,7 +4,6 @@ import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.util.ColorUtil;
-import dev.primeclient.core.util.Easing;
 
 /** Animated on/off toggle switch. */
 public final class ToggleWidget {
@@ -12,7 +11,11 @@ public final class ToggleWidget {
     private float knobProgress = 0f;
 
     public void tick(boolean on, float deltaSeconds) {
-        knobProgress = Easing.lerp(knobProgress, on ? 1f : 0f, deltaSeconds * PrimeDesign.MOTION_FAST);
+        if (PrimeDesign.reducedMotion) {
+            knobProgress = on ? 1f : 0f;
+            return;
+        }
+        knobProgress = PrimeDesign.animate(knobProgress, on ? 1f : 0f, deltaSeconds, PrimeDesign.MOTION_FAST);
     }
 
     public void render(RenderContext ctx, Theme theme, int x, int y, boolean on) {

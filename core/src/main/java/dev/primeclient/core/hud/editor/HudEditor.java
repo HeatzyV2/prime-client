@@ -32,7 +32,10 @@ public final class HudEditor {
     private static final long SNAPSHOT_COALESCE_MS = 800;
 
     // GLFW key codes
+    private static final int KEY_E = 69;
     private static final int KEY_G = 71;
+    private static final int KEY_H = 72;
+    private static final int KEY_L = 76;
     private static final int KEY_R = 82;
     private static final int KEY_S = 83;
     private static final int KEY_V = 86;
@@ -57,6 +60,10 @@ public final class HudEditor {
     private boolean didDrag;
     private boolean snapEnabled = true;
     private boolean showGrid = false;
+    /** Magnetic guides to edges/centers of other elements. */
+    private boolean guidesEnabled = true;
+    /** Left element list drawer (collapsible). */
+    private boolean listOpen = true;
     private int tintPresetIndex;
 
     /** Screen size seen by the last render/drag — keyboard nudges need it between frames. */
@@ -142,6 +149,14 @@ public final class HudEditor {
         return snapEnabled;
     }
 
+    boolean guidesOn() {
+        return guidesEnabled;
+    }
+
+    boolean listOpen() {
+        return listOpen;
+    }
+
     void toggleGrid() {
         showGrid = !showGrid;
     }
@@ -150,11 +165,31 @@ public final class HudEditor {
         snapEnabled = !snapEnabled;
     }
 
+    void toggleGuides() {
+        guidesEnabled = !guidesEnabled;
+    }
+
+    void toggleList() {
+        listOpen = !listOpen;
+    }
+
+    void toggleLockSelected() {
+        if (selected == null) {
+            return;
+        }
+        snapshotNow();
+        selected.setLocked(!selected.isLocked());
+    }
+
     // ------------------------------------------------------------------
     // Mouse input
     // ------------------------------------------------------------------
 
     public boolean mousePressed(double mouseX, double mouseY) {
+        return mousePressed(mouseX, mouseY, false);
+    }
+
+    public boolean mousePressed(double mouseX, double mouseY, boolean altDown) {
         lastPressX = mouseX;
         lastPressY = mouseY;
         dragArmed = false;
@@ -162,18 +197,29 @@ public final class HudEditor {
             return true;
         }
         // Canvas ignores hidden elements — re-select them from the Elements list only.
-        HudElement hit = hud.elementAt(mouseX, mouseY, false);
+        java.util.List<HudElement> hits = hud.elementsAt(mouseX, mouseY, false);
+        HudElement hit = null;
+        if (!hits.isEmpty()) {
+            if (altDown && hits.size() > 1 && selected != null && hits.contains(selected)) {
+                int idx = hits.indexOf(selected);
+                hit = hits.get((idx + 1) % hits.size());
+            } else {
+                hit = hits.get(0);
+            }
+        }
         if (hit != null) {
             this.selected = hit;
-            this.dragging = hit;
+            this.dragging = hit.isLocked() ? null : hit;
             this.didDrag = false;
             this.grabOffsetX = (float) (mouseX - hit.lastX());
             this.grabOffsetY = (float) (mouseY - hit.lastY());
-            dragArmed = true;
-            beginGesture();
+            dragArmed = !hit.isLocked();
+            if (dragArmed) {
+                beginGesture();
+            }
             return true;
         }
-        if (selected != null && selected.isVisible()
+        if (selected != null && selected.isVisible() && !selected.isLocked()
                 && !ui.blocksCanvasDrag(mouseX, mouseY) && !ui.isPanelBackdrop(mouseX, mouseY)) {
             dragArmed = true;
             this.dragging = null;
@@ -195,14 +241,14 @@ public final class HudEditor {
         }
         HudElement element = dragging;
         if (element == null && dragArmed && selected != null && selected.isVisible()
-                && !ui.blocksCanvasDrag(mouseX, mouseY)) {
+                && !selected.isLocked() && !ui.blocksCanvasDrag(mouseX, mouseY)) {
             element = selected;
             dragging = selected;
             grabOffsetX = (float) (lastPressX - selected.lastX());
             grabOffsetY = (float) (lastPressY - selected.lastY());
             beginGesture();
         }
-        if (element == null || !element.isVisible()) {
+        if (element == null || !element.isVisible() || element.isLocked()) {
             return;
         }
         markMutated();
@@ -236,7 +282,7 @@ public final class HudEditor {
         HudElement target = selected != null && selected.isVisible() && selected.containsPoint(mouseX, mouseY)
                 ? selected
                 : hud.elementAt(mouseX, mouseY, false);
-        if (target == null || !target.isVisible()) {
+        if (target == null || !target.isVisible() || target.isLocked()) {
             return false;
         }
         snapshotCoalesced();
@@ -261,7 +307,7 @@ public final class HudEditor {
         return keyPressed(glfwKey, false, false);
     }
 
-    /** G grid · S snap · V visibility · R tint · arrows nudge (Shift=10px) · Ctrl+Z/Y undo/redo. */
+    /** G grid · H guides · E list · S snap · V visibility · L lock · R tint · arrows · Ctrl+Z/Y. */
     public boolean keyPressed(int glfwKey, boolean shiftDown, boolean ctrlDown) {
         if (ctrlDown && glfwKey == KEY_Z) {
             if (shiftDown) {
@@ -277,6 +323,14 @@ public final class HudEditor {
         }
         if (glfwKey == KEY_G) {
             showGrid = !showGrid;
+            return true;
+        }
+        if (glfwKey == KEY_H) {
+            guidesEnabled = !guidesEnabled;
+            return true;
+        }
+        if (glfwKey == KEY_E) {
+            listOpen = !listOpen;
             return true;
         }
         if (glfwKey == KEY_S) {
@@ -307,6 +361,10 @@ public final class HudEditor {
             case KEY_V -> {
                 snapshotNow();
                 selected.setVisible(!selected.isVisible());
+                return true;
+            }
+            case KEY_L -> {
+                toggleLockSelected();
                 return true;
             }
             case KEY_R -> {
@@ -347,6 +405,9 @@ public final class HudEditor {
 
     private void nudgeSelected(float dx, float dy) {
         HudElement element = selected;
+        if (element.isLocked()) {
+            return;
+        }
         snapshotCoalesced();
         // Work from anchor + offset, not lastX/lastY: those only refresh on the next
         // layout pass, and key-repeat can fire several nudges within one frame.
@@ -459,11 +520,15 @@ public final class HudEditor {
         considerTargetX(best, x, width, 0);
         considerTargetX(best, x, width, screenWidth / 2f);
         considerTargetX(best, x, width, screenWidth);
-        if (best.delta <= PrimeDesign.SNAP_THRESHOLD) {
+        if (guidesEnabled && best.delta <= PrimeDesign.SNAP_THRESHOLD) {
             guideX = best.guide;
             return best.value;
         }
-        return Math.round(x / (float) PrimeDesign.GRID_SIZE) * PrimeDesign.GRID_SIZE;
+        // Grid snap only when the visual grid is on — guides and grid are independent.
+        if (showGrid) {
+            return Math.round(x / (float) PrimeDesign.GRID_SIZE) * PrimeDesign.GRID_SIZE;
+        }
+        return x;
     }
 
     /** Aligns the dragged box's left edge, center or right edge onto {@code target}. */
@@ -486,11 +551,14 @@ public final class HudEditor {
         considerTargetY(best, y, height, 0);
         considerTargetY(best, y, height, screenHeight / 2f);
         considerTargetY(best, y, height, screenHeight);
-        if (best.delta <= PrimeDesign.SNAP_THRESHOLD) {
+        if (guidesEnabled && best.delta <= PrimeDesign.SNAP_THRESHOLD) {
             guideY = best.guide;
             return best.value;
         }
-        return Math.round(y / (float) PrimeDesign.GRID_SIZE) * PrimeDesign.GRID_SIZE;
+        if (showGrid) {
+            return Math.round(y / (float) PrimeDesign.GRID_SIZE) * PrimeDesign.GRID_SIZE;
+        }
+        return y;
     }
 
     private static void considerTargetY(SnapResult best, float y, float height, float target) {
@@ -572,11 +640,13 @@ public final class HudEditor {
     }
 
     private record ElementState(HudElement element, HudAnchor anchor, float offsetX, float offsetY,
-                                float scale, float rotation, float opacity, int tint, boolean visible) {
+                                float scale, float rotation, float opacity, int tint, boolean visible,
+                                boolean locked) {
 
         static ElementState capture(HudElement element) {
             return new ElementState(element, element.anchor(), element.offsetX(), element.offsetY(),
-                    element.scale(), element.rotation(), element.opacity(), element.tintArgb(), element.isVisible());
+                    element.scale(), element.rotation(), element.opacity(), element.tintArgb(),
+                    element.isVisible(), element.isLocked());
         }
 
         void restore() {
@@ -586,6 +656,7 @@ public final class HudEditor {
             element.setOpacity(opacity);
             element.setTintArgb(tint);
             element.setVisible(visible);
+            element.setLocked(locked);
         }
     }
 

@@ -6,6 +6,7 @@ import dev.primeclient.core.theme.Theme;
 /** Horizontal slider with visible value label. */
 public final class SliderWidget {
 
+    /** Full-height card/settings layout (label + value + track below). */
     public void render(RenderContext ctx, Theme theme, int x, int y, int width,
                        String label, String valueText, float fraction, boolean hovered) {
         ctx.drawText(label, x, y, theme.foreground(), true);
@@ -17,6 +18,16 @@ public final class SliderWidget {
         ctx.fillRect(x, barY, width, barH, theme.backgroundLight());
         int fill = Math.round(width * Math.clamp(fraction, 0f, 1f));
         ctx.fillRect(x, barY, fill, barH, hovered ? theme.accentSecondary() : theme.accent());
+    }
+
+    /** Compact ClickGUI panel row: label + value on the row, 2px track under the text. */
+    public void renderCompact(RenderContext ctx, Theme theme, int labelX, int textY,
+                              String name, String value, int valueX,
+                              int barX, int barY, int barWidth, float fraction) {
+        ctx.drawUiText(value, valueX, textY, theme.foregroundMuted());
+        ctx.drawUiText(name, labelX, textY, theme.foreground());
+        ctx.fillRect(barX, barY, barWidth, 2, theme.backgroundLight());
+        ctx.fillRect(barX, barY, Math.round(barWidth * Math.clamp(fraction, 0f, 1f)), 2, theme.accent());
     }
 
     public float fractionFromMouse(double mouseX, int x, int width) {
