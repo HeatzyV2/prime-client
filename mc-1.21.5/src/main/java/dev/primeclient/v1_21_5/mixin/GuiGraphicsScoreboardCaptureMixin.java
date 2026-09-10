@@ -1,8 +1,8 @@
 package dev.primeclient.v1_21_5.mixin;
 
-import com.mojang.blaze3d.pipeline.RenderPipeline;
 import dev.primeclient.core.hud.vanilla.VanillaHudMeasurements;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderType;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -17,9 +17,9 @@ public abstract class GuiGraphicsScoreboardCaptureMixin {
         VanillaHudMeasurements.recordScoreboardFill(x1, y1, x2, y2);
     }
 
-    @Inject(method = "fill(Lcom/mojang/blaze3d/pipeline/RenderPipeline;IIIII)V", at = @At("HEAD"))
-    private void primeclient$capturePipelineFill(
-            RenderPipeline pipeline, int x1, int y1, int x2, int y2, int color, CallbackInfo ci) {
+    @Inject(method = "fill(Lnet/minecraft/client/renderer/RenderType;IIIII)V", at = @At("HEAD"))
+    private void primeclient$captureRenderTypeFill(
+            RenderType type, int x1, int y1, int x2, int y2, int color, CallbackInfo ci) {
         VanillaHudMeasurements.recordScoreboardFill(x1, y1, x2, y2);
     }
 }

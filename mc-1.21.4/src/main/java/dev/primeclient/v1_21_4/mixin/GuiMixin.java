@@ -76,19 +76,6 @@ public abstract class GuiMixin {
         VanillaHudTransforms.pop(graphics, VanillaHudComponent.STATUS_EFFECTS);
     }
 
-    @Inject(method = "renderBossOverlay", at = @At("HEAD"), cancellable = true)
-    private void primeclient$bossHead(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
-        if (VanillaHudTransforms.isHidden(VanillaHudComponent.BOSSBAR)) {
-            ci.cancel();
-            return;
-        }
-        VanillaHudTransforms.push(graphics, VanillaHudComponent.BOSSBAR);
-    }
-
-    @Inject(method = "renderBossOverlay", at = @At("RETURN"))
-    private void primeclient$bossTail(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
-        VanillaHudTransforms.pop(graphics, VanillaHudComponent.BOSSBAR);
-    }
 
     @Inject(
             method = "renderHotbarAndDecorations",

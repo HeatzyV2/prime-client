@@ -27,7 +27,7 @@ public final class VanillaHudLayerRenderer {
         GuiLayerInvoker layers = (GuiLayerInvoker) gui;
 
         if (isVisible(VanillaHudComponent.BOSSBAR)) {
-            layers.primeclient$renderBossOverlay(graphics, deltaTracker);
+            gui.getBossOverlay().render(graphics);
         }
         if (isVisible(VanillaHudComponent.STATUS_EFFECTS)) {
             layers.primeclient$renderEffects(graphics, deltaTracker);

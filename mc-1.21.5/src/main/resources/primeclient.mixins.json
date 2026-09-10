@@ -15,6 +15,7 @@
 		"LightTextureMixin",
 		"ScreenEffectRendererMixin",
 		"GuiMixin",
+		"BossHealthOverlayMixin",
 		"GuiLayerInvoker",
 		"ScoreboardSidebarBoundsMixin",
 		"PlayerRendererMixin",
