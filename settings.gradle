@@ -9,11 +9,24 @@ pluginManagement {
 	}
 }
 
+plugins {
+	id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 rootProject.name = 'prime-client'
 
 // Common core: pure Java, no Minecraft dependency, shared by every version layer.
 include 'core'
 
-// Version layers: one Fabric mod per supported Minecraft version.
+// Version layers: one Fabric mod jar per supported Minecraft release.
+// 1.21.x = loom-remap (mojmap → intermediary). 26.x = loom (native mojmap).
+include 'mc-1.21.4'
+include 'mc-1.21.5'
+include 'mc-1.21.6'
+include 'mc-1.21.7'
+include 'mc-1.21.8'
+include 'mc-1.21.9'
+include 'mc-1.21.10'
 include 'mc-1.21.11'
+include 'mc-26.1'
 include 'mc-26.2'

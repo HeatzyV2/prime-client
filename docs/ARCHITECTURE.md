@@ -15,19 +15,27 @@
 │         (interfaces = contrat vers Minecraft)       │
 └──────────────────────┬──────────────────────────────┘
                        │ implémente
-        ┌──────────────┴───────────────┐
-        │                              │
-┌───────▼─────────┐          ┌─────────▼───────┐
-│  :mc-1.21.11    │          │   :mc-26.2      │
-│  Java 21        │          │   Java 25       │
-│  loom-remap     │          │   loom          │
-│  mojmap→interm. │          │   mojmap natif  │
-└─────────────────┘          └─────────────────┘
+        ┌──────────────┴──────────────────────────────┐
+        │                                             │
+┌───────▼─────────┐                         ┌─────────▼───────┐
+│  :mc-1.21.4…11  │                         │  :mc-26.1 / 26.2│
+│  Java 21        │                         │  Java 25        │
+│  loom-remap     │                         │  loom           │
+│  mojmap→interm. │                         │  mojmap natif   │
+└─────────────────┘                         └─────────────────┘
 ```
 
-Un seul mod id (`primeclient`), deux jars distribués :
-`prime-client-1.21.11-x.y.z.jar` et `prime-client-26.2-x.y.z.jar`.
-Le core est embarqué dans chaque jar via Jar-in-Jar (`include`).
+Un seul mod id (`primeclient`), un jar par version Minecraft :
+`prime-client-<mc>-x.y.z.jar`. Le core est embarqué via Jar-in-Jar (`include`).
+
+Les diffs d'API entre versions restent dans les couches (`VersionAdapter`,
+mixins, render/network). Le core n'a pas de `if (version == …)`.
+
+Bandes de divergence (référence) :
+- **≤1.21.10** : `ResourceLocation`, `GraphicsStatus`, `RenderType`, `model.PlayerModel`
+- **≤1.21.8** : `PlayerRenderer` / `PlayerRenderState`, input Screen primitifs, skins `client.resources`
+- **≤1.21.5** : `PoseStack` GUI, `HudRenderCallback`, blit `RenderType::guiTextured`
+- **26.1 vs 26.2** : `Gui` vs `Hud`, `mc.screen` vs `mc.gui.screen()`
 
 ## Règles absolues
 

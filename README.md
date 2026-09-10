@@ -7,21 +7,31 @@ Alternative professionnelle à Lunar / Badlion / Feather — 100 % légitime (vi
 
 | Minecraft | Module Gradle | Java | Loom | Mappings |
 |-----------|---------------|------|------|----------|
+| 1.21.4    | `mc-1.21.4`   | 21   | `fabric-loom-remap` | Mojang (remap intermediary) |
+| 1.21.5    | `mc-1.21.5`   | 21   | `fabric-loom-remap` | Mojang (remap intermediary) |
+| 1.21.6    | `mc-1.21.6`   | 21   | `fabric-loom-remap` | Mojang (remap intermediary) |
+| 1.21.7    | `mc-1.21.7`   | 21   | `fabric-loom-remap` | Mojang (remap intermediary) |
+| 1.21.8    | `mc-1.21.8`   | 21   | `fabric-loom-remap` | Mojang (remap intermediary) |
+| 1.21.9    | `mc-1.21.9`   | 21   | `fabric-loom-remap` | Mojang (remap intermediary) |
+| 1.21.10   | `mc-1.21.10`  | 21   | `fabric-loom-remap` | Mojang (remap intermediary) |
 | 1.21.11   | `mc-1.21.11`  | 21   | `fabric-loom-remap` | Mojang (remap intermediary) |
+| 26.1      | `mc-26.1`     | 25   | `fabric-loom`       | Mojang (runtime natif) |
 | 26.2      | `mc-26.2`     | 25   | `fabric-loom`       | Mojang (runtime natif) |
 
-> Yarn s'arrête à 1.21.11 et n'existe pas pour 26.x (Fabric a migré vers les
-> mappings Mojang officiels). Les deux couches utilisent donc mojmap : mêmes
-> noms de classes partout, adapters quasi identiques.
+Un jar par version : `prime-client-<mc>-x.y.z.jar` (ex. `prime-client-1.21.8-2.6.0.jar`).
+Le core commun est embarqué en Jar-in-Jar.
+
+> Yarn s'arrête à 1.21.11. Toutes les couches utilisent mojmap : mêmes noms de
+> classes dans le code source, adapters versionnés pour les diffs d'API.
 
 ## Structure
 
 ```
 prime-client/
 ├── core/          Common Core — Java pur, zéro dépendance Minecraft
-│                  (modules, events, config, thèmes, HUD model, utils)
-├── mc-1.21.11/    Couche version 1.21.11 (mod Fabric)
-└── mc-26.2/       Couche version 26.2 (mod Fabric)
+├── mc-1.21.*/     Couches Fabric 1.21.4 → 1.21.11
+├── mc-26.*/       Couches Fabric 26.1 / 26.2
+└── launcher/      Prime Launcher (Electron)
 ```
 
 Règle d'or : le core ne touche jamais une classe Minecraft. Tout passe par les
@@ -33,24 +43,24 @@ API serveurs partenaires (plugins) : [docs/SERVER_API.md](docs/SERVER_API.md).
 ## Build & run
 
 ```bash
-# Tout compiler (les deux versions)
-./gradlew build
+# Toutes les couches 1.21.x (Java 21)
+./gradlew :mc-1.21.4:build :mc-1.21.11:build
+
+# Couches 26.x (toolchain Java 25 requis)
+./gradlew :mc-26.1:build :mc-26.2:build
 
 # Une seule version
-./gradlew :mc-26.2:build
-./gradlew :mc-1.21.11:build
-
-# Lancer le client en dev
+./gradlew :mc-1.21.8:runClient
 ./gradlew :mc-26.2:runClient
-./gradlew :mc-1.21.11:runClient
 ```
 
-Jars finaux dans `mc-*/build/libs/` (le core est embarqué en Jar-in-Jar).
-Prérequis : JDK 25 (compile aussi la cible 21 via `--release`).
+Jars finaux dans `mc-*/build/libs/`.
+Prérequis : JDK 21 minimum ; JDK 25 pour builder les cibles 26.x.
 
 ## Prime Launcher
 
-Le launcher officiel Electron vit dans [`launcher/`](launcher/) (v2.4). Releases : [GitHub](https://github.com/HeatzyV2/prime-client) · [Site web](https://heatzyv2.github.io/prime-client/) · [docs/GITHUB.md](docs/GITHUB.md)
+Le launcher officiel Electron vit dans [`launcher/`](launcher/). Releases :
+[GitHub](https://github.com/HeatzyV2/prime-client) · [docs/GITHUB.md](docs/GITHUB.md)
 
 ```bash
 cd launcher
@@ -58,18 +68,7 @@ npm install
 npm run dev
 ```
 
-Voir [launcher/README.md](launcher/README.md) pour la roadmap complète.
-
 ## Feuille de route
 
-- [x] Phase 1 — Architecture (multi-module, adapters, build vert)
-- [x] Phase 2 — Core (config JSON atomique, keybinds GLFW, thèmes, notifications, profils)
-- [x] Phase 3 — Event System (bus typé sans réflexion, ponts Fabric)
-- [x] Phase 4 — Module System (settings typés sealed, ModuleManager, persistance)
-- [x] Phase 5 — HUD System + HUD Editor (ancrage 9 points, drag & drop, échelle molette — touche H)
-- [x] Phase 6 — ClickGUI (panneaux par catégorie, recherche live, sliders/toggles/enums, drag, persistance — touche Right Shift)
-- [x] Phase 7 — 50 modules v1.0 (PvP×15, Performance×10, QoL×15, Creator×5, Prime×5) · ponts Fabric chat/combat/santé, mixin FOV zoom, adapters étendus
-- [x] Phase 8 — Menu principal ClickGUI, favoris, animations, rotation/transparence HUD Editor, mixins hit color & caméra cinématique, tests unitaires
-- [x] Phase 9 — v1.1 Premium : design system, Crosshair Editor (presets + profils serveur), Replay Tools (save/load), Cloud sync, Cosmetics (cape mixin), Color Picker, Text Input, Hit Particles, menu premium cartes, Settings/Cosmetics/Configurations, onboarding, loading screen, notifications premium, tooltips
-- [x] Phase 10 — Discord Rich Presence (App ID `1525574680994648174`), auto-sync cloud, notifications toggle modules, Prime Account tier — voir [docs/DISCORD_RPC.md](docs/DISCORD_RPC.md)
-- [x] Phase 11 — First-run experience (HUD starter, onboarding interactif, splash, favoris) — **[Guide utilisateur](docs/GUIDE_UTILISATEUR.md)**
+- [x] Phase 1–11 — Architecture, core, HUD, ClickGUI, modules, launcher, cosmetics
+- [x] Multi-version — jars Fabric pour Minecraft 1.21.4 → 26.2

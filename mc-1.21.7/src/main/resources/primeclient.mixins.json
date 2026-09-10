@@ -1,0 +1,35 @@
+{
+	"required": true,
+	"package": "dev.primeclient.v1_21_7.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"refmap": "primeclient-refmap.json",
+	"mixinextras": true,
+	"client": [
+		"GameRendererMixin",
+		"LivingEntityRendererMixin",
+		"EntityRendererMixin",
+		"DebugScreenOverlayMixin",
+		"ChatComponentMixin",
+		"CameraMixin",
+		"LevelMixin",
+		"LightTextureMixin",
+		"ScreenEffectRendererMixin",
+		"GuiMixin",
+		"GuiLayerInvoker",
+		"ScoreboardSidebarBoundsMixin",
+		"PlayerRendererMixin",
+		"PlayerRenderStateMixin",
+		"CapeLayerMixin",
+		"LivingEntityRendererAccessor",
+		"PlayerTabOverlayMixin",
+		"PlayerInfoMixin",
+		"TitleScreenMixin",
+		"PauseScreenMixin",
+		"MinecraftUserAccessor",
+		"ClientBrandRetrieverMixin",
+		"ServerListMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
