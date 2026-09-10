@@ -7,6 +7,8 @@ export const IPC = {
   APP_GET_PLATFORM: 'app:get-platform',
   APP_RESTART: 'app:restart',
   BOOT_INITIALIZE: 'boot:initialize',
+  /** Main → renderer progress while boot stores load. */
+  BOOT_PROGRESS: 'boot:progress',
 
   ACCOUNT_GET_PRIME: 'account:get-prime',
   ACCOUNT_GET_MINECRAFT: 'account:get-minecraft',

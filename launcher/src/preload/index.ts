@@ -13,7 +13,14 @@ const api = {
     restart: (): Promise<void> => ipcRenderer.invoke(IPC.APP_RESTART)
   },
   boot: {
-    initialize: (): Promise<void> => ipcRenderer.invoke(IPC.BOOT_INITIALIZE)
+    initialize: (): Promise<void> => ipcRenderer.invoke(IPC.BOOT_INITIALIZE),
+    onProgress: (listener: (payload: { step: number; total: number; label: string }) => void): (() => void) => {
+      const handler = (_event: IpcRendererEvent, payload: { step: number; total: number; label: string }): void => {
+        listener(payload)
+      }
+      ipcRenderer.on(IPC.BOOT_PROGRESS, handler)
+      return () => ipcRenderer.removeListener(IPC.BOOT_PROGRESS, handler)
+    }
   },
   account: {
     getPrime: () => ipcRenderer.invoke(IPC.ACCOUNT_GET_PRIME),

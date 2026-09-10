@@ -2,12 +2,11 @@ package dev.primeclient.core.gui.clickgui;
 
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.design.PrimeDesign;
-import dev.primeclient.core.gui.component.ToggleWidget;
-import java.util.IdentityHashMap;
-import java.util.Map;
 import dev.primeclient.core.gui.FavoritesManager;
 import dev.primeclient.core.gui.GuiLayout;
+import dev.primeclient.core.gui.TooltipRenderer;
 import dev.primeclient.core.gui.UiChrome;
+import dev.primeclient.core.gui.component.ToggleWidget;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 import dev.primeclient.core.module.ModuleManager;
@@ -15,9 +14,12 @@ import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.util.ColorUtil;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
-/** Card-based module browser with category tabs. */
+/** Card-based module browser with Overview / Favorites / category tabs. */
 public final class ModuleCardBrowser {
 
     public static final int CARD_W = 112;
@@ -29,18 +31,40 @@ public final class ModuleCardBrowser {
     private static final int TEXT_PAD = 6;
     private static final int TOGGLE_TOP = 8;
 
+    enum Tab {
+        OVERVIEW,
+        FAVORITES,
+        CATEGORY
+    }
+
     private final ModuleManager modules;
     private final FavoritesManager favorites;
     private final Map<Module, ToggleWidget> toggles = new IdentityHashMap<>();
 
+    private Tab activeTab = Tab.OVERVIEW;
     private ModuleCategory activeCategory = ModuleCategory.PVP;
     private Module selected;
+    private String searchQuery = "";
     private float scrollY;
     private float targetScrollY;
+    private TooltipRenderer tooltips;
 
     public ModuleCardBrowser(ModuleManager modules, FavoritesManager favorites) {
         this.modules = modules;
         this.favorites = favorites;
+    }
+
+    public void setTooltips(TooltipRenderer tooltips) {
+        this.tooltips = tooltips;
+    }
+
+    public void setSearchQuery(String query) {
+        String next = query == null ? "" : query;
+        if (!next.equals(searchQuery)) {
+            searchQuery = next;
+            targetScrollY = 0;
+            scrollY = 0;
+        }
     }
 
     public Module selected() {
@@ -98,24 +122,37 @@ public final class ModuleCardBrowser {
     private void renderTabs(RenderContext ctx, Theme theme, int x, int y, int width,
                             double mouseX, double mouseY) {
         int tabX = x;
+        tabX = drawTab(ctx, theme, tabX, y, width, mouseX, mouseY, "Overview", "◈",
+                theme.accent(), activeTab == Tab.OVERVIEW);
+        tabX = drawTab(ctx, theme, tabX, y, width, mouseX, mouseY, "Favorites", "★",
+                theme.accent(), activeTab == Tab.FAVORITES);
         for (ModuleCategory cat : ModuleCategory.values()) {
-            int tw = tabWidth(ctx, cat);
+            boolean active = activeTab == Tab.CATEGORY && cat == activeCategory;
+            tabX = drawTab(ctx, theme, tabX, y, width, mouseX, mouseY,
+                    cat.displayName(), cat.icon(), cat.accent(), active);
             if (tabX > x + width) {
                 break;
             }
-            boolean active = cat == activeCategory;
-            boolean hover = mouseX >= tabX && mouseX < tabX + tw && mouseY >= y && mouseY < y + TAB_H;
-            int radius = PrimeDesign.RADIUS_SM;
-            int fill = active ? theme.surfaceElevated() : theme.backgroundLight();
-            ctx.fillRoundedRect(tabX, y, tw, TAB_H, radius, fill);
-            if (active || hover) {
-                ctx.fillRect(tabX + 2, y + TAB_H - 2, tw - 4, 1, cat.accent());
-            }
-            GuiLayout.label(ctx, cat.icon(), tabX + 6, y + 4, cat.accent());
-            GuiLayout.label(ctx, cat.displayName(), tabX + 18, y + 4,
-                    active ? theme.foreground() : theme.foregroundMuted());
-            tabX += tw + PrimeDesign.SPACE_XS;
         }
+    }
+
+    private int drawTab(RenderContext ctx, Theme theme, int tabX, int y, int width,
+                        double mouseX, double mouseY, String label, String icon,
+                        int accent, boolean active) {
+        int tw = ctx.uiTextWidth(label) + TAB_PAD;
+        if (tabX > width + (tabX - tw)) {
+            // still draw if partially visible
+        }
+        boolean hover = mouseX >= tabX && mouseX < tabX + tw && mouseY >= y && mouseY < y + TAB_H;
+        int fill = active ? theme.surfaceElevated() : theme.backgroundLight();
+        ctx.fillRoundedRect(tabX, y, tw, TAB_H, PrimeDesign.RADIUS_SM, fill);
+        if (active || hover) {
+            ctx.fillRect(tabX + 2, y + TAB_H - 2, tw - 4, 1, accent);
+        }
+        GuiLayout.label(ctx, icon, tabX + 6, y + 4, accent);
+        GuiLayout.label(ctx, label, tabX + 18, y + 4,
+                active ? theme.foreground() : theme.foregroundMuted());
+        return tabX + tw + PrimeDesign.SPACE_XS;
     }
 
     private void renderCard(RenderContext ctx, Theme theme, Module module, int x, int y,
@@ -134,10 +171,17 @@ public final class ModuleCardBrowser {
         int toggleY = cardToggleY(y);
         int textMax = toggleX - (x + TITLE_X) - 4;
 
-        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, module.name(), textMax),
-                x + TITLE_X, y + 6, theme.foreground());
-        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, module.description(), textMax),
-                x + TITLE_X, y + 20, theme.foregroundMuted());
+        String name = module.name();
+        String desc = module.description();
+        String trimmedName = GuiLayout.trimToWidth(ctx, name, textMax);
+        String trimmedDesc = GuiLayout.trimToWidth(ctx, desc, textMax);
+        GuiLayout.label(ctx, trimmedName, x + TITLE_X, y + 6, theme.foreground());
+        GuiLayout.label(ctx, trimmedDesc, x + TITLE_X, y + 20, theme.foregroundMuted());
+
+        if (hover && tooltips != null && (!trimmedName.equals(name) || !trimmedDesc.equals(desc))) {
+            String tip = name.equals(trimmedName) ? desc : name + " — " + desc;
+            tooltips.show(tip, x, y - 16);
+        }
 
         ToggleWidget toggle = toggles.computeIfAbsent(module, m -> new ToggleWidget());
         toggle.render(ctx, theme, toggleX, toggleY, module.isEnabled());
@@ -147,23 +191,10 @@ public final class ModuleCardBrowser {
         }
     }
 
-
-    public boolean mousePressed(RenderContext ctx, double mouseX, double mouseY, int x, int y, int width, int height, int button) {
+    public boolean mousePressed(RenderContext ctx, double mouseX, double mouseY, int x, int y,
+                                int width, int height, int button) {
         if (mouseY >= y && mouseY < y + TAB_H) {
-            int tabX = x;
-            for (ModuleCategory cat : ModuleCategory.values()) {
-                int tw = tabWidth(ctx, cat);
-                if (tabX > x + width) {
-                    break;
-                }
-                if (mouseX >= tabX && mouseX < tabX + tw) {
-                    activeCategory = cat;
-                    targetScrollY = 0;
-                    scrollY = 0;
-                    return true;
-                }
-                tabX += tw + PrimeDesign.SPACE_XS;
-            }
+            return pressTab(ctx, mouseX, mouseY, x, y, width);
         }
         List<Module> list = filteredModules();
         int cols = Math.max(1, width / (CARD_W + PrimeDesign.SPACE_SM));
@@ -195,6 +226,43 @@ public final class ModuleCardBrowser {
         return false;
     }
 
+    private boolean pressTab(RenderContext ctx, double mouseX, double mouseY, int x, int y, int width) {
+        int tabX = x;
+        int overviewW = ctx.uiTextWidth("Overview") + TAB_PAD;
+        if (mouseX >= tabX && mouseX < tabX + overviewW) {
+            activeTab = Tab.OVERVIEW;
+            resetScroll();
+            return true;
+        }
+        tabX += overviewW + PrimeDesign.SPACE_XS;
+        int favW = ctx.uiTextWidth("Favorites") + TAB_PAD;
+        if (mouseX >= tabX && mouseX < tabX + favW) {
+            activeTab = Tab.FAVORITES;
+            resetScroll();
+            return true;
+        }
+        tabX += favW + PrimeDesign.SPACE_XS;
+        for (ModuleCategory cat : ModuleCategory.values()) {
+            int tw = tabWidth(ctx, cat);
+            if (tabX > x + width) {
+                break;
+            }
+            if (mouseX >= tabX && mouseX < tabX + tw) {
+                activeTab = Tab.CATEGORY;
+                activeCategory = cat;
+                resetScroll();
+                return true;
+            }
+            tabX += tw + PrimeDesign.SPACE_XS;
+        }
+        return false;
+    }
+
+    private void resetScroll() {
+        targetScrollY = 0;
+        scrollY = 0;
+    }
+
     public boolean mouseScrolled(double amount, int x, int y, int width, int height) {
         int contentH = height - TAB_H - PrimeDesign.SPACE_SM;
         List<Module> list = filteredModules();
@@ -210,16 +278,35 @@ public final class ModuleCardBrowser {
     void selectForTests(Module module) {
         selected = module;
         if (module != null) {
+            activeTab = Tab.CATEGORY;
             activeCategory = module.category();
         }
     }
 
-    private List<Module> filteredModules() {
-        List<Module> list = new ArrayList<>();
-        for (Module m : modules.byCategory(activeCategory)) {
-            list.add(m);
+    List<Module> filteredModules() {
+        List<Module> source = new ArrayList<>();
+        switch (activeTab) {
+            case OVERVIEW -> {
+                for (ModuleCategory cat : ModuleCategory.values()) {
+                    source.addAll(modules.byCategory(cat));
+                }
+            }
+            case FAVORITES -> source.addAll(favorites.resolve(modules));
+            case CATEGORY -> source.addAll(modules.byCategory(activeCategory));
         }
-        return list;
+        if (searchQuery.isEmpty()) {
+            return source;
+        }
+        String q = searchQuery.toLowerCase(Locale.ROOT);
+        List<Module> out = new ArrayList<>();
+        for (Module m : source) {
+            if (m.name().toLowerCase(Locale.ROOT).contains(q)
+                    || m.description().toLowerCase(Locale.ROOT).contains(q)
+                    || m.id().toLowerCase(Locale.ROOT).contains(q)) {
+                out.add(m);
+            }
+        }
+        return out;
     }
 
     private static int cardToggleX(int cardX) {

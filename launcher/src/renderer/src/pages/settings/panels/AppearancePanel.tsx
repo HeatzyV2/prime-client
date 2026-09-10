@@ -2,16 +2,20 @@ import type { CSSProperties } from 'react'
 import { Toggle } from '@renderer/design-system/components'
 import { useI18n } from '@renderer/context/I18nProvider'
 import { useTheme } from '@renderer/context/ThemeProvider'
-import { isElevatedTheme } from '@shared/theme'
+import { isElevatedTheme, PRIME_THEMES, type PrimeThemeId } from '@shared/theme'
 import type { SettingsPatch, SettingsState } from '../types'
 
-const THEMES = [
-  { id: 'prime-crimson' as const, swatch: '#e11d2e' },
-  { id: 'prime-midnight' as const, swatch: '#38bdf8' },
-  { id: 'prime-aurora' as const, swatch: '#34d399' },
-  { id: 'prime-obsidian' as const, swatch: '#f0d78c' },
-  { id: 'prime-ember' as const, swatch: '#fdba74' }
-] as const
+const THEME_SWATCH: Record<PrimeThemeId, string> = {
+  'prime-crimson': '#e11d2e',
+  'prime-midnight': '#38bdf8',
+  'prime-aurora': '#34d399',
+  'prime-obsidian': '#f0d78c',
+  'prime-ember': '#fdba74',
+  'prime-violet': '#a855f7',
+  'prime-emerald': '#10b981'
+}
+
+const THEMES = PRIME_THEMES.map((id) => ({ id, swatch: THEME_SWATCH[id] }))
 
 export function AppearancePanel({
   settings,

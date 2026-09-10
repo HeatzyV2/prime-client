@@ -161,6 +161,39 @@ public final class HudManager implements ConfigBinding {
         return hits;
     }
 
+    /** Moves an element to the top of the paint order (drawn last / hit first). */
+    public boolean bringToFront(HudElement element) {
+        if (element == null || !byId.containsKey(element.id())) {
+            return false;
+        }
+        byId.remove(element.id());
+        byId.put(element.id(), element);
+        rebuildRenderList();
+        return true;
+    }
+
+    /** Moves an element to the bottom of the paint order (drawn first). */
+    public boolean sendToBack(HudElement element) {
+        if (element == null || !byId.containsKey(element.id())) {
+            return false;
+        }
+        Map<String, HudElement> rebuilt = new LinkedHashMap<>();
+        rebuilt.put(element.id(), element);
+        for (Map.Entry<String, HudElement> e : byId.entrySet()) {
+            if (!e.getKey().equals(element.id())) {
+                rebuilt.put(e.getKey(), e.getValue());
+            }
+        }
+        byId.clear();
+        byId.putAll(rebuilt);
+        rebuildRenderList();
+        return true;
+    }
+
+    private void rebuildRenderList() {
+        renderList = byId.values().toArray(new HudElement[0]);
+    }
+
     @Override
     public String configKey() {
         return "hud";
@@ -169,7 +202,9 @@ public final class HudManager implements ConfigBinding {
     @Override
     public JsonElement saveConfig() {
         JsonObject json = new JsonObject();
+        com.google.gson.JsonArray order = new com.google.gson.JsonArray();
         for (HudElement element : byId.values()) {
+            order.add(element.id());
             JsonObject section = new JsonObject();
             section.addProperty("anchor", element.anchor().name());
             section.addProperty("x", element.offsetX());
@@ -186,6 +221,7 @@ public final class HudManager implements ConfigBinding {
             }
             json.add(element.id(), section);
         }
+        json.add("_order", order);
         return json;
     }
 
@@ -199,6 +235,31 @@ public final class HudManager implements ConfigBinding {
                 readElement(hudElement, section.getAsJsonObject());
             }
         }
+        applyOrder(json);
+    }
+
+    private void applyOrder(JsonObject json) {
+        JsonElement orderEl = json.get("_order");
+        if (orderEl == null || !orderEl.isJsonArray()) {
+            return;
+        }
+        Map<String, HudElement> rebuilt = new LinkedHashMap<>();
+        for (JsonElement idEl : orderEl.getAsJsonArray()) {
+            if (!idEl.isJsonPrimitive()) {
+                continue;
+            }
+            String id = idEl.getAsString();
+            HudElement hudElement = byId.get(id);
+            if (hudElement != null) {
+                rebuilt.put(id, hudElement);
+            }
+        }
+        for (Map.Entry<String, HudElement> e : byId.entrySet()) {
+            rebuilt.putIfAbsent(e.getKey(), e.getValue());
+        }
+        byId.clear();
+        byId.putAll(rebuilt);
+        rebuildRenderList();
     }
 
     private static void readElement(HudElement element, JsonObject json) {

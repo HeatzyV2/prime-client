@@ -152,6 +152,42 @@ html[data-theme='prime-ember'] {
   --prime-muted-2: #7a5c4c;
 }
 
+html[data-theme='prime-violet'] {
+  --prime-red: #a855f7;
+  --prime-red-bright: #c084fc;
+  --prime-red-glow: rgba(168, 85, 247, 0.42);
+  --prime-red-dim: #7e22ce;
+  --prime-red-subtle: rgba(168, 85, 247, 0.16);
+  --prime-black: #09050f;
+  --prime-black-elevated: #100a18;
+  --prime-surface: #130c1f;
+  --prime-surface-2: #1b112b;
+  --prime-surface-3: #24173a;
+  --prime-border: rgba(192, 132, 252, 0.12);
+  --prime-border-hover: rgba(192, 132, 252, 0.24);
+  --prime-white: #faf5ff;
+  --prime-muted: #a588c4;
+  --prime-muted-2: #6e5a88;
+}
+
+html[data-theme='prime-emerald'] {
+  --prime-red: #10b981;
+  --prime-red-bright: #34d399;
+  --prime-red-glow: rgba(16, 185, 129, 0.4);
+  --prime-red-dim: #047857;
+  --prime-red-subtle: rgba(16, 185, 129, 0.14);
+  --prime-black: #040e0a;
+  --prime-black-elevated: #081610;
+  --prime-surface: #0a1a14;
+  --prime-surface-2: #10261e;
+  --prime-surface-3: #163228;
+  --prime-border: rgba(52, 211, 153, 0.12);
+  --prime-border-hover: rgba(52, 211, 153, 0.24);
+  --prime-white: #ecfdf5;
+  --prime-muted: #77a892;
+  --prime-muted-2: #4d7162;
+}
+
 /* Legacy alias — same as crimson */
 html[data-theme='prime-dark'] {
   --prime-red: #e11d2e;

@@ -38,6 +38,7 @@ import dev.primeclient.core.modules.prime.PrimeCosmeticsModule;
 import dev.primeclient.core.modules.prime.PrimeProfilesModule;
 import dev.primeclient.core.modules.prime.PrimeSettingsManagerModule;
 import dev.primeclient.core.modules.prime.VoiceChatModule;
+import dev.primeclient.core.modules.prime.ServerAutoProfileModule;
 import dev.primeclient.core.modules.prime.ServerNotesModule;
 import dev.primeclient.core.modules.prime.SmartProfileModule;
 import dev.primeclient.core.modules.pvp.ArmorHudModule;
@@ -307,6 +308,8 @@ final class Modules {
         modules.register(new PrimeProfilesModule(client.profiles()));
         modules.register(new ModuleBundlesModule(modules, client.notifications()));
         modules.register(new SmartProfileModule(adapter, client.profiles(), client.notifications()));
+        modules.register(new ServerAutoProfileModule(adapter, client.profiles(),
+                client.serverProfiles(), client.notifications()));
         modules.register(new GameplayDnaModule(modules, client.notifications()));
         modules.register(new ServerNotesModule(adapter, client.notifications()));
         modules.register(new PrimeConfigCloudModule(client.cloudSync(), client.profiles()));

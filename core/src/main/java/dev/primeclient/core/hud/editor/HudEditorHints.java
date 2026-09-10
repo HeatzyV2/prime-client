@@ -6,7 +6,7 @@ package dev.primeclient.core.hud.editor;
 public final class HudEditorHints {
 
     public static final String LINE_1 =
-            "List · drag · Alt+click cycle · Arrows nudge · L lock · H guides · G grid · Esc";
+            "List · drag · Alt+click cycle · Front/Back layers · L lock · H guides · Esc";
     public static final String LINE_2 = "";
 
     private HudEditorHints() {

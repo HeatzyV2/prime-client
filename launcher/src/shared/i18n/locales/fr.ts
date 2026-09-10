@@ -154,6 +154,8 @@ export const fr: LocaleCatalog = {
       aurora: 'Aurora',
       obsidian: 'Obsidian',
       ember: 'Ember',
+      violet: 'Violet',
+      emerald: 'Émeraude',
       elevated: 'Pro'
     },
     hardwareAccel: {

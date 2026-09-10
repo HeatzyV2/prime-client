@@ -29,7 +29,16 @@ export function createTauriPrimeApi() {
       restart: (): Promise<void> => invoke('app_restart')
     },
     boot: {
-      initialize: (): Promise<void> => invoke('boot_initialize')
+      initialize: (): Promise<void> => invoke('boot_initialize'),
+      onProgress: (listener: (payload: { step: number; total: number; label: string }) => void): (() => void) => {
+        let unlisten: (() => void) | undefined
+        void listen<{ step: number; total: number; label: string }>('boot_progress', (event) => {
+          listener(event.payload)
+        }).then((fn) => {
+          unlisten = fn
+        })
+        return () => unlisten?.()
+      }
     },
     account: {
       getPrime: () => invoke('account_get_prime'),

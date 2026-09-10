@@ -15,7 +15,8 @@ import java.util.Map;
  * <p>{@link #active()} is a plain field read — safe to call every frame.</p>
  *
  * <p>Shared IDs with the launcher: {@code prime-crimson}, {@code prime-midnight},
- * {@code prime-aurora}, {@code prime-obsidian}, {@code prime-ember}.</p>
+ * {@code prime-aurora}, {@code prime-obsidian}, {@code prime-ember},
+ * {@code prime-violet}, {@code prime-emerald}.</p>
  */
 public final class ThemeManager implements ConfigBinding {
 

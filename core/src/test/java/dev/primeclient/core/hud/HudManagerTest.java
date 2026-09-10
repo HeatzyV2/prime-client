@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HudManagerTest {
 
@@ -48,18 +49,20 @@ class HudManagerTest {
     }
 
     @Test
-    void hitTestReturnsTopmostAndSkipsHidden() {
+    void bringToFrontChangesHitTestOrder() {
         HudManager manager = new HudManager();
-        BoxElement bottom = manager.register(new BoxElement("bottom"));
-        BoxElement top = manager.register(new BoxElement("top"));
+        BoxElement first = manager.register(new BoxElement("first"));
+        BoxElement second = manager.register(new BoxElement("second"));
         manager.render(new FakeRenderContext(200, 100));
+        assertSame(second, manager.elementAt(5, 5));
 
-        assertSame(top, manager.elementAt(5, 5));
+        assertTrue(manager.bringToFront(first));
+        manager.render(new FakeRenderContext(200, 100));
+        assertSame(first, manager.elementAt(5, 5));
 
-        top.setVisible(false);
-        assertSame(bottom, manager.elementAt(5, 5));
-
-        assertNull(manager.elementAt(150, 90));
+        assertTrue(manager.sendToBack(first));
+        manager.render(new FakeRenderContext(200, 100));
+        assertSame(second, manager.elementAt(5, 5));
     }
 
     @Test

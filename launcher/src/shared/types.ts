@@ -132,20 +132,20 @@ export interface NavItem {
   phase: number
 }
 
-/** Slim primary rail — keep this short so the launcher stays scannable. */
+/** Slim primary rail — PLAY-first shell keeps Host/Store in overflow. */
 export const PRIMARY_NAV: NavSection[] = [
   'dashboard',
   'instances',
   'skins',
-  'store',
   'library',
   'servers',
-  'host',
   'friends'
 ]
 
-/** Overflow / “More” destinations — still routed, just not on the main rail. */
+/** Overflow / “More” destinations — Host, Store, Chat stay available but secondary. */
 export const SECONDARY_NAV: NavSection[] = [
+  'store',
+  'host',
   'profile',
   'accounts',
   'chat',

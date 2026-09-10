@@ -5,6 +5,7 @@ import dev.primeclient.core.gui.FavoritesManager;
 import dev.primeclient.core.design.PrimeDesign;
 import java.util.Map;
 import java.util.IdentityHashMap;
+import dev.primeclient.core.gui.component.EnumDropdownWidget;
 import dev.primeclient.core.gui.component.SliderWidget;
 import dev.primeclient.core.gui.component.ToggleWidget;
 import dev.primeclient.core.gui.GuiLayout;
@@ -32,6 +33,7 @@ final class Panel {
     private static final int SETTING_INDENT = 10;
     private final Map<BooleanSetting, ToggleWidget> toggles = new IdentityHashMap<>();
     private final SliderWidget slider = new SliderWidget();
+    private final EnumDropdownWidget enumDropdown = new EnumDropdownWidget();
 
     private final String title;
     private final List<Module> modules;
@@ -178,10 +180,10 @@ final class Panel {
             case EnumSetting<?> mode -> {
                 String value = PrimeLang.enumValue(mode.get());
                 int valueW = GuiLayout.labelWidth(ctx, value);
-                GuiLayout.label(ctx, value, px + WIDTH - PADDING - valueW, textY, theme.accent());
+                int valueX = px + WIDTH - PADDING - valueW;
                 int nameMaxW = WIDTH - SETTING_INDENT - PADDING - valueW - 4;
-                GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, setting.name(), nameMaxW),
-                        textX, textY, theme.foreground());
+                enumDropdown.renderCompact(ctx, theme, textX, textY,
+                        GuiLayout.trimToWidth(ctx, setting.name(), nameMaxW), value, valueX);
             }
             case ColorSetting color -> {
                 int swatch = 8;
@@ -258,7 +260,8 @@ final class Panel {
             if (module == expanded) {
                 for (Setting setting : module.settings()) {
                     if (cursor == rowIndex) {
-                        return settingPressed(setting, mouseX, px);
+                        int rowY = py + HEADER_HEIGHT + cursor * ROW_HEIGHT;
+                        return settingPressed(setting, mouseX, px, rowY);
                     }
                     cursor++;
                 }
@@ -267,10 +270,13 @@ final class Panel {
         return Hit.CONSUMED;
     }
 
-    private Hit settingPressed(Setting setting, double mouseX, int px) {
+    private Hit settingPressed(Setting setting, double mouseX, int px, int rowY) {
         switch (setting) {
             case BooleanSetting bool -> bool.toggle();
-            case EnumSetting<?> mode -> mode.cycle();
+            case EnumSetting<?> mode -> {
+                enumDropdown.open(mode, px + SETTING_INDENT, rowY + ROW_HEIGHT, WIDTH - SETTING_INDENT - PADDING);
+                return Hit.CONSUMED;
+            }
             case IntSetting number -> {
                 applySlider(number, mouseX, px);
                 return new Hit(number);
@@ -310,6 +316,22 @@ final class Panel {
 
     private float sliderFraction(double mouseX, int px) {
         return slider.fractionFromMouse(mouseX, sliderBarX(px), sliderBarWidth());
+    }
+
+    void renderDropdown(RenderContext ctx, Theme theme, double mouseX, double mouseY) {
+        enumDropdown.renderMenu(ctx, theme, mouseX, mouseY);
+    }
+
+    boolean dropdownMousePressed(double mouseX, double mouseY) {
+        return enumDropdown.isOpen() && enumDropdown.mousePressed(mouseX, mouseY);
+    }
+
+    boolean closeDropdown() {
+        if (!enumDropdown.isOpen()) {
+            return false;
+        }
+        enumDropdown.close();
+        return true;
     }
 
     void mouseDragged(double mouseX, double mouseY, int screenWidth, int screenHeight) {

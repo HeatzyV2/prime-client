@@ -5,19 +5,24 @@ export type PrimeThemeId =
   | 'prime-aurora'
   | 'prime-obsidian'
   | 'prime-ember'
+  | 'prime-violet'
+  | 'prime-emerald'
 
 export const PRIME_THEMES: readonly PrimeThemeId[] = [
   'prime-crimson',
   'prime-midnight',
   'prime-aurora',
   'prime-obsidian',
-  'prime-ember'
+  'prime-ember',
+  'prime-violet',
+  'prime-emerald'
 ] as const
 
 /** Themes with richer palettes (visual tier, not paywalled). */
 export const ELEVATED_PRIME_THEMES: readonly PrimeThemeId[] = [
   'prime-obsidian',
-  'prime-ember'
+  'prime-ember',
+  'prime-violet'
 ] as const
 
 export function storeIdForTheme(theme: PrimeThemeId): string {
@@ -50,6 +55,8 @@ export function normalizePrimeTheme(id: string | null | undefined): PrimeThemeId
     case 'prime-crimson':
     case 'prime-obsidian':
     case 'prime-ember':
+    case 'prime-violet':
+    case 'prime-emerald':
       return id
     case 'prime-light':
       return 'prime-midnight'

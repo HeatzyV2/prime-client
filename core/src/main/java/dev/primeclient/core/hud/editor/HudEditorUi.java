@@ -65,6 +65,8 @@ final class HudEditorUi {
     private Rect swatchRow = Rect.EMPTY;
     private Rect btnCenterX = Rect.EMPTY;
     private Rect btnCenterY = Rect.EMPTY;
+    private Rect btnFront = Rect.EMPTY;
+    private Rect btnBack = Rect.EMPTY;
     private Rect btnReset = Rect.EMPTY;
 
     private Rect hintBar = Rect.EMPTY;
@@ -171,6 +173,10 @@ final class HudEditorUi {
                 editor.centerSelectedX();
             } else if (btnCenterY.contains(mouseX, mouseY)) {
                 editor.centerSelectedY();
+            } else if (btnFront.contains(mouseX, mouseY)) {
+                editor.bringSelectedToFront();
+            } else if (btnBack.contains(mouseX, mouseY)) {
+                editor.sendSelectedToBack();
             } else if (btnReset.contains(mouseX, mouseY)) {
                 editor.resetSelected();
             }
@@ -191,6 +197,8 @@ final class HudEditorUi {
                 || swatchRow.contains(mouseX, mouseY)
                 || btnCenterX.contains(mouseX, mouseY)
                 || btnCenterY.contains(mouseX, mouseY)
+                || btnFront.contains(mouseX, mouseY)
+                || btnBack.contains(mouseX, mouseY)
                 || btnReset.contains(mouseX, mouseY);
     }
 
@@ -407,6 +415,8 @@ final class HudEditorUi {
             swatchRow = Rect.EMPTY;
             btnCenterX = Rect.EMPTY;
             btnCenterY = Rect.EMPTY;
+            btnFront = Rect.EMPTY;
+            btnBack = Rect.EMPTY;
             btnReset = Rect.EMPTY;
             return;
         }
@@ -467,11 +477,15 @@ final class HudEditorUi {
             }
         }
 
-        int btnW = 54;
+        int btnW = 48;
         int btnY = row2Y - 1;
+        btnFront = new Rect(x + w - pad - btnW * 5 - 16, btnY, btnW, 14);
+        btnBack = new Rect(x + w - pad - btnW * 4 - 12, btnY, btnW, 14);
         btnCenterX = new Rect(x + w - pad - btnW * 3 - 8, btnY, btnW, 14);
         btnCenterY = new Rect(x + w - pad - btnW * 2 - 4, btnY, btnW, 14);
         btnReset = new Rect(x + w - pad - btnW, btnY, btnW, 14);
+        drawSmallButton(ctx, theme, btnFront, "Front", mouseX, mouseY, theme.foreground());
+        drawSmallButton(ctx, theme, btnBack, "Back", mouseX, mouseY, theme.foreground());
         drawSmallButton(ctx, theme, btnCenterX, "Center X", mouseX, mouseY, theme.foreground());
         drawSmallButton(ctx, theme, btnCenterY, "Center Y", mouseX, mouseY, theme.foreground());
         drawSmallButton(ctx, theme, btnReset, "Reset", mouseX, mouseY, theme.warning());

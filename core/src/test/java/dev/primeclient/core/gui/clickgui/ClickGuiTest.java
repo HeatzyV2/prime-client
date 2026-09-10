@@ -5,6 +5,7 @@ import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.cloud.CloudSyncManager;
 import dev.primeclient.core.config.ConfigManager;
 import dev.primeclient.core.cosmetics.CosmeticManager;
+import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.event.EventBus;
 import dev.primeclient.core.gui.FavoritesManager;
 import dev.primeclient.core.gui.TooltipRenderer;
@@ -215,12 +216,17 @@ class ClickGuiTest {
     @Test
     void searchFiltersAndEscapeClearsBeforeClosing() {
         assertTrue(gui.charTyped('z'));
-        assertTrue(gui.mousePressed(8 + 10, 8 + 16 + 5, 0));
+        // Click the toggle on the first matching card (Overview/search filter keeps Zoom).
+        int contentY = 8 + ModuleCardBrowser.TAB_H + PrimeDesign.SPACE_SM;
+        int toggleX = 8 + ModuleCardBrowser.CARD_W - PrimeDesign.TOGGLE_WIDTH - 6;
+        int toggleY = contentY + 8;
+        assertTrue(gui.mousePressed(toggleX + 1, toggleY + 1, 0));
         assertTrue(module.isEnabled());
         gui.mouseReleased();
 
-        assertTrue(gui.keyPressed(256));
-        assertTrue(gui.keyPressed(256));
+        assertTrue(gui.keyPressed(256)); // clear search
+        assertTrue(gui.keyPressed(256)); // clear selection
+        assertTrue(gui.keyPressed(256)); // back to main menu
     }
 
     @Test

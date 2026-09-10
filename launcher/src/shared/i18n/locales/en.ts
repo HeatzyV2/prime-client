@@ -152,6 +152,8 @@ export const en = {
       aurora: 'Aurora',
       obsidian: 'Obsidian',
       ember: 'Ember',
+      violet: 'Violet',
+      emerald: 'Emerald',
       elevated: 'Pro'
     },
     hardwareAccel: {

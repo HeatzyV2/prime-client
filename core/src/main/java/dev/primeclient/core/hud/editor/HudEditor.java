@@ -444,6 +444,22 @@ public final class HudEditor {
         selected.resetToDefaults();
     }
 
+    void bringSelectedToFront() {
+        if (selected == null) {
+            return;
+        }
+        snapshotNow();
+        hud.bringToFront(selected);
+    }
+
+    void sendSelectedToBack() {
+        if (selected == null) {
+            return;
+        }
+        snapshotNow();
+        hud.sendToBack(selected);
+    }
+
     void resetAll() {
         snapshotNow();
         for (HudElement element : hud.all()) {

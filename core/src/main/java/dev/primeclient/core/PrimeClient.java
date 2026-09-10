@@ -35,7 +35,9 @@ import dev.primeclient.core.hud.elements.NotificationsElement;
 import dev.primeclient.core.hud.elements.WatermarkElement;
 import dev.primeclient.core.hud.vanilla.VanillaHudElements;
 import dev.primeclient.core.keybind.KeybindManager;
+import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleManager;
+import dev.primeclient.core.modules.prime.ServerAutoProfileModule;
 import dev.primeclient.core.notification.NotificationManager;
 import dev.primeclient.core.notification.NotificationPreferences;
 import dev.primeclient.core.presence.PrimePresenceService;
@@ -44,6 +46,7 @@ import dev.primeclient.core.skin.CustomSkinService;
 import dev.primeclient.core.social.SocialService;
 import dev.primeclient.core.state.CosmeticsState;
 import dev.primeclient.core.profile.ProfileManager;
+import dev.primeclient.core.profile.ServerProfileBindings;
 import dev.primeclient.core.replay.ReplaySession;
 import dev.primeclient.core.replay.ReplayStorage;
 import dev.primeclient.core.clip.ClipRecorder;
@@ -76,6 +79,7 @@ public final class PrimeClient {
     private final FavoritesManager favorites;
     private final ClickGui clickGui;
     private final ProfileManager profiles;
+    private final ServerProfileBindings serverProfiles;
     private final CrosshairConfig crosshairConfig;
     private final CrosshairPresetStore crosshairPresets;
     private final CrosshairProfileManager crosshairProfiles;
@@ -141,6 +145,7 @@ public final class PrimeClient {
         this.clipStorage = new ClipStorage(modRoot);
         this.clipRecorder = new ClipRecorder(clipStorage, notifications);
         this.profiles = new ProfileManager(configManager, modRoot);
+        this.serverProfiles = new ServerProfileBindings();
         this.hudEditor.setAutosaveHandler(profiles::saveActive);
         this.clickGui = new ClickGui(modules, themes, favorites, adapter, onboarding,
                 cloudSync, cosmetics, profiles, keybinds, tooltips);
@@ -155,6 +160,7 @@ public final class PrimeClient {
         configManager.register(crosshairConfig);
         configManager.register(crosshairPresets);
         configManager.register(crosshairProfiles);
+        configManager.register(serverProfiles);
         configManager.register(cosmetics);
         configManager.register(onboarding);
         configManager.register(account);
@@ -263,6 +269,10 @@ public final class PrimeClient {
             account.login(adapter.playerName());
         }
         crosshairProfiles.applyForServer(adapter.serverAddress());
+        Module autoProfile = modules.get("server-auto-profile");
+        if (autoProfile instanceof ServerAutoProfileModule sap) {
+            sap.onWorldJoin();
+        }
         presence.onWorldJoin();
         social.onWorldJoin();
         serverApi.onWorldJoin();
@@ -281,6 +291,14 @@ public final class PrimeClient {
             crosshairProfiles.saveCurrentForServer(adapter.serverAddress());
         } catch (Exception e) {
             LOGGER.warn("Crosshair profile save on leave failed", e);
+        }
+        try {
+            Module autoProfile = modules.get("server-auto-profile");
+            if (autoProfile instanceof ServerAutoProfileModule sap) {
+                sap.onWorldLeave();
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Server auto-profile leave failed", e);
         }
         try {
             presence.onWorldLeave();
@@ -354,6 +372,7 @@ public final class PrimeClient {
     public ClickGui clickGui() { return clickGui; }
     public FavoritesManager favorites() { return favorites; }
     public ProfileManager profiles() { return profiles; }
+    public ServerProfileBindings serverProfiles() { return serverProfiles; }
     public CrosshairConfig crosshairConfig() { return crosshairConfig; }
     public CrosshairPresetStore crosshairPresets() { return crosshairPresets; }
     public CrosshairProfileManager crosshairProfiles() { return crosshairProfiles; }

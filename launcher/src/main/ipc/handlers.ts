@@ -301,7 +301,11 @@ export function registerServiceHandlers(): void {
     socialService.sendTyping(conversationId)
   })
 
-  ipcMain.handle(IPC.BOOT_INITIALIZE, () => bootService.initialize())
+  ipcMain.handle(IPC.BOOT_INITIALIZE, (event) =>
+    bootService.initialize((progress) => {
+      event.sender.send(IPC.BOOT_PROGRESS, progress)
+    })
+  )
   ipcMain.handle(IPC.SETTINGS_JAVA_LIST, async () => {
     const settings = await settingsStore.load()
     return listJavaInstallations(settings.customJavaPaths ?? [])

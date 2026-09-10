@@ -108,6 +108,8 @@ public final class ClickGui implements ConfigBinding {
         this.keybinds = keybinds;
         this.tooltips = tooltips;
         this.cardBrowser = new ModuleCardBrowser(modules, favorites);
+        this.cardBrowser.setTooltips(tooltips);
+        // Legacy panels kept only for config round-trip / test helpers — Browse uses cards.
         float x = 8;
         for (ModuleCategory category : ModuleCategory.values()) {
             panels.add(new Panel(category.displayName(), modules.byCategory(category),
@@ -215,6 +217,7 @@ public final class ClickGui implements ConfigBinding {
         }
         cardBrowser.tick(dt);
         refreshSelectedPanel();
+        tooltips.tick(Math.max(1, Math.round(dt * 1000f)));
     }
 
     /** Frame-time delta for render-driven animation (capped). */
@@ -248,11 +251,9 @@ public final class ClickGui implements ConfigBinding {
         Theme theme = themes.active();
 
         if (isSearching()) {
-            renderSearchBar(ctx, theme);
-            if (searchPanel != null) {
-                searchPanel.render(ctx, theme, mouseX, mouseY);
-            }
-            return;
+            cardBrowser.setSearchQuery(searchQuery.toString());
+        } else {
+            cardBrowser.setSearchQuery("");
         }
 
         switch (view) {
@@ -288,6 +289,7 @@ public final class ClickGui implements ConfigBinding {
                 cardBrowser.render(ctx, theme, 8, 8, browserW, screenHeight - 40, mouseX, mouseY);
                 if (selectedModulePanel != null) {
                     selectedModulePanel.render(ctx, theme, mouseX, mouseY);
+                    selectedModulePanel.renderDropdown(ctx, theme, mouseX, mouseY);
                 }
             }
         }
@@ -387,14 +389,15 @@ public final class ClickGui implements ConfigBinding {
             return configurationsMenu.mousePressed(mouseX, mouseY, button, cloudSync, profiles,
                     screenWidth, screenHeight);
         }
-        if (isSearching()) {
-            return dispatchPress(searchPanel, mouseX, mouseY, button);
-        }
         if (view == ClickGuiView.FAVORITES) {
             refreshFavoritesPanelIfNeeded();
             return dispatchPress(favoritesPanel, mouseX, mouseY, button);
         }
         if (view == ClickGuiView.BROWSE) {
+            if (selectedModulePanel != null
+                    && selectedModulePanel.dropdownMousePressed(mouseX, mouseY)) {
+                return true;
+            }
             if (selectedModulePanel != null && dispatchPress(selectedModulePanel, mouseX, mouseY, button)) {
                 return true;
             }
@@ -535,7 +538,7 @@ public final class ClickGui implements ConfigBinding {
             return false;
         }
         searchQuery.append(character);
-        rebuildSearchPanel();
+        cardBrowser.setSearchQuery(searchQuery.toString());
         return true;
     }
 
@@ -556,9 +559,13 @@ public final class ClickGui implements ConfigBinding {
             closeEditors();
             return true;
         }
+        if (glfwKey == 256 && selectedModulePanel != null && selectedModulePanel.closeDropdown()) {
+            return true;
+        }
         if (glfwKey == 256 && isSearching()) {
             searchQuery.setLength(0);
             searchPanel = null;
+            cardBrowser.setSearchQuery("");
             return true;
         }
         if (glfwKey == 256 && view == ClickGuiView.ONBOARDING) {
@@ -589,7 +596,7 @@ public final class ClickGui implements ConfigBinding {
         if (glfwKey == 259 && !searchQuery.isEmpty()
                 && (view == ClickGuiView.BROWSE || view == ClickGuiView.FAVORITES)) {
             searchQuery.setLength(searchQuery.length() - 1);
-            rebuildSearchPanel();
+            cardBrowser.setSearchQuery(searchQuery.toString());
             return true;
         }
         return false;
@@ -597,17 +604,6 @@ public final class ClickGui implements ConfigBinding {
 
     private boolean isSearching() {
         return !searchQuery.isEmpty();
-    }
-
-    private void rebuildSearchPanel() {
-        if (searchQuery.isEmpty()) {
-            searchPanel = null;
-            return;
-        }
-        List<Module> results = modules.search(searchQuery.toString());
-        searchPanel = new Panel(PrimeLang.get("prime.gui.clickgui.search.panel", "Search (%d)", results.size()),
-                results, favorites,
-                searchPanel != null ? searchPanel.x : 8, 8);
     }
 
     private void refreshFavoritesPanelIfNeeded() {

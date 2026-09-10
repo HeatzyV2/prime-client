@@ -46,6 +46,8 @@ export const STORE_CATALOG: StoreItem[] = [
   { id: 'theme-aurora', name: 'Aurora Theme', description: 'Cyan aurora theme.', price: 0, category: 'theme', owned: true },
   { id: 'theme-obsidian', name: 'Obsidian Theme', description: 'Black & champagne gold.', price: 0, category: 'theme', owned: true },
   { id: 'theme-ember', name: 'Ember Theme', description: 'Copper glow on charcoal.', price: 0, category: 'theme', owned: true },
+  { id: 'theme-violet', name: 'Violet Theme', description: 'Royal purple with pink accents.', price: 0, category: 'theme', owned: true },
+  { id: 'theme-emerald', name: 'Emerald Theme', description: 'Deep green with lime accents.', price: 0, category: 'theme', owned: true },
   { id: 'bg-nebula', name: 'Nebula Background', description: 'Animated space background.', price: 0, category: 'background', owned: true },
   { id: 'badge-founder', name: 'Founder', description: 'Early adopter badge.', price: 0, category: 'badge', owned: true },
   { id: 'badge-creator', name: 'Creator', description: 'Content creator badge.', price: 0, category: 'badge', owned: true },
