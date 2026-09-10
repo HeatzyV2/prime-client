@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ShoppingBag, Ticket, X } from 'lucide-react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
+import { ShoppingBag, Ticket } from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button, Tabs } from '@renderer/design-system/components'
 import type { StoreItem } from '@shared/content-types'
@@ -8,10 +8,13 @@ import { useI18n } from '@renderer/context/I18nProvider'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useAccounts } from '@renderer/context/AccountProvider'
 import { themeIdFromStoreId } from '@shared/theme'
-import { SkinViewer3D } from '@renderer/components/SkinViewer3D'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { playUiSound } from '@renderer/lib/uiSounds'
 import './StorePage.css'
+
+const SkinViewer3D = lazy(() =>
+  import('@renderer/components/SkinViewer3D').then((m) => ({ default: m.SkinViewer3D }))
+)
 
 type StoreTab = 'catalog' | 'history' | 'promos'
 
@@ -43,7 +46,7 @@ export function StorePage() {
   const [balance, setBalance] = useState(0)
   const [syncMode, setSyncMode] = useState<'synced' | 'local'>('local')
   const [message, setMessage] = useState<string | null>(null)
-  const [preview, setPreview] = useState<StoreItem | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const categories = useMemo(
     () => [
@@ -78,6 +81,7 @@ export function StorePage() {
     setHistory(hist)
     setPromos(promoList)
     setSyncMode(mode)
+    setSelectedId((prev) => prev ?? catalog[0]?.id ?? null)
   }, [])
 
   useEffect(() => {
@@ -102,7 +106,6 @@ export function StorePage() {
         await refreshTheme()
       }
       await refresh()
-      setPreview(null)
     } else {
       playUiSound('error')
       setMessage(result.error ?? t('store.purchaseFailed'))
@@ -124,15 +127,17 @@ export function StorePage() {
   }
 
   const filtered = items.filter((i) => category === 'all' || i.category === category)
+  const selected = filtered.find((i) => i.id === selectedId) ?? filtered[0] ?? null
   const username = activeAccount?.username ?? 'Steve'
   const capeUrl = playerCapeUrl(activeAccount?.uuid, username, activeAccount?.capeUrl)
+  const showViewer = selected?.category === 'cosmetic'
 
   return (
     <PageShell
       title={t('pages.store.title')}
       subtitle={t('pages.store.subtitle')}
       actions={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="store-v3__header-actions">
           <Badge variant={syncMode === 'synced' ? 'success' : 'default'}>
             {syncMode === 'synced' ? t('store.syncSynced') : t('store.syncLocal')}
           </Badge>
@@ -140,171 +145,159 @@ export function StorePage() {
         </div>
       }
     >
-      {message && (
-        <p className="text-caption" style={{ marginBottom: 16, color: 'var(--prime-muted)' }}>
-          {message}
-        </p>
-      )}
+      <div className="store-v3">
+        {message && (
+          <p className="store-v3__message" role="status">
+            {message}
+          </p>
+        )}
 
-      <Tabs tabs={mainTabs} active={tab} onChange={(id) => setTab(id as StoreTab)} />
+        <Tabs tabs={mainTabs} active={tab} onChange={(id) => setTab(id as StoreTab)} />
 
-      {tab === 'catalog' && (
-        <>
-          <div style={{ marginTop: 16 }}>
+        {tab === 'catalog' && (
+          <>
             <Tabs tabs={categories} active={category} onChange={setCategory} />
-          </div>
-          {filtered.length === 0 ? (
-            <EmptyState
-              icon={<ShoppingBag size={24} />}
-              title={t('store.emptyTitle')}
-              description={t('store.emptyDesc')}
-            />
-          ) : (
-            <div className="page-grid page-grid--3" style={{ marginTop: 24 }}>
-              {filtered.map((item) => (
-                <div key={item.id} className="tile">
-                  <button
-                    type="button"
-                    className="tile__preview store-tile__preview"
-                    onClick={() => setPreview(item)}
-                  >
-                    <ShoppingBag size={28} />
-                    <span>{t('store.preview')}</span>
-                  </button>
-                  <div className="tile__name">{item.name}</div>
-                  <div className="tile__desc">{item.description}</div>
-                  <div
-                    style={{
-                      marginTop: 16,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    {item.owned ? (
-                      <Badge variant="success">{t('actions.owned')}</Badge>
-                    ) : (
-                      <span style={{ fontWeight: 700, color: 'var(--prime-red-bright)' }}>
-                        {item.price === 0
-                          ? t('actions.free')
-                          : t('store.coinsPrice', { price: item.price })}
-                      </span>
+            {filtered.length === 0 ? (
+              <EmptyState
+                icon={<ShoppingBag size={22} strokeWidth={1.75} />}
+                title={t('store.emptyTitle')}
+                description={t('store.emptyDesc')}
+              />
+            ) : (
+              <div className="store-v3__catalog">
+                <div className="store-v3__list" role="listbox" aria-label={t('store.tabs.catalog')}>
+                  {filtered.map((item) => {
+                    const active = item.id === selected?.id
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        role="option"
+                        aria-selected={active}
+                        className={`store-v3__row${active ? ' is-active' : ''}`}
+                        onClick={() => setSelectedId(item.id)}
+                      >
+                        <span>
+                          <span className="store-v3__row-name">{item.name}</span>
+                          <span className="store-v3__row-desc">{item.description}</span>
+                        </span>
+                        <span className="store-v3__row-meta">
+                          {item.owned ? (
+                            <Badge variant="success">{t('actions.owned')}</Badge>
+                          ) : (
+                            <span className="store-v3__price">
+                              {item.price === 0
+                                ? t('actions.free')
+                                : t('store.coinsPrice', { price: item.price })}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {selected && (
+                  <div className="store-v3__detail v3-fade-in">
+                    <p className="text-label">{selected.category}</p>
+                    <h2 className="store-v3__detail-title">{selected.name}</h2>
+                    <p className="store-v3__detail-desc">{selected.description}</p>
+
+                    {showViewer && (
+                      <div className="store-v3__viewer-wrap">
+                        <Suspense fallback={<div className="store-v3__viewer-fallback" aria-hidden />}>
+                          <SkinViewer3D
+                            uuid={activeAccount?.uuid}
+                            username={username}
+                            capeUrl={capeUrl}
+                            pose="idle"
+                            width={180}
+                            height={240}
+                            showControls={false}
+                          />
+                        </Suspense>
+                      </div>
                     )}
-                    <Button
-                      variant={item.owned ? 'secondary' : 'primary'}
-                      size="sm"
-                      disabled={item.owned}
-                      onClick={() => void handlePurchase(item)}
-                    >
-                      {item.owned
-                        ? t('actions.owned')
-                        : item.price === 0
-                          ? t('actions.claim')
-                          : t('actions.buy')}
-                    </Button>
+
+                    <div className="store-v3__detail-actions">
+                      {selected.owned ? (
+                        <Badge variant="success">{t('actions.owned')}</Badge>
+                      ) : (
+                        <Button variant="primary" onClick={() => void handlePurchase(selected)}>
+                          {selected.price === 0
+                            ? t('actions.claim')
+                            : t('store.buyFor', { price: selected.price })}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'history' && (
+          <div className="page-list">
+            {history.length === 0 ? (
+              <EmptyState
+                icon={<ShoppingBag size={22} strokeWidth={1.75} />}
+                title={t('store.historyEmptyTitle')}
+                description={t('store.historyEmptyDesc')}
+              />
+            ) : (
+              history.map((row) => (
+                <div key={row.id} className="list-row">
+                  <div className="list-row__body">
+                    <div className="list-row__title">{row.itemName}</div>
+                    <div className="list-row__desc">{new Date(row.purchasedAt).toLocaleString()}</div>
+                  </div>
+                  <div className="list-row__meta text-mono">
+                    {row.price === 0 ? t('actions.free') : t('store.coinsPrice', { price: row.price })}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {tab === 'promos' && (
+          <div className="store-v3__promos">
+            <div className="store-v3__promo-row">
+              <input
+                className="store-v3__promo-input"
+                placeholder={t('store.promoPlaceholder')}
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                aria-label={t('store.promoPlaceholder')}
+              />
+              <Button
+                variant="primary"
+                icon={<Ticket size={16} strokeWidth={1.75} />}
+                disabled={promoCode.trim().length < 3}
+                onClick={() => void handleRedeem()}
+              >
+                {t('store.redeem')}
+              </Button>
+            </div>
+            <div className="page-list">
+              {promos.map((p) => (
+                <div key={p.code} className="list-row">
+                  <div className="list-row__body">
+                    <div className="list-row__title">{p.label}</div>
+                    <div className="list-row__desc text-mono">{p.code}</div>
+                  </div>
+                  <div className="list-row__meta">
+                    <Badge variant={p.redeemed ? 'success' : 'prime'}>
+                      {p.redeemed ? t('store.redeemed') : t('store.coinsPrice', { price: p.coins })}
+                    </Badge>
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </>
-      )}
-
-      {tab === 'history' && (
-        <div className="page-list" style={{ marginTop: 20 }}>
-          {history.length === 0 ? (
-            <EmptyState
-              icon={<ShoppingBag size={24} />}
-              title={t('store.historyEmptyTitle')}
-              description={t('store.historyEmptyDesc')}
-            />
-          ) : (
-            history.map((row) => (
-              <div key={row.id} className="list-row">
-                <div className="list-row__body">
-                  <div className="list-row__title">{row.itemName}</div>
-                  <div className="list-row__desc">{new Date(row.purchasedAt).toLocaleString()}</div>
-                </div>
-                <div className="list-row__meta text-mono">
-                  {row.price === 0 ? t('actions.free') : t('store.coinsPrice', { price: row.price })}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {tab === 'promos' && (
-        <div style={{ marginTop: 20 }}>
-          <div className="servers-add" style={{ maxWidth: 480 }}>
-            <input
-              className="modal__field"
-              placeholder={t('store.promoPlaceholder')}
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value)}
-            />
-            <Button
-              variant="primary"
-              icon={<Ticket size={16} />}
-              disabled={promoCode.trim().length < 3}
-              onClick={() => void handleRedeem()}
-            >
-              {t('store.redeem')}
-            </Button>
           </div>
-          <div className="page-list" style={{ marginTop: 16 }}>
-            {promos.map((p) => (
-              <div key={p.code} className="list-row">
-                <div className="list-row__body">
-                  <div className="list-row__title">{p.label}</div>
-                  <div className="list-row__desc text-mono">{p.code}</div>
-                </div>
-                <div className="list-row__meta">
-                  <Badge variant={p.redeemed ? 'success' : 'prime'}>
-                    {p.redeemed ? t('store.redeemed') : t('store.coinsPrice', { price: p.coins })}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {preview && (
-        <div className="store-preview">
-          <button type="button" className="store-preview__backdrop" onClick={() => setPreview(null)} />
-          <div className="store-preview__card">
-            <button type="button" className="store-preview__close" onClick={() => setPreview(null)}>
-              <X size={16} />
-            </button>
-            <SkinViewer3D
-              uuid={activeAccount?.uuid}
-              username={username}
-              capeUrl={capeUrl}
-              pose="walk"
-              width={240}
-              height={320}
-              showControls
-              backdrop="soft"
-            />
-            <div className="store-preview__meta">
-              <h3>{preview.name}</h3>
-              <p>{preview.description}</p>
-              <div className="store-preview__actions">
-                {preview.owned ? (
-                  <Badge variant="success">{t('actions.owned')}</Badge>
-                ) : (
-                  <Button variant="primary" onClick={() => void handlePurchase(preview)}>
-                    {preview.price === 0
-                      ? t('actions.claim')
-                      : t('store.buyFor', { price: preview.price })}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </PageShell>
   )
 }

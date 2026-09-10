@@ -1,10 +1,9 @@
 import { Suspense, lazy, type ComponentType, type ReactNode } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { DashboardPage } from '@renderer/pages/DashboardPage'
-import type { FavoriteServer, NewsItem } from '@shared/types'
+import { HomePage } from '@renderer/pages/HomePage'
+import type { FavoriteServer } from '@shared/types'
 
 interface AppRoutesProps {
-  news: NewsItem[]
   servers: FavoriteServer[]
 }
 
@@ -37,26 +36,30 @@ const PerformancePage = lazyNamed(() => import('@renderer/pages/PerformancePage'
 const DownloadsPage = lazyNamed(() => import('@renderer/pages/DownloadsPage'), 'DownloadsPage')
 const ConsolePage = lazyNamed(() => import('@renderer/pages/ConsolePage'), 'ConsolePage')
 const SettingsPage = lazyNamed(() => import('@renderer/pages/SettingsPage'), 'SettingsPage')
+const DesignLabPage = lazyNamed(
+  () => import('@renderer/pages/design-lab/DesignLabPage'),
+  'DesignLabPage'
+)
 
 function RouteFallback(): ReactNode {
   return <div className="page-shell" style={{ opacity: 0.5, padding: 24 }} aria-busy="true" />
 }
 
-export function AppRoutes({ news, servers }: AppRoutesProps) {
+export function AppRoutes({ servers }: AppRoutesProps) {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        <Route index element={<DashboardPage news={news} servers={servers} />} />
+        <Route index element={<HomePage servers={servers} />} />
         <Route path="accounts" element={<AccountsPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="instances" element={<InstancesPage />} />
-        <Route path="skins" element={<SkinsPage />} />
+        <Route path="skins" element={<Navigate to="/cosmetics" replace />} />
         <Route path="library" element={<LibraryPage />} />
         <Route path="mods" element={<ModsPage />} />
         <Route path="resources" element={<ResourcesPage />} />
         <Route path="shaders" element={<ShadersPage />} />
         <Route path="store" element={<StorePage />} />
-        <Route path="cosmetics" element={<Navigate to="/skins" replace />} />
+        <Route path="cosmetics" element={<SkinsPage />} />
         <Route path="servers" element={<ServersPage />} />
         <Route path="host" element={<HostPage />} />
         <Route path="friends" element={<FriendsPage />} />
@@ -67,6 +70,7 @@ export function AppRoutes({ news, servers }: AppRoutesProps) {
         <Route path="downloads" element={<DownloadsPage />} />
         <Route path="console" element={<ConsolePage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="design-lab" element={<DesignLabPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

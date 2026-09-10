@@ -1,4 +1,5 @@
 @import './tokens.css';
+@import './motion.css';
 
 *,
 *::before,
@@ -19,11 +20,34 @@ body,
 body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
-  color: var(--prime-white);
-  background: var(--prime-black);
+  color: var(--fg);
+  background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   user-select: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 button {
@@ -56,17 +80,26 @@ a {
   background: var(--prime-muted-2);
 }
 
-/* Typography utilities */
+/* Typography utilities — V3 hierarchy */
 .text-display {
-  font-size: var(--text-3xl);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.text-heading {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 650;
   letter-spacing: -0.03em;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 .text-title {
   font-size: var(--text-xl);
-  font-weight: 700;
+  font-weight: 650;
   letter-spacing: -0.02em;
 }
 
@@ -81,9 +114,17 @@ a {
   line-height: 1.5;
 }
 
+.text-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .text-caption {
   font-size: var(--text-sm);
-  color: var(--prime-muted);
+  color: var(--muted);
 }
 
 .text-mono {
@@ -155,9 +196,15 @@ html[data-reduce-motion='true'] *::after {
   transition-duration: 0.01ms !important;
 }
 
-html[data-reduce-motion='true'] .home__character-glow,
-html[data-reduce-motion='true'] .page-shell {
+html[data-reduce-motion='true'] .v3-page-enter,
+html[data-reduce-motion='true'] .v3-fade-in,
+html[data-reduce-motion='true'] .page-shell,
+html[data-reduce-motion='true'] .play-btn__spinner,
+html[data-reduce-motion='true'] .launch-overlay__track--indeterminate .launch-overlay__bar {
   animation: none !important;
-  filter: none;
+}
+
+html[data-reduce-motion='true'] .bottom-nav__item--active::after {
+  transition: none !important;
 }
 

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { PrimeLogo, ProgressBar } from '@renderer/design-system/components'
 import { useI18n } from '@renderer/context/I18nProvider'
+import { useTheme } from '@renderer/context/ThemeProvider'
 import { BOOT_STEPS } from '@shared/types'
 import './SplashScreen.css'
 
@@ -12,56 +13,32 @@ interface SplashScreenProps {
 
 export function SplashScreen({ progress, stepIndex, version }: SplashScreenProps) {
   const { t } = useI18n()
+  const { reduceMotion } = useTheme()
   const step = BOOT_STEPS[stepIndex]
-  const particles = Array.from({ length: 24 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    delay: Math.random() * 2,
-    size: 1 + Math.random() * 2
-  }))
+  const label = step ? t(`boot.${step.id}`) : ''
 
   return (
     <motion.div
       className="splash"
-      exit={{ opacity: 0, scale: 1.02 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label={label || 'Prime'}
+      exit={reduceMotion ? { opacity: 0 } : { opacity: 0 }}
+      transition={{ duration: reduceMotion ? 0.08 : 0.22, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="splash__bg" />
-      <div className="splash__particles">
-        {particles.map((p) => (
-          <motion.div
-            key={p.id}
-            className="splash__particle"
-            style={{ left: `${p.x}%`, top: `${p.y}%`, width: p.size, height: p.size }}
-            animate={{ opacity: [0.2, 0.7, 0.2], y: [0, -12, 0] }}
-            transition={{ duration: 3 + p.delay, repeat: Infinity, delay: p.delay }}
-          />
-        ))}
-      </div>
+      <div className="splash__bg" aria-hidden />
 
       <div className="splash__content">
-        <motion.div
-          className="splash__logo-wrap"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <div className="splash__glow" />
-          <PrimeLogo size={120} />
-        </motion.div>
+        <div className="splash__brand">
+          <PrimeLogo size={72} />
+          <p className="splash__mark">Prime</p>
+        </div>
 
-        <motion.div
-          className="splash__status"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-        >
-          <div className={`splash__step${stepIndex >= 0 ? ' splash__step--active' : ''}`}>
-            {step ? t(`boot.${step.id}`) : ''}
-          </div>
+        <div className="splash__status">
+          <p className="splash__step">{label}</p>
           <ProgressBar value={progress} large />
-        </motion.div>
+        </div>
       </div>
 
       <span className="splash__version">v{version}</span>

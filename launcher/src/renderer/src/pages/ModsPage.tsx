@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { Download, FolderOpen, Puzzle, Trash2, Upload } from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
-import { Badge, Button, SearchInput, Tabs, Toggle } from '@renderer/design-system/components'
+import { Badge, Button, SearchInput, Tabs, Toggle, useConfirm } from '@renderer/design-system/components'
 import { ContentBrowseModal } from '@renderer/components/ContentBrowseModal'
 import { useActiveInstance } from '@renderer/hooks/useActiveInstance'
 import { useI18n } from '@renderer/context/I18nProvider'
@@ -10,6 +10,7 @@ import type { ModEntry } from '@shared/content-types'
 
 export function ModsPage() {
   const { t } = useI18n()
+  const { confirm, alert } = useConfirm()
   const { instance, instanceId, loading: instanceLoading, refresh: refreshInstance } = useActiveInstance()
   const [mods, setMods] = useState<ModEntry[]>([])
   const [search, setSearch] = useState('')
@@ -63,14 +64,19 @@ export function ModsPage() {
       await refresh()
       await refreshInstance()
     } else if (result.error !== 'Cancelled.') {
-      alert(result.error)
+      await alert(result.error)
     }
   }
 
   async function handleRemove(mod: ModEntry) {
-    if (!instanceId || !confirm(t('confirm.removeMod', { name: mod.name }))) {
-      return
-    }
+    if (!instanceId) return
+    const ok = await confirm({
+      title: t('dialog.removeTitle'),
+      message: t('confirm.removeMod', { name: mod.name }),
+      confirmLabel: t('actions.delete'),
+      variant: 'danger'
+    })
+    if (!ok) return
     await window.primeLauncher.content.removeMod(mod.fileName, instanceId)
     await refresh()
     await refreshInstance()

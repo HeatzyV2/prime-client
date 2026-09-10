@@ -30,7 +30,9 @@ const THEME_SWATCHES: Record<PrimeThemeId, string> = {
   'prime-midnight': '#38bdf8',
   'prime-aurora': '#34d399',
   'prime-obsidian': '#f0d78c',
-  'prime-ember': '#fdba74'
+  'prime-ember': '#fdba74',
+  'prime-violet': '#a855f7',
+  'prime-emerald': '#10b981'
 }
 
 const RAM_MIN = 2048
@@ -39,7 +41,7 @@ const RAM_STEP = 512
 
 export function OnboardingModal({ onDone }: OnboardingModalProps) {
   const { t, setLocale } = useI18n()
-  const { refreshTheme } = useTheme()
+  const { refreshTheme, applyThemeId } = useTheme()
   const { activeAccount, loginMicrosoft, addOffline, refresh } = useAccounts()
   const [step, setStep] = useState(0)
   const [language, setLanguage] = useState<'en' | 'fr'>('en')
@@ -80,8 +82,8 @@ export function OnboardingModal({ onDone }: OnboardingModalProps) {
 
   async function applyTheme(next: PrimeThemeId) {
     setTheme(next)
+    applyThemeId(next)
     await persist({ theme: next, accentColor: null })
-    await refreshTheme()
   }
 
   async function applyRam(next: number) {

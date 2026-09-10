@@ -1,11 +1,20 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { StoreItem } from '@shared/content-types'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode
+} from 'react'
 import type { PrimeThemeId } from '@shared/ipc'
 import { normalizePrimeTheme } from '@shared/theme'
 import { setUiSoundsEnabled } from '@renderer/lib/uiSounds'
 
 interface ThemeContextValue {
   refreshTheme: () => Promise<void>
+  /** Apply theme CSS immediately (before IPC round-trip). */
+  applyThemeId: (theme: PrimeThemeId) => void
   /** User setting — lighter UI for low-end PCs. */
   performanceMode: boolean
   /** True when performance mode OR OS prefers-reduced-motion. */
@@ -18,46 +27,74 @@ function applyReduceMotionFlag(reduce: boolean): void {
   document.documentElement.dataset.reduceMotion = reduce ? 'true' : 'false'
 }
 
-async function applyThemeFromSettings(): Promise<{ performanceMode: boolean }> {
-  const [settings, catalog, wallpaperData] = await Promise.all([
-    window.primeLauncher.settings.get(),
-    window.primeLauncher.store.catalog(),
-    window.primeLauncher.settings.wallpaperData()
-  ])
+function clearAccentOverrides(root: HTMLElement): void {
+  root.style.removeProperty('--prime-accent-override')
+  root.style.removeProperty('--accent')
+  root.style.removeProperty('--accent-bright')
+  root.style.removeProperty('--accent-subtle')
+  root.style.removeProperty('--accent-ring')
+  root.style.removeProperty('--prime-red')
+  root.style.removeProperty('--prime-red-bright')
+  root.style.removeProperty('--prime-red-glow')
+  root.style.removeProperty('--prime-red-subtle')
+}
 
-  const ownsNebula = catalog.some((item: StoreItem) => item.id === 'bg-nebula' && item.owned)
+function applyAccentOverride(root: HTMLElement, accent: string): void {
+  root.style.setProperty('--prime-accent-override', accent)
+  root.style.setProperty('--accent', accent)
+  root.style.setProperty('--accent-bright', accent)
+  root.style.setProperty('--accent-subtle', `color-mix(in srgb, ${accent} 14%, transparent)`)
+  root.style.setProperty('--accent-ring', `color-mix(in srgb, ${accent} 35%, transparent)`)
+  root.style.setProperty('--prime-red', accent)
+  root.style.setProperty('--prime-red-bright', accent)
+  root.style.setProperty('--prime-red-glow', `color-mix(in srgb, ${accent} 45%, transparent)`)
+  root.style.setProperty('--prime-red-subtle', `color-mix(in srgb, ${accent} 14%, transparent)`)
+}
 
-  const theme: PrimeThemeId = normalizePrimeTheme(settings.theme)
-  document.documentElement.dataset.theme = theme
-  document.documentElement.dataset.background =
-    ownsNebula && settings.backgroundNebula && !settings.performanceMode ? 'nebula' : 'default'
-
+function applyThemeIdSync(theme: PrimeThemeId, clearAccent = true): void {
   const root = document.documentElement
-  if (settings.accentColor) {
-    // Custom accent overrides brand tokens consistently (not only --prime-red-bright).
-    const accent = settings.accentColor
-    root.style.setProperty('--prime-accent-override', accent)
-    root.style.setProperty('--prime-red', accent)
-    root.style.setProperty('--prime-red-bright', accent)
-    root.style.setProperty('--prime-red-glow', `color-mix(in srgb, ${accent} 45%, transparent)`)
-    root.style.setProperty('--prime-red-subtle', `color-mix(in srgb, ${accent} 14%, transparent)`)
-  } else {
-    root.style.removeProperty('--prime-accent-override')
-    root.style.removeProperty('--prime-red')
-    root.style.removeProperty('--prime-red-bright')
-    root.style.removeProperty('--prime-red-glow')
-    root.style.removeProperty('--prime-red-subtle')
-  }
+  root.dataset.theme = normalizePrimeTheme(theme)
+  if (clearAccent) clearAccentOverrides(root)
+}
 
-  if (wallpaperData) {
-    root.style.setProperty('--prime-wallpaper', `url("${wallpaperData}")`)
+function applyWallpaper(dataUrl: string | null): void {
+  const root = document.documentElement
+  if (dataUrl) {
+    // Escape quotes in case of odd data URLs
+    const safe = dataUrl.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+    root.style.setProperty('--prime-wallpaper', `url("${safe}")`)
     root.dataset.wallpaper = 'custom'
   } else {
     root.style.removeProperty('--prime-wallpaper')
     delete root.dataset.wallpaper
   }
+}
+
+async function applyThemeFromSettings(): Promise<{ performanceMode: boolean }> {
+  // Theme first — never block identity on catalog / wallpaper I/O.
+  const settings = await window.primeLauncher.settings.get()
+  const theme = normalizePrimeTheme(settings.theme)
+  applyThemeIdSync(theme, !settings.accentColor)
+
+  if (settings.accentColor) {
+    applyAccentOverride(document.documentElement, settings.accentColor)
+  }
 
   setUiSoundsEnabled(settings.uiSounds !== false && !settings.performanceMode)
+
+  // Nebula is a free appearance toggle — apply immediately (not gated on store catalog).
+  document.documentElement.dataset.background =
+    settings.backgroundNebula && !settings.performanceMode ? 'nebula' : 'default'
+
+  // Secondary chrome — tolerate failures (cache / network / missing file).
+  void (async () => {
+    try {
+      const wallpaperData = await window.primeLauncher.settings.wallpaperData().catch(() => null)
+      applyWallpaper(wallpaperData)
+    } catch {
+      /* ignore wallpaper load failures */
+    }
+  })()
 
   return { performanceMode: Boolean(settings.performanceMode) }
 }
@@ -68,6 +105,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined' || !window.matchMedia) return false
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches
   })
+
+  const applyThemeId = useCallback((theme: PrimeThemeId) => {
+    applyThemeIdSync(theme, true)
+  }, [])
 
   const refreshTheme = useCallback(async () => {
     const { performanceMode: mode } = await applyThemeFromSettings()
@@ -93,8 +134,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [reduceMotion])
 
   const value = useMemo(
-    () => ({ refreshTheme, performanceMode, reduceMotion }),
-    [refreshTheme, performanceMode, reduceMotion]
+    () => ({ refreshTheme, applyThemeId, performanceMode, reduceMotion }),
+    [refreshTheme, applyThemeId, performanceMode, reduceMotion]
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

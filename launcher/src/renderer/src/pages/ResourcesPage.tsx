@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { Download, Image, Plus, Trash2, Upload } from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
-import { Badge, Button } from '@renderer/design-system/components'
+import { Badge, Button, useConfirm } from '@renderer/design-system/components'
 import { ContentBrowseModal } from '@renderer/components/ContentBrowseModal'
 import { useActiveInstance } from '@renderer/hooks/useActiveInstance'
 import { useI18n } from '@renderer/context/I18nProvider'
@@ -10,6 +10,7 @@ import type { ResourcePackEntry } from '@shared/content-types'
 
 export function ResourcesPage() {
   const { t } = useI18n()
+  const { confirm, alert } = useConfirm()
   const { instance, instanceId, refresh: refreshInstance } = useActiveInstance()
   const [packs, setPacks] = useState<ResourcePackEntry[]>([])
   const [showBrowse, setShowBrowse] = useState(false)
@@ -39,14 +40,19 @@ export function ResourcesPage() {
     if (result.ok) {
       await refresh()
     } else if (result.error !== 'Cancelled.') {
-      alert(result.error)
+      await alert(result.error)
     }
   }
 
   async function handleRemove(pack: ResourcePackEntry) {
-    if (!instanceId || !confirm(t('confirm.removePack', { name: pack.name }))) {
-      return
-    }
+    if (!instanceId) return
+    const ok = await confirm({
+      title: t('dialog.removeTitle'),
+      message: t('confirm.removePack', { name: pack.name }),
+      confirmLabel: t('actions.delete'),
+      variant: 'danger'
+    })
+    if (!ok) return
     await window.primeLauncher.content.removeResourcePack(pack.fileName, instanceId)
     await refresh()
   }

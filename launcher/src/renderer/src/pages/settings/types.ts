@@ -1,15 +1,14 @@
 import type { PerformancePreset } from '@shared/content-types'
 import type { PrimeThemeId } from '@shared/ipc'
 
+/** V3 settings IA — secondary panels nested under Minecraft / Launcher. */
 export const SECTION_IDS = [
   'general',
   'appearance',
   'minecraft',
-  'performance',
-  'accounts',
+  'launcher',
   'privacy',
-  'downloads',
-  'updates',
+  'accounts',
   'advanced'
 ] as const
 

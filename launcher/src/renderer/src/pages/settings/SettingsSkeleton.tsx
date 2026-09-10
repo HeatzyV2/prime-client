@@ -3,7 +3,7 @@ export function SettingsSkeleton() {
   return (
     <div className="settings settings--skeleton" aria-busy="true">
       <nav className="settings__nav">
-        {Array.from({ length: 9 }, (_, i) => (
+        {Array.from({ length: 7 }, (_, i) => (
           <div key={i} className="settings__skel-nav" />
         ))}
       </nav>

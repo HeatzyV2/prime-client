@@ -5,7 +5,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--prime-black);
+  background: var(--bg);
   z-index: 1000;
   overflow: hidden;
 }
@@ -14,25 +14,9 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 50% 40%, rgba(225, 29, 46, 0.15), transparent 50%),
-    radial-gradient(circle at 20% 80%, rgba(225, 29, 46, 0.08), transparent 40%),
-    var(--prime-black);
-}
-
-.splash__particles {
-  position: absolute;
-  inset: 0;
+    radial-gradient(ellipse 70% 45% at 50% 30%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
+    var(--bg);
   pointer-events: none;
-}
-
-.splash__particle {
-  position: absolute;
-  width: 3px;
-  height: 3px;
-  background: var(--prime-red-bright);
-  border-radius: 50%;
-  opacity: 0.4;
-  box-shadow: 0 0 8px var(--prime-red-glow);
 }
 
 .splash__content {
@@ -41,21 +25,24 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-8);
-  width: min(420px, 90vw);
+  gap: var(--space-10);
+  width: min(360px, 88vw);
 }
 
-.splash__logo-wrap {
-  position: relative;
-  animation: prime-float 4s ease-in-out infinite;
+.splash__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
 }
 
-.splash__glow {
-  position: absolute;
-  inset: -40px;
-  background: radial-gradient(circle, var(--prime-red-glow), transparent 70%);
-  animation: prime-glow-pulse 3s ease-in-out infinite;
-  pointer-events: none;
+.splash__mark {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .splash__status {
@@ -65,20 +52,19 @@
 
 .splash__step {
   font-size: var(--text-sm);
-  color: var(--prime-muted);
+  color: var(--muted);
   margin-bottom: var(--space-3);
-  min-height: 20px;
-  font-family: var(--font-mono);
-}
-
-.splash__step--active {
-  color: var(--prime-white);
+  min-height: 1.25rem;
 }
 
 .splash__version {
   position: absolute;
   bottom: var(--space-6);
   font-size: var(--text-xs);
-  color: var(--prime-muted-2);
+  color: var(--muted-2);
   font-family: var(--font-mono);
+}
+
+html[data-reduce-motion='true'] .splash__bg {
+  background: var(--bg);
 }

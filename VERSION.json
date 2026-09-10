@@ -1,7 +1,7 @@
 {
   "mod": "3.0.0",
-  "launcher": "2.5.0",
+  "launcher": "3.0.0",
   "backend": "2.2.0",
   "apiBase": "http://194.9.172.102:26005",
-  "notes": "Prime Client V3: HUD Editor, Design System, ClickGUI, profiles/themes, honest local backups & movement trail; Fabric 1.21.4 → 26.2."
+  "notes": "Prime Client V3 complete: mod + launcher shell, HUD Editor, Design System, ClickGUI, profiles/themes; Fabric 1.21.4 → 26.2."
 }

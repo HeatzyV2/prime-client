@@ -1,0 +1,176 @@
+.play-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 196px;
+  height: 54px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  isolation: isolate;
+}
+
+.play-btn__ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: calc(var(--radius-lg) + 2px);
+  border: 1px solid color-mix(in srgb, var(--play-rim) 65%, transparent);
+  opacity: 0.35;
+  transition:
+    opacity var(--duration-hover) var(--ease-out),
+    border-color var(--duration-hover) var(--ease-out),
+    box-shadow var(--duration-hover) var(--ease-out);
+  pointer-events: none;
+}
+
+.play-btn__fill {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 0 36px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #ffffff 0%, var(--play-fill) 55%, color-mix(in srgb, var(--play-fill) 92%, #dfe3ea) 100%);
+  color: var(--play-fg);
+  box-shadow: var(--play-shadow);
+  transition:
+    transform var(--duration-hover) var(--ease-out),
+    box-shadow var(--duration-hover) var(--ease-out),
+    filter var(--duration-hover) var(--ease-out);
+}
+
+.play-btn__fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.26) 0%, transparent 48%);
+  pointer-events: none;
+}
+
+.play-btn__fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.26);
+  pointer-events: none;
+}
+
+.play-btn__label {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.play-btn__sub {
+  position: relative;
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  opacity: 0.5;
+  text-transform: uppercase;
+}
+
+.play-btn:hover:not(:disabled) .play-btn__fill {
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.4),
+    0 0 40px color-mix(in srgb, var(--accent) 16%, transparent),
+    0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  filter: brightness(1.02);
+}
+
+.play-btn:hover:not(:disabled) .play-btn__ring {
+  opacity: 0.75;
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.play-btn:active:not(:disabled) .play-btn__fill {
+  transform: translateY(0) scale(0.985);
+  filter: brightness(0.985);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.34),
+    0 1px 0 rgba(255, 255, 255, 0.14) inset;
+  transition-duration: var(--duration-press);
+}
+
+.play-btn:focus-visible {
+  outline: none;
+}
+
+.play-btn:focus-visible .play-btn__ring {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.play-btn--launching .play-btn__fill,
+.play-btn--loading .play-btn__fill {
+  background: var(--surface-elevated);
+  color: var(--fg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+.play-btn--launching .play-btn__fill::before,
+.play-btn--loading .play-btn__fill::before,
+.play-btn--running .play-btn__fill::before,
+.play-btn--error .play-btn__fill::before {
+  opacity: 0.1;
+}
+
+.play-btn--running .play-btn__fill {
+  background: color-mix(in srgb, var(--success) 14%, var(--surface-elevated));
+  color: var(--success);
+  box-shadow: none;
+}
+
+.play-btn--error .play-btn__fill {
+  background: color-mix(in srgb, var(--error) 14%, var(--surface-elevated));
+  color: var(--error);
+}
+
+.play-btn--disabled .play-btn__fill,
+.play-btn:disabled .play-btn__fill {
+  opacity: 0.4;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+.play-btn--disabled .play-btn__ring,
+.play-btn:disabled .play-btn__ring {
+  opacity: 0;
+}
+
+.play-btn__spinner {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  margin-bottom: 3px;
+  border: 1.5px solid color-mix(in srgb, var(--fg) 22%, transparent);
+  border-top-color: var(--fg);
+  border-radius: var(--radius-full);
+  animation: v3-spin 0.7s linear infinite;
+}
+
+html[data-reduce-motion='true'] .play-btn__spinner {
+  animation: none;
+  border-top-color: var(--fg);
+  opacity: 0.7;
+}
+
+html[data-reduce-motion='true'] .play-btn:hover:not(:disabled) .play-btn__fill {
+  transform: none;
+}

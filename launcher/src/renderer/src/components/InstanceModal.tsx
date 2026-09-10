@@ -312,38 +312,6 @@ export function InstanceModal({
           }}
         />
 
-        <label className="text-caption">{t('modals.instance.minecraftVersion')}</label>
-        <input
-          className="modal__field instance-modal__version-filter"
-          type="search"
-          placeholder={t('modals.instance.versionSearch')}
-          value={versionFilter}
-          onChange={(e) => setVersionFilter(e.target.value)}
-          aria-label={t('modals.instance.versionSearch')}
-        />
-        <Select
-          className="modal__select instance-modal__version-select"
-          value={mcVersion}
-          aria-label={t('modals.instance.minecraftVersion')}
-          placeholder={
-            versionsLoading
-              ? t('modals.instance.versionsLoading')
-              : t('modals.instance.minecraftVersion')
-          }
-          onChange={setMcVersion}
-          options={
-            versionOptions.length > 0
-              ? versionOptions
-              : [{ value: mcVersion, label: mcVersion, disabled: true }]
-          }
-        />
-        {kind === 'prime' && (
-          <p className="text-caption instance-modal__note">{t('modals.instance.primeAutoNote')}</p>
-        )}
-        {kind === 'fabric' && (
-          <p className="text-caption instance-modal__note">{t('modals.instance.fabricNote')}</p>
-        )}
-
         <label className="text-caption">{t('modals.instance.kind')}</label>
         <div className="instance-modal__cards">
           {(
@@ -377,6 +345,40 @@ export function InstanceModal({
             </button>
           ))}
         </div>
+
+        <label className="text-caption">{t('modals.instance.minecraftVersion')}</label>
+        {showAdvanced && (
+          <input
+            className="modal__field instance-modal__version-filter"
+            type="search"
+            placeholder={t('modals.instance.versionSearch')}
+            value={versionFilter}
+            onChange={(e) => setVersionFilter(e.target.value)}
+            aria-label={t('modals.instance.versionSearch')}
+          />
+        )}
+        <Select
+          className="modal__select instance-modal__version-select"
+          value={mcVersion}
+          aria-label={t('modals.instance.minecraftVersion')}
+          placeholder={
+            versionsLoading
+              ? t('modals.instance.versionsLoading')
+              : t('modals.instance.minecraftVersion')
+          }
+          onChange={setMcVersion}
+          options={
+            versionOptions.length > 0
+              ? versionOptions
+              : [{ value: mcVersion, label: mcVersion, disabled: true }]
+          }
+        />
+        {kind === 'prime' && (
+          <p className="text-caption instance-modal__note">{t('modals.instance.primeAutoNote')}</p>
+        )}
+        {kind === 'fabric' && (
+          <p className="text-caption instance-modal__note">{t('modals.instance.fabricNote')}</p>
+        )}
 
         <button
           type="button"

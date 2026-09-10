@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useState, type ComponentType, t
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { useI18n } from '@renderer/context/I18nProvider'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { useToast } from '@renderer/design-system/components'
 import type { StoreItem } from '@shared/content-types'
 import type {
   UpdateProgressDto,
@@ -73,7 +74,8 @@ function afterFirstPaint(cb: () => void): () => void {
 
 export function SettingsPage() {
   const { t, setLocale } = useI18n()
-  const { refreshTheme } = useTheme()
+  const { refreshTheme, applyThemeId } = useTheme()
+  const { toast } = useToast()
   const [section, setSection] = useState<SettingsSectionId>('general')
   const [settings, setSettings] = useState<SettingsState | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -82,7 +84,6 @@ export function SettingsPage() {
   const [updateProgress, setUpdateProgress] = useState<UpdateProgressDto | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-  const [ownsNebula, setOwnsNebula] = useState(false)
   const [javaInstalls, setJavaInstalls] = useState<JavaInstallationDto[]>([])
   const [restartRequired, setRestartRequired] = useState(false)
   const [groqStatus, setGroqStatus] = useState<{
@@ -126,13 +127,11 @@ export function SettingsPage() {
       // Secondary IPC after core settings are on screen.
       void (async () => {
         try {
-          const [keyStatus, catalog, javas] = await Promise.all([
+          const [keyStatus, javas] = await Promise.all([
             window.primeLauncher.ai.keyStatus(),
-            window.primeLauncher.store.catalog(),
             window.primeLauncher.settings.listJava()
           ])
           setGroqStatus(keyStatus)
-          setOwnsNebula(catalog.some((item: StoreItem) => item.id === 'bg-nebula' && item.owned))
           setJavaInstalls(javas)
         } catch {
           // Non-fatal — panels degrade gracefully.
@@ -162,6 +161,18 @@ export function SettingsPage() {
 
     if (partial.language) {
       setLocale(partial.language)
+    }
+
+    // Apply theme chrome immediately — do not wait for IPC.
+    if (partial.theme !== undefined) {
+      applyThemeId(partial.theme)
+    }
+    if (partial.backgroundNebula !== undefined || partial.performanceMode !== undefined) {
+      document.documentElement.dataset.background =
+        (partial.backgroundNebula ?? next.backgroundNebula) &&
+        !(partial.performanceMode ?? next.performanceMode)
+          ? 'nebula'
+          : 'default'
     }
 
     const result = (await window.primeLauncher.settings.update({
@@ -205,6 +216,7 @@ export function SettingsPage() {
 
     setRestartRequired(Boolean(result.restartRequired))
     setSaved(true)
+    toast(t('common.saved'), 'success')
     window.setTimeout(() => setSaved(false), 2000)
   }
 
@@ -222,10 +234,10 @@ export function SettingsPage() {
   }
 
   useEffect(() => {
-    if (section === 'updates' && !updateInfo && settings) {
+    if (section === 'launcher' && !updateInfo && settings) {
       void handleCheckUpdate(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when entering updates tab
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when entering launcher tab
   }, [section, settings])
 
   async function handleInstallUpdate(target: 'launcher' | 'mod') {
@@ -262,6 +274,7 @@ export function SettingsPage() {
 
   function markSaved() {
     setSaved(true)
+    toast(t('common.saved'), 'success')
     window.setTimeout(() => setSaved(false), 2000)
   }
 
@@ -273,35 +286,41 @@ export function SettingsPage() {
       case 'general':
         return <GeneralPanel settings={settings} patch={patch} />
       case 'appearance':
-        return <AppearancePanel settings={settings} patch={patch} ownsNebula={ownsNebula} />
+        return <AppearancePanel settings={settings} patch={patch} />
       case 'minecraft':
         return (
-          <MinecraftPanel
-            settings={settings}
-            patch={patch}
-            javaInstalls={javaInstalls}
-            setJavaInstalls={setJavaInstalls}
-          />
+          <>
+            <MinecraftPanel
+              settings={settings}
+              patch={patch}
+              javaInstalls={javaInstalls}
+              setJavaInstalls={setJavaInstalls}
+            />
+            <div className="settings__divider" />
+            <p className="text-label">{t('settings.sections.performance')}</p>
+            <PerformancePanel settings={settings} patch={patch} />
+          </>
         )
-      case 'performance':
-        return <PerformancePanel settings={settings} patch={patch} />
+      case 'launcher':
+        return (
+          <>
+            <DownloadsPanel settings={settings} patch={patch} />
+            <div className="settings__divider" />
+            <p className="text-label">{t('settings.sections.updates')}</p>
+            <UpdatesPanel
+              updateInfo={updateInfo}
+              updateBusy={updateBusy}
+              updateProgress={updateProgress}
+              updateError={updateError}
+              onCheck={(force?: boolean) => void handleCheckUpdate(force)}
+              onInstall={(target: 'launcher' | 'mod') => void handleInstallUpdate(target)}
+            />
+          </>
+        )
       case 'accounts':
         return <AccountsPanel />
       case 'privacy':
         return <PrivacyPanel settings={settings} patch={patch} />
-      case 'downloads':
-        return <DownloadsPanel settings={settings} patch={patch} />
-      case 'updates':
-        return (
-          <UpdatesPanel
-            updateInfo={updateInfo}
-            updateBusy={updateBusy}
-            updateProgress={updateProgress}
-            updateError={updateError}
-            onCheck={(force?: boolean) => void handleCheckUpdate(force)}
-            onInstall={(target: 'launcher' | 'mod') => void handleInstallUpdate(target)}
-          />
-        )
       case 'advanced':
         return (
           <AdvancedPanel
@@ -321,30 +340,22 @@ export function SettingsPage() {
     <PageShell
       title={t('settings.title')}
       subtitle={t('settings.subtitle')}
-      actions={saved ? <span className="text-caption">{t('common.saved')}</span> : undefined}
+      actions={saved ? <span className="settings__saved">{t('common.saved')}</span> : undefined}
     >
       {restartRequired && (
-        <p className="text-caption" style={{ marginBottom: 12, color: 'var(--prime-muted)' }}>
+        <p className="settings__banner">
           {t('settings.restartRequired')}{' '}
-          <button
-            className="settings__input"
-            style={{ cursor: 'pointer' }}
-            onClick={() => void window.primeLauncher.app.restart()}
-          >
+          <button type="button" className="settings__link" onClick={() => void window.primeLauncher.app.restart()}>
             {t('settings.restartNow')}
           </button>
         </p>
       )}
-      {loadError && (
-        <p className="text-caption" style={{ marginBottom: 12, color: 'var(--prime-error)' }}>
-          {loadError}
-        </p>
-      )}
+      {loadError && <p className="settings__error">{loadError}</p>}
       {!settings ? (
         <SettingsSkeleton />
       ) : (
         <div className="settings">
-          <nav className="settings__nav">
+          <nav className="settings__nav" aria-label={t('settings.title')}>
             {SECTION_IDS.map((id) => (
               <button
                 key={id}

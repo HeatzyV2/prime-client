@@ -27,7 +27,8 @@ export const fr: LocaleCatalog = {
     performance: 'Performances',
     downloads: 'Téléchargements',
     console: 'Console',
-    settings: 'Paramètres'
+    settings: 'Paramètres',
+    designLab: 'Labo design'
   },
   boot: {
     core: 'Initialisation du cœur Prime…',
@@ -38,6 +39,8 @@ export const fr: LocaleCatalog = {
   common: {
     play: 'Jouer',
     launching: 'Lancement…',
+    running: 'En jeu',
+    retry: 'Réessayer',
     join: 'Rejoindre',
     saved: 'Enregistré',
     guest: 'Invité',
@@ -67,6 +70,7 @@ export const fr: LocaleCatalog = {
     signInHint: 'Connectez Microsoft ou utilisez le mode hors ligne pour lancer Prime Client.',
     addAccount: 'Ajouter un compte',
     welcomeBack: 'Bon retour',
+    welcomeGuest: 'Prêt quand tu l’es',
     quickLaunch: 'Lancement rapide',
     profile: 'Profil',
     instance: 'Instance',
@@ -75,6 +79,10 @@ export const fr: LocaleCatalog = {
     news: 'Actualités',
     moreNews: 'Toutes les actus',
     favoriteServers: 'Serveurs favoris',
+    jumpIn: 'Rejoindre',
+    openServers: 'Tous les serveurs',
+    openNews: 'Actus',
+    seeWhatsNew: 'Voir les nouveautés',
     friendsActivity: 'Activité des amis',
     noFriendsOnline: 'Aucun ami en ligne',
     noFriendsOnlineHint: 'Ajoute des amis pour voir leur activité ici.',
@@ -88,15 +96,28 @@ export const fr: LocaleCatalog = {
       account: 'Compte',
       instance: 'Instance',
       server: 'Serveur',
-      singleplayer: 'Solo / menu'
+      singleplayer: 'Solo / menu',
+      change: 'Changer',
+      createInstance: 'Créer une instance',
+      manageAll: 'Tout gérer',
+      noServer: 'Aucun serveur',
+      quickSettings: 'Réglages rapides'
     },
     launchStatus: {
       preparing: 'Préparation…',
+      fabric: 'Chargement de Fabric…',
       download: 'Téléchargement…',
       mods: 'Installation des mods…',
       starting: 'Démarrage de Minecraft…',
       running: 'Jeu lancé',
       inGame: 'En jeu',
+      crashed: 'Minecraft a planté',
+      working: 'En cours…',
+      title: 'Lancement de Prime Client',
+      unable: 'Impossible de lancer Minecraft',
+      label: 'Lancement',
+      errorLabel: 'Erreur',
+      tryAgain: 'Réessayer',
       error: 'Échec du lancement'
     },
     timePlayed: 'Temps de jeu',
@@ -119,7 +140,8 @@ export const fr: LocaleCatalog = {
       appearance: 'Apparence',
       minecraft: 'Minecraft',
       performance: 'Performances',
-      accounts: 'Comptes',
+      launcher: 'Launcher',
+      accounts: 'Compte',
       privacy: 'Confidentialité',
       downloads: 'Téléchargements',
       updates: 'Mises à jour',
@@ -147,7 +169,7 @@ export const fr: LocaleCatalog = {
     },
     theme: {
       label: 'Thème',
-      hint: 'S’applique au launcher et se synchronise dans le profil du jeu',
+      hint: 'Chaque thème change surfaces, lumière et Play — pas seulement l’accent',
       dark: 'Crimson',
       crimson: 'Crimson',
       midnight: 'Midnight',
@@ -156,7 +178,16 @@ export const fr: LocaleCatalog = {
       ember: 'Ember',
       violet: 'Violet',
       emerald: 'Émeraude',
-      elevated: 'Pro'
+      elevated: 'Pro',
+      desc: {
+        crimson: 'Prime cinématique — charbon profond, lumière cramoisie rare',
+        midnight: 'Opérations nocturnes — bleus froids et brume lunaire',
+        aurora: 'Bioluminescence — noirs verdâtres et liseré émeraude',
+        obsidian: 'Luxe éditorial — noir absolu et or champagne',
+        ember: 'Volcanique — chaleur cuivrée sur charbon',
+        violet: 'Crépuscule — contraste pourpre doux',
+        emerald: 'Forêt profonde — surfaces mousse et brume'
+      }
     },
     hardwareAccel: {
       label: 'Accélération matérielle',
@@ -169,7 +200,7 @@ export const fr: LocaleCatalog = {
     },
     backgroundNebula: {
       label: 'Fond nébuleuse',
-      hint: 'Fond animé débloqué dans la Boutique',
+      hint: 'Nuages spatiaux animés derrière le launcher — indépendant du thème',
       toggle: 'Fond nébuleuse'
     },
     wallpaper: {
@@ -347,7 +378,7 @@ export const fr: LocaleCatalog = {
       subtitle: 'Débloquez cosmétiques et thèmes avec des Prime Coins — sync cloud en ligne.'
     },
     skins: {
-      title: 'Skins',
+      title: 'Cosmétiques',
       subtitle: 'Aperçu du personnage, capes et ailes Prime — ton look prêt à jouer.'
     },
     library: {
@@ -520,6 +551,7 @@ export const fr: LocaleCatalog = {
     info: 'Informations',
     partner: 'Partenaire',
     online: 'En ligne',
+    offline: 'Hors ligne',
     offlineCached: 'Cache',
     noDescription: 'Pas encore de description.',
     versionUnknown: 'Version inconnue',
@@ -699,11 +731,19 @@ export const fr: LocaleCatalog = {
     active: 'Actif'
   },
   confirm: {
-    deleteInstance: 'Supprimer « {name} » ? Les fichiers peuvent être conservés ou supprimés.',
+    deleteInstance: 'Supprimer « {name} » ? Vous pouvez conserver le dossier ou le supprimer du disque.',
     deleteFiles: 'Supprimer aussi saves et mods sur le disque ?',
+    keepFiles: 'Conserver les fichiers',
+    deleteWithFiles: 'Supprimer les fichiers',
     removeMod: 'Supprimer {name} ?',
     removePack: 'Supprimer {name} ?',
     removeShader: 'Supprimer {name} ?'
+  },
+  dialog: {
+    confirmTitle: 'Confirmation',
+    alertTitle: 'Information',
+    deleteInstanceTitle: 'Supprimer l\'instance',
+    removeTitle: 'Supprimer'
   },
   errors: {
     deleteInstance: 'Impossible de supprimer l\'instance.'
@@ -779,7 +819,11 @@ export const fr: LocaleCatalog = {
     changeCape: 'Changer cape',
     openStore: 'Ouvrir la Boutique',
     remove: 'Supprimer',
-    emptyCosmeticsHint: 'Débloque des cosmétiques dans la Boutique, puis équipe-les ici.'
+    emptyCosmeticsHint: 'Débloque des cosmétiques dans la Boutique, puis équipe-les ici.',
+    resetCamera: 'Réinitialiser la caméra',
+    backdrop: 'Fond',
+    fullscreen: 'Plein écran',
+    exitFullscreen: 'Quitter le plein écran'
   },
   onboarding: {
     eyebrow: 'Configuration initiale',
@@ -851,7 +895,38 @@ export const fr: LocaleCatalog = {
     eyebrow: 'Mise à jour',
     title: 'Nouveautés',
     gotIt: 'Compris',
-    changelog: 'Changelog complet'
+    changelog: 'Changelog complet',
+    items: {
+      '3.0.0': {
+        a: 'Launcher V3 — hub Play, navigation et design system revisités',
+        b: 'Mod Prime Client 3.0 — HUD Editor V3, ClickGUI V3, profils et thèmes',
+        c: 'Sauvegardes locales et Movement Trail (pas de cloud distant / Replay Mod)',
+        d: 'Jars Fabric multi-versions Minecraft 1.21.4 → 26.2'
+      },
+      '2.5.1': {
+        a: 'Création d’instance simplifiée — nom, version, puis type (Prime recommandé)',
+        b: 'Liste complète des versions Minecraft (Mojang + Fabric Meta, recherchable)',
+        c: 'Options avancées (RAM / Java) repliées par défaut'
+      },
+      '2.4.1': {
+        a: 'Démarrage plus rapide — stores en parallèle, Discord RPC après l’affichage',
+        b: 'Mode performance dans Paramètres — moins d’animations, skin figé, sondages plus lents',
+        c: 'Moins de freezes — garde-fous crash, polling plus intelligent, SkinViewer en pause hors écran',
+        d: 'Accueil plus léger — routes lazy, fades CSS, glow adouci'
+      },
+      '2.4.0': {
+        a: 'Electron redevient le launcher officiel (login Microsoft stable via msmc)',
+        b: 'Même UI Prime — comptes, instances, cosmétiques, Social Hub',
+        c: 'Auto-update reprend Prime-Launcher-Setup-*.exe',
+        d: 'Tauri reste disponible en expérimental (npm run dev:tauri)'
+      },
+      '0.9.16': {
+        a: 'Hub Play premium — compte, instance et serveur au même endroit',
+        b: 'Viewer skin 3D pro avec cape, plein écran et reset caméra',
+        c: 'Bibliothèque de skins locale + aperçu 3D boutique',
+        d: 'Fond d’écran / accent, sons UI et onboarding'
+      }
+    }
   },
   instances: {
     vanilla: 'Vanilla',
@@ -920,6 +995,53 @@ export const fr: LocaleCatalog = {
         'Fabric ou un mod n\'a pas pu se charger. Vérifiez que les versions correspondent à Minecraft.',
       unknown:
         'Ouvrez le crash report pour les détails complets. Si le problème persiste, partagez-le au support.'
+    }
+  },
+  designLab: {
+    title: 'Labo design',
+    subtitle: 'Prime V3',
+    hint: 'Compare les compositions. Le thème s’applique en direct.',
+    composition: 'Composition',
+    theme: 'Thème',
+    mocks: 'Maquettes UX',
+    openInstance: 'Sélecteur d’instance',
+    openCreate: 'Créer une instance',
+    openServer: 'Sélecteur de serveur',
+    manageInstances: 'Gérer les instances',
+    selectInstance: 'Choisir une instance',
+    selectServer: 'Choisir un serveur',
+    createLabel: 'Création',
+    defaultName: 'Mon instance',
+    autoJava: 'Détection auto',
+    onlineMs: 'En ligne · {ms} ms',
+    mockInstance: 'Prime PvP',
+    mockServerShort: 'Elysia',
+    mockServer: 'Elysia SMP',
+    mockAltInstance: 'Elysia',
+    mockVersionBar: '1.21 · 6 Go',
+    mockVersionFull: 'Minecraft 1.21 · Fabric',
+    mockVanillaVersion: 'Minecraft 1.21 · Vanilla',
+    mockRam: '6 Go',
+    mockRamFull: '6 Go RAM',
+    mockPlayer: 'Steve',
+    mockCaption: 'Prime PvP · Elysia · 6 Go',
+    compositions: {
+      A: {
+        name: 'Monde dominant',
+        blurb: 'Monde plein écran · Play flottant en bas'
+      },
+      B: {
+        name: 'Monde latéral',
+        blurb: 'Monde à gauche · Contenu à droite'
+      },
+      C: {
+        name: 'Profondeur cinéma',
+        blurb: 'Calques parallaxe · Lumière derrière Play'
+      },
+      D: {
+        name: 'Hybride Prime',
+        blurb: 'Recommandé · Pastille instance · Rail'
+      }
     }
   }
 }

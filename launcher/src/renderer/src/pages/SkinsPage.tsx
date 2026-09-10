@@ -1,16 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, Plus, Sparkles, Trash2 } from 'lucide-react'
 import type { CosmeticItem } from '@shared/content-types'
 import { playerBodyUrl, playerCapeUrl } from '@shared/format'
 import { PageShell } from '@renderer/pages/shared/PageShell'
 import { Badge, Button, Tabs } from '@renderer/design-system/components'
-import { SkinViewer3D } from '@renderer/components/SkinViewer3D'
 import { EmptyState } from '@renderer/components/EmptyState'
 import { useAccounts } from '@renderer/context/AccountProvider'
 import { useI18n } from '@renderer/context/I18nProvider'
 import { playUiSound } from '@renderer/lib/uiSounds'
 import './SkinsPage.css'
+
+const SkinViewer3D = lazy(() =>
+  import('@renderer/components/SkinViewer3D').then((m) => ({ default: m.SkinViewer3D }))
+)
 
 type Pose = 'idle' | 'walk' | 'run'
 type SkinTab = 'skins' | 'cape' | 'wings' | 'aura' | 'trail' | 'hat' | 'emote' | 'badge'
@@ -139,30 +142,33 @@ export function SkinsPage() {
 
   return (
     <PageShell title={t('pages.skins.title')} subtitle={t('pages.skins.subtitle')}>
-      <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as SkinTab)} />
-
-      <div className="skins-hub">
-        <section className="skins-hub__preview">
-          <div className="skins-hub__stage">
+      <div className="cosmetics-v3">
+        <aside className="cosmetics-v3__stage">
+          <Suspense
+            fallback={
+              <div className="cosmetics-v3__viewer-fallback" aria-busy="true">
+                <img src={bodyUrl} alt="" draggable={false} />
+              </div>
+            }
+          >
             <SkinViewer3D
-              className="skins-hub__viewer"
+              className="cosmetics-v3__viewer"
               uuid={uuid}
               username={username}
               skinUrl={previewSkinUrl}
               capeUrl={tab === 'badge' ? null : capeUrl}
               pose={pose}
-              width={260}
-              height={340}
-              showControls
+              width={240}
+              height={320}
+              showControls={false}
             />
-            {equippedCape && tab !== 'badge' && (
-              <div className="skins-hub__cape-tag">
-                <Badge variant="prime">{equippedCape.name}</Badge>
-              </div>
-            )}
-          </div>
+          </Suspense>
 
-          <div className="skins-hub__poses">
+          {equippedCape && tab !== 'badge' && (
+            <Badge variant="prime">{equippedCape.name}</Badge>
+          )}
+
+          <div className="cosmetics-v3__poses" role="group" aria-label="Pose">
             {(
               [
                 ['idle', t('skins.pose.idle')],
@@ -173,7 +179,7 @@ export function SkinsPage() {
               <button
                 key={id}
                 type="button"
-                className={`skins-hub__pose${pose === id ? ' is-active' : ''}`}
+                className={`cosmetics-v3__pose${pose === id ? ' is-active' : ''}`}
                 onClick={() => setPose(id)}
               >
                 {label}
@@ -181,50 +187,56 @@ export function SkinsPage() {
             ))}
           </div>
 
-          <p className="skins-hub__name">{username}</p>
-        </section>
+          <p className="cosmetics-v3__name">{username}</p>
+        </aside>
 
-        <section className="skins-hub__gallery">
+        <section className="cosmetics-v3__main">
+          <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as SkinTab)} />
+
           {tab === 'skins' ? (
-            <div className="skins-hub__grid">
+            <div className="cosmetics-v3__list">
               <button
                 type="button"
-                className="skins-card skins-card--add"
+                className="cosmetics-v3__row cosmetics-v3__row--add"
                 disabled={busy}
                 onClick={() => void handleImport()}
               >
-                <Plus size={28} />
+                <Plus size={16} strokeWidth={1.75} />
                 <span>{t('skins.addSkin')}</span>
               </button>
+
               <button
                 type="button"
-                className={`skins-card${!selectedId && !activeSkinId ? ' is-active' : ''}`}
+                className={`cosmetics-v3__row${!selectedId && !activeSkinId ? ' is-active' : ''}`}
                 onClick={() => setSelectedId(null)}
               >
-                <div className="skins-card__preview">
-                  <img src={bodyUrl} alt={username} draggable={false} />
-                </div>
-                <span className="skins-card__name">{username}</span>
-                {!activeSkinId && <span className="skins-card__equipped">{t('common.active')}</span>}
+                <img className="cosmetics-v3__thumb" src={bodyUrl} alt="" draggable={false} />
+                <span className="cosmetics-v3__row-name">{username}</span>
+                {!activeSkinId && <span className="cosmetics-v3__tag">{t('common.active')}</span>}
               </button>
+
               {localSkins.map((skin) => (
                 <button
                   key={skin.id}
                   type="button"
-                  className={`skins-card${selectedId === skin.id || (!selectedId && activeSkinId === skin.id) ? ' is-active' : ''}`}
+                  className={`cosmetics-v3__row${selectedId === skin.id || (!selectedId && activeSkinId === skin.id) ? ' is-active' : ''}`}
                   onClick={() => setSelectedId(skin.id)}
                 >
-                  <div className="skins-card__preview">
-                    <img src={skin.dataUrl} alt={skin.name} draggable={false} style={{ imageRendering: 'pixelated' }} />
-                  </div>
-                  <span className="skins-card__name">{skin.name}</span>
+                  <img
+                    className="cosmetics-v3__thumb cosmetics-v3__thumb--pixel"
+                    src={skin.dataUrl}
+                    alt=""
+                    draggable={false}
+                  />
+                  <span className="cosmetics-v3__row-name">{skin.name}</span>
                   {activeSkinId === skin.id && (
-                    <span className="skins-card__equipped">{t('common.active')}</span>
+                    <span className="cosmetics-v3__tag">{t('common.active')}</span>
                   )}
                   <span
-                    className="skins-card__remove"
+                    className="cosmetics-v3__remove"
                     role="button"
                     tabIndex={0}
+                    title={t('skins.remove')}
                     onClick={(e) => {
                       e.stopPropagation()
                       void handleRemoveSkin(skin.id)
@@ -235,16 +247,15 @@ export function SkinsPage() {
                         void handleRemoveSkin(skin.id)
                       }
                     }}
-                    title={t('skins.remove')}
                   >
-                    <Trash2 size={12} />
+                    <Trash2 size={12} strokeWidth={1.75} />
                   </span>
                 </button>
               ))}
             </div>
           ) : cosmeticItems.length === 0 ? (
             <EmptyState
-              icon={<Sparkles size={24} />}
+              icon={<Sparkles size={22} strokeWidth={1.75} />}
               title={t('cosmetics.emptyOwned')}
               description={t('skins.emptyCosmeticsHint')}
               action={
@@ -256,31 +267,33 @@ export function SkinsPage() {
               }
             />
           ) : (
-            <div className="skins-hub__grid">
+            <div className="cosmetics-v3__list">
               {cosmeticItems.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  className={`skins-card${selectedId === item.id || (!selectedId && item.equipped) ? ' is-active' : ''}`}
+                  className={`cosmetics-v3__row${selectedId === item.id || (!selectedId && item.equipped) ? ' is-active' : ''}`}
                   onClick={() => setSelectedId(item.id)}
                 >
-                  <div className="skins-card__preview skins-card__preview--icon">
-                    <Sparkles size={28} />
-                    {item.equipped && <span className="skins-card__equipped">{t('common.active')}</span>}
-                  </div>
-                  <span className="skins-card__name">{item.name}</span>
+                  <span className="cosmetics-v3__icon">
+                    <Sparkles size={16} strokeWidth={1.75} />
+                  </span>
+                  <span className="cosmetics-v3__row-name">{item.name}</span>
                   <Badge variant={RARITY_VARIANT[item.rarity]}>{item.rarity}</Badge>
+                  {item.equipped && <span className="cosmetics-v3__tag">{t('common.active')}</span>}
                 </button>
               ))}
             </div>
           )}
 
-          <div className="skins-hub__actions">
+          <div className="cosmetics-v3__actions">
             {tab === 'skins' ? (
               <Button
                 variant="primary"
-                icon={<Check size={16} />}
-                disabled={busy || selectedId === activeSkinId || (selectedId === null && !activeSkinId)}
+                icon={<Check size={16} strokeWidth={1.75} />}
+                disabled={
+                  busy || selectedId === activeSkinId || (selectedId === null && !activeSkinId)
+                }
                 onClick={() => void handleApplySkin()}
               >
                 {t('skins.applySkin')}
@@ -289,21 +302,18 @@ export function SkinsPage() {
               <>
                 <Button
                   variant="primary"
-                  icon={<Check size={16} />}
+                  icon={<Check size={16} strokeWidth={1.75} />}
                   disabled={!selectedCosmetic || selectedCosmetic.equipped}
                   onClick={() => void handleApply()}
                 >
                   {t('skins.applyCosmetic')}
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="ghost"
                   disabled={!selectedCosmetic?.equipped}
                   onClick={() => void handleUnequipSelected()}
                 >
                   {t('actions.unequip')}
-                </Button>
-                <Button variant="ghost" onClick={() => setTab('cape')}>
-                  {t('skins.changeCape')}
                 </Button>
               </>
             )}

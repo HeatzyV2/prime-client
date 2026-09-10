@@ -1,0 +1,32 @@
+.v3-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.v3-tooltip__bubble {
+  position: absolute;
+  left: 50%;
+  z-index: 60;
+  min-width: max-content;
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1.35;
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: v3-fade-in var(--duration-open) var(--ease-out);
+}
+
+.v3-tooltip__bubble--top {
+  bottom: calc(100% + 8px);
+}
+
+.v3-tooltip__bubble--bottom {
+  top: calc(100% + 8px);
+}

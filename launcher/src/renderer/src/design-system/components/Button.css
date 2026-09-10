@@ -51,28 +51,22 @@
 
 /* Variants */
 .prime-btn--primary {
-  background: linear-gradient(135deg, var(--prime-red-bright), var(--prime-red));
-  color: #fff;
-  box-shadow: 0 8px 28px color-mix(in srgb, var(--prime-red-bright) 35%, transparent);
+  background: var(--fg);
+  color: var(--bg);
+  box-shadow: none;
 }
 
 .prime-btn--primary:hover:not(:disabled) {
-  box-shadow: 0 10px 34px color-mix(in srgb, var(--prime-red-bright) 48%, transparent);
+  background: #fff;
+  box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
 }
 
-html[data-theme='prime-aurora'] .prime-btn--primary {
-  color: #07110c;
-}
-
-html[data-theme='prime-obsidian'] .prime-btn--primary {
-  color: #1a1408;
-  box-shadow: 0 8px 32px color-mix(in srgb, var(--prime-red-bright) 40%, transparent);
-}
-
+html[data-theme='prime-aurora'] .prime-btn--primary,
+html[data-theme='prime-obsidian'] .prime-btn--primary,
 html[data-theme='prime-ember'] .prime-btn--primary {
-  color: #1a0c06;
-  box-shadow: 0 8px 32px color-mix(in srgb, var(--prime-red-bright) 42%, transparent);
+  color: var(--bg);
+  box-shadow: none;
 }
 
 .prime-btn--secondary {

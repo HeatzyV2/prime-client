@@ -12,7 +12,7 @@ import {
   Import
 } from 'lucide-react'
 import { PageShell } from '@renderer/pages/shared/PageShell'
-import { Badge, Button } from '@renderer/design-system/components'
+import { Badge, Button, useConfirm } from '@renderer/design-system/components'
 import { InstanceModal, type InstancePreset } from '@renderer/components/InstanceModal'
 import { ImportInstancesModal } from '@renderer/components/ImportInstancesModal'
 import { LoginModal } from '@renderer/components/LoginModal'
@@ -39,6 +39,7 @@ type ModalState = CreateModalState | EditModalState
 
 export function InstancesPage() {
   const { t, locale } = useI18n()
+  const { confirm, alert } = useConfirm()
   const { launch, activeAccount } = useAccounts()
   const [instances, setInstances] = useState<GameInstance[]>([])
   const [loading, setLoading] = useState(true)
@@ -83,13 +84,22 @@ export function InstancesPage() {
   }
 
   async function handleDelete(inst: GameInstance) {
-    if (!confirm(t('confirm.deleteInstance', { name: inst.name }))) {
-      return
-    }
-    const deleteFiles = confirm(t('confirm.deleteFiles'))
+    const choice = await confirm({
+      title: t('dialog.deleteInstanceTitle'),
+      message: t('confirm.deleteInstance', { name: inst.name }),
+      confirmLabel: t('confirm.deleteWithFiles'),
+      secondaryLabel: t('confirm.keepFiles'),
+      variant: 'danger'
+    })
+    if (choice === false) return
+    const deleteFiles = choice === true
     const result = await window.primeLauncher.instance.remove(inst.id, deleteFiles)
     if (!result.ok) {
-      alert(result.error ?? t('errors.deleteInstance'))
+      await alert({
+        title: t('dialog.alertTitle'),
+        message: result.error ?? t('errors.deleteInstance'),
+        variant: 'danger'
+      })
       return
     }
     playUiSound('click')
@@ -143,11 +153,11 @@ export function InstancesPage() {
             }
           />
         ) : (
-          <ul className="instances__list">
+          <ul className="instances__list" aria-label={t('pages.instances.title')}>
             {instances.map((inst) => (
               <li key={inst.id} className={`instances__row${inst.isDefault ? ' is-default' : ''}`}>
-                <div className="instances__icon">
-                  <Box size={20} />
+                <div className="instances__icon" aria-hidden>
+                  <Box size={20} strokeWidth={1.75} />
                 </div>
 
                 <div className="instances__body">
@@ -196,36 +206,40 @@ export function InstancesPage() {
                       type="button"
                       className="instances__icon-btn"
                       title={t('actions.folder')}
+                      aria-label={t('actions.folder')}
                       onClick={() => void window.primeLauncher.instance.openFolder(inst.id)}
                     >
-                      <FolderOpen size={15} />
+                      <FolderOpen size={15} strokeWidth={1.75} />
                     </button>
                     {!inst.isDefault && (
                       <button
                         type="button"
                         className="instances__icon-btn"
                         title={t('instances.setDefault')}
+                        aria-label={t('instances.setDefault')}
                         onClick={() => void handleSetDefault(inst.id)}
                       >
-                        <Star size={15} />
+                        <Star size={15} strokeWidth={1.75} />
                       </button>
                     )}
                     <button
                       type="button"
                       className="instances__icon-btn"
                       title={t('actions.duplicate')}
+                      aria-label={t('actions.duplicate')}
                       onClick={() => void handleDuplicate(inst.id)}
                     >
-                      <Copy size={15} />
+                      <Copy size={15} strokeWidth={1.75} />
                     </button>
                     {instances.length > 1 && (
                       <button
                         type="button"
                         className="instances__icon-btn instances__icon-btn--danger"
                         title={t('actions.delete')}
+                        aria-label={t('actions.delete')}
                         onClick={() => void handleDelete(inst)}
                       >
-                        <Trash2 size={15} />
+                        <Trash2 size={15} strokeWidth={1.75} />
                       </button>
                     )}
                   </div>

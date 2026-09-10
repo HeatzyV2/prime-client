@@ -7,7 +7,7 @@ import { atomicWriteJson, quarantineCorrupt, readJsonFile } from './atomicWrite'
 export type GameDisplayMode = 'windowed' | 'borderless' | 'fullscreen'
 
 export interface LauncherSettings {
-  version: 1
+  version: 1 | 2
   language: 'en' | 'fr'
   closeOnLaunch: boolean
   autoUpdate: boolean
@@ -52,12 +52,12 @@ export interface LauncherSettings {
 }
 
 const DEFAULT_SETTINGS = (): LauncherSettings => ({
-  version: 1,
+  version: 2,
   language: 'en',
   closeOnLaunch: false,
   autoUpdate: true,
   theme: 'prime-crimson',
-  backgroundNebula: false,
+  backgroundNebula: true,
   hardwareAccel: true,
   performanceMode: false,
   defaultRamMb: 4096,
@@ -97,6 +97,12 @@ export class SettingsStore {
         ...DEFAULT_SETTINGS(),
         ...parsed,
         theme: normalizePrimeTheme(parsed.theme)
+      }
+      // V3: atmospheric nebula home — enable once when upgrading from v1 defaults.
+      if ((parsed.version ?? 1) < 2) {
+        this.settings.version = 2
+        this.settings.backgroundNebula = true
+        await this.save()
       }
     } else {
       await quarantineCorrupt(this.path)

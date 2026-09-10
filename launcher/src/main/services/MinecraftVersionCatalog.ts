@@ -6,7 +6,7 @@ import {
 } from '../../shared/minecraft-targets'
 import type { MinecraftVersionOptionDto } from '../../shared/ipc'
 
-const UA = 'Prime-Launcher/2.5.1 (Version Catalog)'
+const UA = 'Prime-Launcher/3.0.0 (Version Catalog)'
 const MOJANG_MANIFEST = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'
 const FABRIC_GAME = 'https://meta.fabricmc.net/v2/versions/game'
 const FABRIC_LOADER = (mc: string) => `https://meta.fabricmc.net/v2/versions/loader/${encodeURIComponent(mc)}`

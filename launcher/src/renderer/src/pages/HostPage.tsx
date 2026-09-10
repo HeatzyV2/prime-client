@@ -27,7 +27,7 @@ import {
   type HostWorldEntryDto
 } from '@shared/host-types'
 import { PageShell } from '@renderer/pages/shared/PageShell'
-import { Badge, Button } from '@renderer/design-system/components'
+import { Badge, Button, useConfirm } from '@renderer/design-system/components'
 import { useAccounts } from '@renderer/context/AccountProvider'
 import { useActiveInstance } from '@renderer/hooks/useActiveInstance'
 import { useI18n } from '@renderer/context/I18nProvider'
@@ -59,6 +59,7 @@ function statusLabel(status: HostServerRuntimeStatus, t: (k: string) => string):
 
 export function HostPage() {
   const { t } = useI18n()
+  const { confirm } = useConfirm()
   const { activeAccount } = useAccounts()
   const { instance, refresh: refreshInstance } = useActiveInstance()
   const [servers, setServers] = useState<HostServerView[]>([])
@@ -278,7 +279,13 @@ export function HostPage() {
 
   const handleDelete = async () => {
     if (!selectedId) return
-    if (!window.confirm(t('host.confirmDelete'))) return
+    const ok = await confirm({
+      title: t('dialog.removeTitle'),
+      message: t('host.confirmDelete'),
+      confirmLabel: t('actions.delete'),
+      variant: 'danger'
+    })
+    if (!ok) return
     setBusy(true)
     const result = await window.primeLauncher.host.remove(selectedId)
     setBusy(false)
@@ -531,10 +538,11 @@ export function HostPage() {
               key={id}
               type="button"
               role="tab"
+              aria-selected={tab === id}
               className={`host-tabs__btn${tab === id ? ' is-active' : ''}`}
               onClick={() => setTab(id)}
             >
-              <Icon size={15} /> {label}
+              <Icon size={15} strokeWidth={1.75} aria-hidden /> {label}
             </button>
           ))}
         </div>

@@ -8,6 +8,7 @@ import {
 import { Maximize2, Minimize2, RotateCcw, Image as ImageIcon } from 'lucide-react'
 import { playerSkinUrl } from '@shared/format'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { useI18n } from '@renderer/context/I18nProvider'
 import './SkinViewer3D.css'
 
 export type SkinViewerPose = 'idle' | 'walk' | 'run'
@@ -59,6 +60,7 @@ export function SkinViewer3D({
   backdrop: backdropProp = 'none',
   onBackdropChange
 }: SkinViewer3DProps) {
+  const { t } = useI18n()
   const { reduceMotion } = useTheme()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -207,17 +209,17 @@ export function SkinViewer3D({
       <canvas ref={canvasRef} className="skin-viewer3d__canvas" />
       {showControls && (
         <div className="skin-viewer3d__controls">
-          <button type="button" className="skin-viewer3d__btn" onClick={resetCamera} title="Reset camera">
+          <button type="button" className="skin-viewer3d__btn" onClick={resetCamera} title={t('skins.resetCamera')}>
             <RotateCcw size={14} />
           </button>
-          <button type="button" className="skin-viewer3d__btn" onClick={cycleBackdrop} title="Backdrop">
+          <button type="button" className="skin-viewer3d__btn" onClick={cycleBackdrop} title={t('skins.backdrop')}>
             <ImageIcon size={14} />
           </button>
           <button
             type="button"
             className="skin-viewer3d__btn"
             onClick={() => setFullscreen((v) => !v)}
-            title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            title={fullscreen ? t('skins.exitFullscreen') : t('skins.fullscreen')}
           >
             {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>

@@ -132,20 +132,16 @@ export interface NavItem {
   phase: number
 }
 
-/** Slim primary rail — PLAY-first shell keeps Host/Store in overflow. */
-export const PRIMARY_NAV: NavSection[] = [
-  'dashboard',
-  'instances',
-  'skins',
-  'library',
-  'servers',
-  'friends'
-]
+/** V3 primary destinations — Play-first IA. */
+export const PRIMARY_NAV: NavSection[] = ['dashboard', 'servers', 'cosmetics', 'settings']
 
-/** Overflow / “More” destinations — Host, Store, Chat stay available but secondary. */
+/** Overflow / “More” destinations — secondary tools, not primary chrome. */
 export const SECONDARY_NAV: NavSection[] = [
+  'instances',
+  'library',
   'store',
   'host',
+  'friends',
   'profile',
   'accounts',
   'chat',

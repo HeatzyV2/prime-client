@@ -1,31 +1,25 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { HashRouter } from 'react-router-dom'
-import { AppShell } from '@renderer/layouts/AppShell'
+import { V3Shell } from '@renderer/layouts/V3Shell'
 import { SplashScreen } from '@renderer/pages/SplashScreen'
 import { AppRoutes } from '@renderer/routes/AppRoutes'
 import { AccountProvider } from '@renderer/context/AccountProvider'
 import { I18nProvider } from '@renderer/context/I18nProvider'
 import { ThemeProvider } from '@renderer/context/ThemeProvider'
+import { ConfirmProvider, ToastProvider } from '@renderer/design-system/components'
 import { useBootSequence } from '@renderer/hooks/useBootSequence'
-import type { FavoriteServer, NewsItem } from '@shared/types'
+import type { FavoriteServer } from '@shared/types'
 
 function LauncherApp() {
-  const [news, setNews] = useState<NewsItem[]>([])
   const [servers, setServers] = useState<FavoriteServer[]>([])
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
     void (async () => {
       try {
-        const [newsItems, favServers] = await Promise.all([
-          window.primeLauncher.news.list(),
-          window.primeLauncher.servers.list()
-        ])
-        setNews(newsItems)
-        setServers(favServers)
+        setServers(await window.primeLauncher.servers.list())
       } catch {
-        setNews([])
         setServers([])
       } finally {
         setReady(true)
@@ -39,9 +33,9 @@ function LauncherApp() {
 
   return (
     <HashRouter>
-      <AppShell>
-        <AppRoutes news={news} servers={servers} />
-      </AppShell>
+      <V3Shell>
+        <AppRoutes servers={servers} />
+      </V3Shell>
     </HashRouter>
   )
 }
@@ -58,8 +52,16 @@ export default function App() {
     <I18nProvider>
       <ThemeProvider>
         <AccountProvider>
-          <AnimatePresence>{booting && <SplashScreen progress={progress} stepIndex={stepIndex} version={version} />}</AnimatePresence>
-          {!booting && <LauncherApp />}
+          <ToastProvider>
+            <ConfirmProvider>
+              <AnimatePresence>
+                {booting && (
+                  <SplashScreen progress={progress} stepIndex={stepIndex} version={version} />
+                )}
+              </AnimatePresence>
+              {!booting && <LauncherApp />}
+            </ConfirmProvider>
+          </ToastProvider>
         </AccountProvider>
       </ThemeProvider>
     </I18nProvider>

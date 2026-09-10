@@ -1,0 +1,100 @@
+.settings__row--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+  transition:
+    border-color var(--duration-hover),
+    background var(--duration-hover),
+    transform var(--duration-press);
+}
+
+.theme-card:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-elevated);
+}
+
+.theme-card.is-active {
+  border-color: color-mix(in srgb, var(--swatch) 55%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--swatch) 25%, transparent);
+}
+
+.theme-card__preview {
+  position: relative;
+  height: 88px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 20%, color-mix(in srgb, var(--swatch) 28%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--theme-preview-bg), color-mix(in srgb, var(--theme-preview-bg) 70%, #000));
+}
+
+.theme-card__haze {
+  position: absolute;
+  inset: 20% 20% auto;
+  height: 40%;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--swatch) 35%, transparent), transparent 70%);
+  filter: blur(8px);
+}
+
+.theme-card__play {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 54px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  border-radius: 6px;
+  background: color-mix(in srgb, #fff 88%, var(--swatch));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--swatch) 28%, transparent);
+}
+
+.theme-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 2px 2px;
+}
+
+.theme-card__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+  font-weight: 650;
+  color: var(--fg);
+}
+
+.theme-card__badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--swatch);
+  padding: 2px 5px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--swatch) 16%, transparent);
+}
+
+.theme-card__desc {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  line-height: 1.4;
+}

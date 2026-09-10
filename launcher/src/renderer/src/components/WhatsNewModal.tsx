@@ -6,7 +6,7 @@ import './WhatsNewModal.css'
 
 export interface WhatsNewEntry {
   version: string
-  items: string[]
+  itemKeys: string[]
 }
 
 interface WhatsNewModalProps {
@@ -29,7 +29,12 @@ export function WhatsNewModal({ entry, onClose }: WhatsNewModalProps) {
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
       >
-        <button type="button" className="whatsnew-modal__close" onClick={() => void dismiss()} aria-label="Close">
+        <button
+          type="button"
+          className="whatsnew-modal__close"
+          onClick={() => void dismiss()}
+          aria-label={t('common.close')}
+        >
           <X size={16} />
         </button>
         <div className="whatsnew-modal__head">
@@ -42,8 +47,8 @@ export function WhatsNewModal({ entry, onClose }: WhatsNewModalProps) {
           </div>
         </div>
         <ul className="whatsnew-modal__list">
-          {entry.items.map((item) => (
-            <li key={item}>{item}</li>
+          {entry.itemKeys.map((key) => (
+            <li key={key}>{t(key)}</li>
           ))}
         </ul>
         <div className="whatsnew-modal__actions">
@@ -65,39 +70,27 @@ export function WhatsNewModal({ entry, onClose }: WhatsNewModalProps) {
   )
 }
 
-/** In-app release notes keyed by launcher version. */
+/** In-app release notes keyed by launcher version (i18n leaf keys under whatsNew.items). */
 export const WHATS_NEW_BY_VERSION: Record<string, string[]> = {
-  '2.5.1': [
-    'Simpler New Instance flow — name, version, then type (Prime recommended)',
-    'Full Minecraft release list from Mojang + Fabric Meta (searchable)',
-    'Advanced options (RAM / Java) collapsed by default'
-  ],
-  '2.4.1': [
-    'Faster startup — stores load in parallel, Discord RPC deferred until after window show',
-    'Performance mode in Settings — lighter animations, paused skin rotation, slower polls',
-    'Fewer freezes — process crash guards, smarter launch polling, SkinViewer pauses when off-screen',
-    'Lighter Home — lazy routes, CSS page fades, softer glow'
-  ],
-  '2.4.0': [
-    'Electron is back as the official launcher (stable Microsoft login via msmc)',
-    'Same Prime UI — accounts, instances, cosmetics, Social Hub',
-    'Auto-update picks Prime-Launcher-Setup-*.exe again',
-    'Tauri remains available experimentally (npm run dev:tauri)'
-  ],
-  '0.9.16': [
-    'Premium home play hub — account, instance & server in one place',
-    'Pro 3D skin viewer with cape, fullscreen & camera reset',
-    'Local skin library import + store 3D preview',
-    'Wallpaper / accent customization, UI sounds & onboarding'
-  ]
+  '3.0.0': ['a', 'b', 'c', 'd'],
+  '2.5.1': ['a', 'b', 'c'],
+  '2.4.1': ['a', 'b', 'c', 'd'],
+  '2.4.0': ['a', 'b', 'c', 'd'],
+  '0.9.16': ['a', 'b', 'c', 'd']
+}
+
+function itemKeysFor(version: string): string[] {
+  const letters = WHATS_NEW_BY_VERSION[version]
+  if (!letters?.length) return []
+  return letters.map((letter) => `whatsNew.items.${version}.${letter}`)
 }
 
 export function resolveWhatsNew(version: string): WhatsNewEntry | null {
-  const exact = WHATS_NEW_BY_VERSION[version]
-  if (exact?.length) return { version, items: exact }
+  const exact = itemKeysFor(version)
+  if (exact.length) return { version, itemKeys: exact }
   const latestKey = Object.keys(WHATS_NEW_BY_VERSION).sort().at(-1)
   if (!latestKey) return null
-  const items = WHATS_NEW_BY_VERSION[latestKey]
-  if (!items?.length) return null
-  return { version, items }
+  const items = itemKeysFor(latestKey)
+  if (!items.length) return null
+  return { version, itemKeys: items }
 }

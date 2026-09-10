@@ -25,7 +25,8 @@ export const en = {
     performance: 'Performance',
     downloads: 'Downloads',
     console: 'Console',
-    settings: 'Settings'
+    settings: 'Settings',
+    designLab: 'Design Lab'
   },
   boot: {
     core: 'Initializing Prime Core…',
@@ -36,6 +37,8 @@ export const en = {
   common: {
     play: 'Play',
     launching: 'Launching…',
+    running: 'Running',
+    retry: 'Retry',
     join: 'Join',
     saved: 'Saved',
     guest: 'Guest',
@@ -65,6 +68,7 @@ export const en = {
     signInHint: 'Connect Microsoft or use offline mode to launch Prime Client.',
     addAccount: 'Add Account',
     welcomeBack: 'Welcome back',
+    welcomeGuest: 'Ready when you are',
     quickLaunch: 'Quick Launch',
     profile: 'Profile',
     instance: 'Instance',
@@ -73,6 +77,10 @@ export const en = {
     news: 'News',
     moreNews: 'All news',
     favoriteServers: 'Favorite Servers',
+    jumpIn: 'Jump in',
+    openServers: 'All servers',
+    openNews: 'News',
+    seeWhatsNew: 'See what’s new',
     friendsActivity: 'Friends activity',
     noFriendsOnline: 'No friends online',
     noFriendsOnlineHint: 'Add friends to see their activity here.',
@@ -86,15 +94,28 @@ export const en = {
       account: 'Account',
       instance: 'Instance',
       server: 'Server',
-      singleplayer: 'Singleplayer / menu'
+      singleplayer: 'Singleplayer / menu',
+      change: 'Change',
+      createInstance: 'Create instance',
+      manageAll: 'Manage all',
+      noServer: 'No server',
+      quickSettings: 'Quick settings'
     },
     launchStatus: {
       preparing: 'Preparing…',
+      fabric: 'Loading Fabric…',
       download: 'Downloading files…',
       mods: 'Installing mods…',
       starting: 'Starting Minecraft…',
       running: 'Game launched',
       inGame: 'In game',
+      crashed: 'Minecraft crashed',
+      working: 'Working…',
+      title: 'Launching Prime Client',
+      unable: 'Unable to launch Minecraft',
+      label: 'Launch',
+      errorLabel: 'Error',
+      tryAgain: 'Try again',
       error: 'Launch failed'
     },
     timePlayed: 'Time played',
@@ -117,7 +138,8 @@ export const en = {
       appearance: 'Appearance',
       minecraft: 'Minecraft',
       performance: 'Performance',
-      accounts: 'Accounts',
+      launcher: 'Launcher',
+      accounts: 'Account',
       privacy: 'Privacy',
       downloads: 'Downloads',
       updates: 'Updates',
@@ -145,7 +167,7 @@ export const en = {
     },
     theme: {
       label: 'Theme',
-      hint: 'Applies to the launcher and syncs into the game profile',
+      hint: 'Each theme changes surfaces, light, and Play — not just the accent',
       dark: 'Crimson',
       crimson: 'Crimson',
       midnight: 'Midnight',
@@ -154,7 +176,16 @@ export const en = {
       ember: 'Ember',
       violet: 'Violet',
       emerald: 'Emerald',
-      elevated: 'Pro'
+      elevated: 'Pro',
+      desc: {
+        crimson: 'Cinematic Prime — deep charcoal, rare crimson light',
+        midnight: 'Night ops — cool blues and lunar haze',
+        aurora: 'Bioluminescent — verdant blacks and soft emerald rim',
+        obsidian: 'Luxury editorial — absolute black and champagne gold',
+        ember: 'Volcanic warm — copper heat on charcoal',
+        violet: 'Dusk dream — soft purple contrast',
+        emerald: 'Forest depth — moss surfaces and canopy haze'
+      }
     },
     hardwareAccel: {
       label: 'Hardware acceleration',
@@ -167,7 +198,7 @@ export const en = {
     },
     backgroundNebula: {
       label: 'Nebula background',
-      hint: 'Animated space background from the Store',
+      hint: 'Animated space clouds behind the launcher — independent from the theme pack',
       toggle: 'Nebula background'
     },
     wallpaper: {
@@ -345,7 +376,7 @@ export const en = {
       subtitle: 'Unlock cosmetics and themes with Prime Coins — cloud sync when online.'
     },
     skins: {
-      title: 'Skins',
+      title: 'Cosmetics',
       subtitle: 'Preview your character, equip Prime capes & wings, keep your look ready to play.'
     },
     library: {
@@ -518,6 +549,7 @@ export const en = {
     info: 'Info',
     partner: 'Partner',
     online: 'Online',
+    offline: 'Offline',
     offlineCached: 'Cached',
     noDescription: 'No description yet.',
     versionUnknown: 'Unknown version',
@@ -697,11 +729,19 @@ export const en = {
     active: 'Active'
   },
   confirm: {
-    deleteInstance: 'Delete "{name}"? Game files can be kept or removed.',
+    deleteInstance: 'Delete "{name}"? You can keep the game folder or remove it from disk.',
     deleteFiles: 'Also delete saves and mods on disk?',
+    keepFiles: 'Keep files',
+    deleteWithFiles: 'Delete files',
     removeMod: 'Remove {name}?',
     removePack: 'Remove {name}?',
     removeShader: 'Remove {name}?'
+  },
+  dialog: {
+    confirmTitle: 'Confirm',
+    alertTitle: 'Notice',
+    deleteInstanceTitle: 'Delete instance',
+    removeTitle: 'Remove'
   },
   errors: {
     deleteInstance: 'Could not delete instance.'
@@ -777,7 +817,11 @@ export const en = {
     changeCape: 'Change cape',
     openStore: 'Open Store',
     remove: 'Remove',
-    emptyCosmeticsHint: 'Unlock cosmetics in the Store, then equip them here.'
+    emptyCosmeticsHint: 'Unlock cosmetics in the Store, then equip them here.',
+    resetCamera: 'Reset camera',
+    backdrop: 'Backdrop',
+    fullscreen: 'Fullscreen',
+    exitFullscreen: 'Exit fullscreen'
   },
   onboarding: {
     eyebrow: 'First-run setup',
@@ -849,7 +893,38 @@ export const en = {
     eyebrow: 'Update',
     title: "What's new",
     gotIt: 'Got it',
-    changelog: 'Full changelog'
+    changelog: 'Full changelog',
+    items: {
+      '3.0.0': {
+        a: 'Launcher V3 shell — Home play hub, refreshed navigation and design system',
+        b: 'Prime Client mod 3.0 — HUD Editor V3, ClickGUI V3, profiles & themes',
+        c: 'Honest local backups and Movement Trail (not remote cloud / Replay Mod)',
+        d: 'Multi-version Fabric jars for Minecraft 1.21.4 → 26.2'
+      },
+      '2.5.1': {
+        a: 'Simpler New Instance flow — name, version, then type (Prime recommended)',
+        b: 'Full Minecraft release list from Mojang + Fabric Meta (searchable)',
+        c: 'Advanced options (RAM / Java) collapsed by default'
+      },
+      '2.4.1': {
+        a: 'Faster startup — stores load in parallel, Discord RPC deferred until after window show',
+        b: 'Performance mode in Settings — lighter animations, paused skin rotation, slower polls',
+        c: 'Fewer freezes — process crash guards, smarter launch polling, SkinViewer pauses when off-screen',
+        d: 'Lighter Home — lazy routes, CSS page fades, softer glow'
+      },
+      '2.4.0': {
+        a: 'Electron is back as the official launcher (stable Microsoft login via msmc)',
+        b: 'Same Prime UI — accounts, instances, cosmetics, Social Hub',
+        c: 'Auto-update picks Prime-Launcher-Setup-*.exe again',
+        d: 'Tauri remains available experimentally (npm run dev:tauri)'
+      },
+      '0.9.16': {
+        a: 'Premium home play hub — account, instance & server in one place',
+        b: 'Pro 3D skin viewer with cape, fullscreen & camera reset',
+        c: 'Local skin library import + store 3D preview',
+        d: 'Wallpaper / accent customization, UI sounds & onboarding'
+      }
+    }
   },
   instances: {
     vanilla: 'Vanilla',
@@ -918,6 +993,53 @@ export const en = {
         'Fabric loader or a mod failed to load. Check mod versions match your Minecraft version.',
       unknown:
         'Open the crash report for full details. If this keeps happening, share the report with support.'
+    }
+  },
+  designLab: {
+    title: 'Design Lab',
+    subtitle: 'Prime V3',
+    hint: 'Compare compositions. Theme switch applies live.',
+    composition: 'Composition',
+    theme: 'Theme',
+    mocks: 'UX mocks',
+    openInstance: 'Instance selector',
+    openCreate: 'Create instance',
+    openServer: 'Server selector',
+    manageInstances: 'Manage instances',
+    selectInstance: 'Select instance',
+    selectServer: 'Select server',
+    createLabel: 'Create',
+    defaultName: 'My Instance',
+    autoJava: 'Auto-detect',
+    onlineMs: 'Online · {ms} ms',
+    mockInstance: 'Prime PvP',
+    mockServerShort: 'Elysia',
+    mockServer: 'Elysia SMP',
+    mockAltInstance: 'Elysia',
+    mockVersionBar: '1.21 · 6 GB',
+    mockVersionFull: 'Minecraft 1.21 · Fabric',
+    mockVanillaVersion: 'Minecraft 1.21 · Vanilla',
+    mockRam: '6 GB',
+    mockRamFull: '6 GB RAM',
+    mockPlayer: 'Steve',
+    mockCaption: 'Prime PvP · Elysia · 6 GB',
+    compositions: {
+      A: {
+        name: 'Artwork dominant',
+        blurb: 'Full-bleed world · Play floating low'
+      },
+      B: {
+        name: 'Artwork lateral',
+        blurb: 'World left · Content right'
+      },
+      C: {
+        name: 'Cinematic depth',
+        blurb: 'Parallax layers · Light behind Play'
+      },
+      D: {
+        name: 'Hybrid Prime',
+        blurb: 'Recommended · Instance pill · Rail'
+      }
     }
   }
 } 

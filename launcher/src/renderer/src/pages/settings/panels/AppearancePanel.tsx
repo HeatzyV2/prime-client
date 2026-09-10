@@ -4,6 +4,7 @@ import { useI18n } from '@renderer/context/I18nProvider'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { isElevatedTheme, PRIME_THEMES, type PrimeThemeId } from '@shared/theme'
 import type { SettingsPatch, SettingsState } from '../types'
+import './AppearancePanel.css'
 
 const THEME_SWATCH: Record<PrimeThemeId, string> = {
   'prime-crimson': '#e11d2e',
@@ -15,62 +16,85 @@ const THEME_SWATCH: Record<PrimeThemeId, string> = {
   'prime-emerald': '#10b981'
 }
 
-const THEMES = PRIME_THEMES.map((id) => ({ id, swatch: THEME_SWATCH[id] }))
+const THEME_BG: Record<PrimeThemeId, string> = {
+  'prime-crimson': '#07080c',
+  'prime-midnight': '#060b14',
+  'prime-aurora': '#050f0c',
+  'prime-obsidian': '#030303',
+  'prime-ember': '#0a0604',
+  'prime-violet': '#09050f',
+  'prime-emerald': '#040e0a'
+}
 
 export function AppearancePanel({
   settings,
-  patch,
-  ownsNebula
+  patch
 }: {
   settings: SettingsState
   patch: SettingsPatch
-  ownsNebula: boolean
+  ownsNebula?: boolean
 }) {
   const { t } = useI18n()
-  const { refreshTheme } = useTheme()
+  const { refreshTheme, applyThemeId } = useTheme()
 
   return (
     <>
-      <div className="settings__row">
+      <div className="settings__row settings__row--stack">
         <div>
           <div className="settings__label">{t('settings.theme.label')}</div>
           <div className="settings__hint">{t('settings.theme.hint')}</div>
         </div>
-        <div className="settings__theme-picker">
-          {THEMES.map((opt) => {
-            const elevated = isElevatedTheme(opt.id)
+        <div className="theme-grid">
+          {PRIME_THEMES.map((id) => {
+            const key = id.replace('prime-', '')
+            const elevated = isElevatedTheme(id)
+            const active = settings.theme === id
             return (
               <button
-                key={opt.id}
+                key={id}
                 type="button"
-                className={`settings__theme-swatch${settings.theme === opt.id ? ' settings__theme-swatch--active' : ''}${elevated ? ' settings__theme-swatch--elevated' : ''}`}
-                style={{ '--swatch': opt.swatch } as CSSProperties}
-                onClick={() => void patch({ theme: opt.id })}
-                title={t(`settings.theme.${opt.id.replace('prime-', '')}`)}
+                className={`theme-card${active ? ' is-active' : ''}${elevated ? ' is-elevated' : ''}`}
+                style={
+                  {
+                    '--swatch': THEME_SWATCH[id],
+                    '--theme-preview-bg': THEME_BG[id]
+                  } as CSSProperties
+                }
+                onClick={() => {
+                  applyThemeId(id)
+                  void patch({ theme: id })
+                }}
+                aria-pressed={active}
               >
-                <span className="settings__theme-swatch-dot" />
-                <span>{t(`settings.theme.${opt.id.replace('prime-', '')}`)}</span>
-                {elevated && (
-                  <span className="settings__theme-elevated">{t('settings.theme.elevated')}</span>
-                )}
+                <div className="theme-card__preview" aria-hidden>
+                  <div className="theme-card__haze" />
+                  <div className="theme-card__play" />
+                </div>
+                <div className="theme-card__meta">
+                  <span className="theme-card__name">
+                    {t(`settings.theme.${key}`)}
+                    {elevated && (
+                      <span className="theme-card__badge">{t('settings.theme.elevated')}</span>
+                    )}
+                  </span>
+                  <span className="theme-card__desc">{t(`settings.theme.desc.${key}`)}</span>
+                </div>
               </button>
             )
           })}
         </div>
       </div>
-      {ownsNebula && (
-        <div className="settings__row">
-          <div>
-            <div className="settings__label">{t('settings.backgroundNebula.label')}</div>
-            <div className="settings__hint">{t('settings.backgroundNebula.hint')}</div>
-          </div>
-          <Toggle
-            checked={settings.backgroundNebula}
-            onChange={(v) => void patch({ backgroundNebula: v })}
-            label={t('settings.backgroundNebula.toggle')}
-          />
+      <div className="settings__row">
+        <div>
+          <div className="settings__label">{t('settings.backgroundNebula.label')}</div>
+          <div className="settings__hint">{t('settings.backgroundNebula.hint')}</div>
         </div>
-      )}
+        <Toggle
+          checked={settings.backgroundNebula}
+          onChange={(v) => void patch({ backgroundNebula: v })}
+          label={t('settings.backgroundNebula.toggle')}
+        />
+      </div>
       <div className="settings__row">
         <div>
           <div className="settings__label">{t('settings.wallpaper.label')}</div>

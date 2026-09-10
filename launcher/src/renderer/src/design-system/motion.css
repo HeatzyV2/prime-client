@@ -1,0 +1,56 @@
+/* Prime Client V3 — Motion tokens & utilities */
+
+@keyframes v3-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes v3-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes v3-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes v3-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.v3-page-enter {
+  animation: v3-fade-up var(--duration-page) var(--ease-out) both;
+}
+
+.v3-fade-in {
+  animation: v3-fade-in var(--duration-open) var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-page-enter,
+  .v3-fade-in {
+    animation: none;
+  }
+}
+
+html[data-reduce-motion='true'] .v3-page-enter,
+html[data-reduce-motion='true'] .v3-fade-in {
+  animation: none;
+}

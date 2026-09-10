@@ -1,4 +1,4 @@
-import { Select } from '@renderer/design-system/components'
+import { Select, useConfirm } from '@renderer/design-system/components'
 import { useI18n } from '@renderer/context/I18nProvider'
 import type { JavaInstallationDto } from '@shared/ipc'
 import type { SettingsPatch, SettingsState } from '../types'
@@ -15,6 +15,7 @@ export function MinecraftPanel({
   setJavaInstalls: (v: JavaInstallationDto[]) => void
 }) {
   const { t } = useI18n()
+  const { alert } = useConfirm()
 
   return (
     <>
@@ -47,13 +48,21 @@ export function MinecraftPanel({
                 const result = await window.primeLauncher.settings.browseJava()
                 if (!result.ok || !result.install) {
                   if (result.error && result.error !== 'Cancelled.') {
-                    window.alert(result.error)
+                    await alert({
+                      title: t('dialog.alertTitle'),
+                      message: result.error,
+                      variant: 'danger'
+                    })
                   }
                   return
                 }
                 const added = await window.primeLauncher.settings.addJavaPath(result.install.path)
                 if (!added.ok || !added.install) {
-                  window.alert(added.error ?? t('settings.javaPath.browseFailed'))
+                  await alert({
+                    title: t('dialog.alertTitle'),
+                    message: added.error ?? t('settings.javaPath.browseFailed'),
+                    variant: 'danger'
+                  })
                   return
                 }
                 setJavaInstalls(await window.primeLauncher.settings.listJava())
