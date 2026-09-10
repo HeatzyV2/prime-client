@@ -24,7 +24,7 @@ public final class StreakCounterModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "streak-counter", "Streak Counter", themes, HudAnchor.TOP_RIGHT, -4, 52));
-        element.setVisible(false);
+        element.setActive(false);
         listen(PlayerDeathEvent.class, event -> {
             streak = 0;
             refresh();
@@ -35,13 +35,13 @@ public final class StreakCounterModule extends Module {
     @Override
     protected void onEnable() {
         streak = 0;
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void onChat(ChatMessageEvent event) {

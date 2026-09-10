@@ -23,20 +23,20 @@ public final class AuctionTimerModule extends Module {
     public AuctionTimerModule(HudManager hud, ThemeManager themes) {
         super("auction-timer", "Auction Timer", "Manual countdown for auction sniping", ModuleCategory.QOL);
         this.element = hud.register(new Element(themes));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> tick());
     }
 
     @Override
     protected void onEnable() {
         endMillis = System.currentTimeMillis() + durationMinutes.get() * 60_000L;
-        element.setVisible(true);
+        element.setActive(true);
         updateText();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void tick() {

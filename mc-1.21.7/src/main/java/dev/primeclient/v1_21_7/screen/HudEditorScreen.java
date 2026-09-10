@@ -62,8 +62,7 @@ public final class HudEditorScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && PrimeClient.get().hudEditor().mousePressed(
-                mouseX, mouseY, hasAltDown())) {
+        if (button == 0 && PrimeClient.get().hudEditor().mousePressed(mouseX, mouseY, hasAltDown(), hasShiftDown())) {
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
@@ -72,7 +71,7 @@ public final class HudEditorScreen extends Screen {
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (button == 0) {
-            PrimeClient.get().hudEditor().mouseDragged(mouseX, mouseY, width, height);
+            PrimeClient.get().hudEditor().mouseDragged(mouseX, mouseY, width, height, hasShiftDown(), hasAltDown());
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);

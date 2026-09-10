@@ -21,20 +21,20 @@ public final class HourlyProfitModule extends Module {
         super("hourly-profit", "Hourly Profit", "Estimated coins per hour this session", ModuleCategory.QOL);
         this.element = hud.register(new SmpLineHud(
                 "hourly-profit", "Hourly Profit", themes, HudAnchor.TOP_LEFT, 4, 140));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
         sessionStartMillis = System.currentTimeMillis();
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

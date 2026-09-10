@@ -67,7 +67,7 @@ public final class CosmeticsMenuRenderer {
 
         GuiLayout.label(ctx,
                 PrimeLang.get("prime.gui.cosmetics.footer",
-                        "Prime peers · Click equip · ★ favorite · /emotes"),
+                        "Visible to Prime peers · Click equip · ★ favorite · /emotes"),
                 x + 12, y + h - 14, theme.foregroundMuted());
     }
 

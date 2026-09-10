@@ -20,19 +20,19 @@ public final class MobSpawnSafeModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "mob-spawn-safe", "Mob Spawn Safe", themes, HudAnchor.TOP_LEFT, 4, 60));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

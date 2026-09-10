@@ -4,7 +4,12 @@ import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 
-/** Lowers simulation distance to reduce chunk ticking load. */
+/**
+ * Lowers simulation distance to reduce chunk ticking load.
+ *
+ * @deprecated Unregistered — superseded by {@link PerformanceProfilesModule}. Kept for reference.
+ */
+@Deprecated
 public final class ChunkOptimizerModule extends Module {
 
     private static final int TARGET_SIMULATION_DISTANCE = 5;

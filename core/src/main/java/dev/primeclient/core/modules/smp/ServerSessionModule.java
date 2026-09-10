@@ -19,19 +19,19 @@ public final class ServerSessionModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SmpLineHud(
                 "server-session", "Server Session", themes, HudAnchor.TOP_CENTER, 0, 68));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

@@ -21,17 +21,17 @@ public final class CpsCounterModule extends Module {
     public CpsCounterModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("cps-counter", "CPS Counter", "Shows your clicks per second", ModuleCategory.PVP);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

@@ -62,8 +62,8 @@ public final class HudEditor {
     private boolean showGrid = false;
     /** Magnetic guides to edges/centers of other elements. */
     private boolean guidesEnabled = true;
-    /** Left element list drawer (collapsible). */
-    private boolean listOpen = true;
+    /** Left element list drawer (collapsible). V3: closed by default — popover on demand. */
+    private boolean listOpen = false;
     private int tintPresetIndex;
 
     /** Screen size seen by the last render/drag — keyboard nudges need it between frames. */
@@ -73,6 +73,24 @@ public final class HudEditor {
     /** Active snap guide lines during a drag; negative = none. */
     private float guideX = -1;
     private float guideY = -1;
+
+    /** Cursor stack for overlap badge / Alt cycle. */
+    private double stackMouseX;
+    private double stackMouseY;
+
+    enum ResizeHandle {
+        NONE, NW, NE, SW, SE
+    }
+
+    private static final int HANDLE_HIT = 6;
+    private static final int HANDLE_DRAW = 5;
+
+    private ResizeHandle resizeHandle = ResizeHandle.NONE;
+    private float resizeStartScale;
+    private float resizePivotX;
+    private float resizePivotY;
+    private float resizeStartDist;
+    private boolean resizeFromCenter;
 
     private final ArrayDeque<LayoutSnapshot> undoStack = new ArrayDeque<>();
     private final ArrayDeque<LayoutSnapshot> redoStack = new ArrayDeque<>();
@@ -173,6 +191,23 @@ public final class HudEditor {
         listOpen = !listOpen;
     }
 
+    void closeList() {
+        listOpen = false;
+    }
+
+    int stackCountUnderCursor(double mouseX, double mouseY) {
+        return hud.elementsAt(mouseX, mouseY, false).size();
+    }
+
+    void cycleStackUnderCursor() {
+        java.util.List<HudElement> hits = hud.elementsAt(stackMouseX, stackMouseY, false);
+        if (hits.size() < 2) {
+            return;
+        }
+        int idx = selected != null ? hits.indexOf(selected) : -1;
+        selected = hits.get((idx + 1) % hits.size());
+    }
+
     void toggleLockSelected() {
         if (selected == null) {
             return;
@@ -185,23 +220,55 @@ public final class HudEditor {
     // Mouse input
     // ------------------------------------------------------------------
 
+    /** Test helper — Elements popover row click (eye = visibility toggle). */
+    boolean clickElementsRowForTest(int index, boolean eye) {
+        return ui.clickListRowForTest(index, eye);
+    }
+
+    boolean clickToolbarForTest(int index) {
+        return ui.clickToolbarButtonForTest(index);
+    }
+
+    boolean clickInspectorVisibilityForTest() {
+        return ui.clickVisibilityForTest();
+    }
+
+    boolean scrollElementsListForTest(double delta) {
+        return ui.scrollListForTest(delta);
+    }
+
     public boolean mousePressed(double mouseX, double mouseY) {
         return mousePressed(mouseX, mouseY, false);
     }
 
     public boolean mousePressed(double mouseX, double mouseY, boolean altDown) {
+        return mousePressed(mouseX, mouseY, altDown, false);
+    }
+
+    public boolean mousePressed(double mouseX, double mouseY, boolean altDown, boolean shiftDown) {
         lastPressX = mouseX;
         lastPressY = mouseY;
+        stackMouseX = mouseX;
+        stackMouseY = mouseY;
         dragArmed = false;
+        resizeHandle = ResizeHandle.NONE;
         if (ui.mousePressed(mouseX, mouseY)) {
             return true;
         }
-        // Canvas ignores hidden elements — re-select them from the Elements list only.
+        // Resize handles on the current selection take priority over drag/reselect.
+        if (selected != null && selected.isShown() && !selected.isLocked()) {
+            ResizeHandle handle = hitResizeHandle(selected, mouseX, mouseY);
+            if (handle != ResizeHandle.NONE) {
+                beginResize(selected, handle, mouseX, mouseY, shiftDown, altDown);
+                return true;
+            }
+        }
+        // Canvas ignores hidden / module-inactive elements — re-select them from the Elements list.
         java.util.List<HudElement> hits = hud.elementsAt(mouseX, mouseY, false);
         HudElement hit = null;
         if (!hits.isEmpty()) {
-            if (altDown && hits.size() > 1 && selected != null && hits.contains(selected)) {
-                int idx = hits.indexOf(selected);
+            if (altDown && hits.size() > 1) {
+                int idx = selected != null ? hits.indexOf(selected) : -1;
                 hit = hits.get((idx + 1) % hits.size());
             } else {
                 hit = hits.get(0);
@@ -219,28 +286,39 @@ public final class HudEditor {
             }
             return true;
         }
-        if (selected != null && selected.isVisible() && !selected.isLocked()
+        if (selected != null && selected.isShown() && !selected.isLocked()
                 && !ui.blocksCanvasDrag(mouseX, mouseY) && !ui.isPanelBackdrop(mouseX, mouseY)) {
             dragArmed = true;
             this.dragging = null;
             this.didDrag = false;
             return true;
         }
-        if (!ui.isPanelBackdrop(mouseX, mouseY)) {
+        if (!ui.isPanelBackdrop(mouseX, mouseY) && !ui.blocksCanvasDrag(mouseX, mouseY)) {
             this.selected = null;
         }
         this.dragging = null;
-        return false;
+        return ui.blocksCanvasDrag(mouseX, mouseY);
     }
 
     public void mouseDragged(double mouseX, double mouseY, int screenWidth, int screenHeight) {
+        mouseDragged(mouseX, mouseY, screenWidth, screenHeight, false, false);
+    }
+
+    public void mouseDragged(double mouseX, double mouseY, int screenWidth, int screenHeight,
+                             boolean shiftDown, boolean altDown) {
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
+        stackMouseX = mouseX;
+        stackMouseY = mouseY;
         if (ui.mouseDragged(mouseX, mouseY)) {
             return;
         }
+        if (resizeHandle != ResizeHandle.NONE && selected != null) {
+            applyResize(selected, mouseX, mouseY, altDown || resizeFromCenter);
+            return;
+        }
         HudElement element = dragging;
-        if (element == null && dragArmed && selected != null && selected.isVisible()
+        if (element == null && dragArmed && selected != null && selected.isShown()
                 && !selected.isLocked() && !ui.blocksCanvasDrag(mouseX, mouseY)) {
             element = selected;
             dragging = selected;
@@ -248,7 +326,7 @@ public final class HudEditor {
             grabOffsetY = (float) (lastPressY - selected.lastY());
             beginGesture();
         }
-        if (element == null || !element.isVisible() || element.isLocked()) {
+        if (element == null || !element.isShown() || element.isLocked()) {
             return;
         }
         markMutated();
@@ -263,6 +341,11 @@ public final class HudEditor {
             x = clampSafe(applySnapX(element, x, width, screenWidth), 0, screenWidth - width);
             y = clampSafe(applySnapY(element, y, height, screenHeight), 0, screenHeight - height);
         }
+        // Fine nudging while dragging with Shift (half snap feel via grid).
+        if (shiftDown && showGrid) {
+            x = Math.round(x / (float) PrimeDesign.GRID_SIZE) * PrimeDesign.GRID_SIZE;
+            y = Math.round(y / (float) PrimeDesign.GRID_SIZE) * PrimeDesign.GRID_SIZE;
+        }
         moveTo(element, x, y);
     }
 
@@ -270,6 +353,7 @@ public final class HudEditor {
         ui.mouseReleased();
         this.dragging = null;
         this.dragArmed = false;
+        this.resizeHandle = ResizeHandle.NONE;
         this.pendingSnapshot = null;
         this.guideX = -1;
         this.guideY = -1;
@@ -279,10 +363,10 @@ public final class HudEditor {
         if (ui.mouseScrolled(mouseX, mouseY, scrollDelta)) {
             return true;
         }
-        HudElement target = selected != null && selected.isVisible() && selected.containsPoint(mouseX, mouseY)
+        HudElement target = selected != null && selected.isShown() && selected.containsPoint(mouseX, mouseY)
                 ? selected
                 : hud.elementAt(mouseX, mouseY, false);
-        if (target == null || !target.isVisible() || target.isLocked()) {
+        if (target == null || !target.isShown() || target.isLocked()) {
             return false;
         }
         snapshotCoalesced();
@@ -492,6 +576,127 @@ public final class HudEditor {
                 y - anchor.baseY(screenHeight, height));
     }
 
+    // ------------------------------------------------------------------
+    // Resize handles
+    // ------------------------------------------------------------------
+
+    private ResizeHandle hitResizeHandle(HudElement element, double mouseX, double mouseY) {
+        float x = element.lastX();
+        float y = element.lastY();
+        float w = element.lastWidth();
+        float h = element.lastHeight();
+        if (w <= 0 || h <= 0) {
+            return ResizeHandle.NONE;
+        }
+        if (near(mouseX, mouseY, x, y)) {
+            return ResizeHandle.NW;
+        }
+        if (near(mouseX, mouseY, x + w, y)) {
+            return ResizeHandle.NE;
+        }
+        if (near(mouseX, mouseY, x, y + h)) {
+            return ResizeHandle.SW;
+        }
+        if (near(mouseX, mouseY, x + w, y + h)) {
+            return ResizeHandle.SE;
+        }
+        return ResizeHandle.NONE;
+    }
+
+    private static boolean near(double mx, double my, float hx, float hy) {
+        float dx = (float) (mx - hx);
+        float dy = (float) (my - hy);
+        return dx * dx + dy * dy <= (float) (HANDLE_HIT * HANDLE_HIT);
+    }
+
+    private void beginResize(HudElement element, ResizeHandle handle, double mouseX, double mouseY,
+                             boolean shiftDown, boolean altDown) {
+        this.selected = element;
+        this.dragging = null;
+        this.dragArmed = false;
+        this.resizeHandle = handle;
+        this.resizeStartScale = element.scale();
+        this.resizeFromCenter = altDown;
+        float x = element.lastX();
+        float y = element.lastY();
+        float w = element.lastWidth();
+        float h = element.lastHeight();
+        if (altDown) {
+            resizePivotX = x + w / 2f;
+            resizePivotY = y + h / 2f;
+        } else {
+            switch (handle) {
+                case NW -> {
+                    resizePivotX = x + w;
+                    resizePivotY = y + h;
+                }
+                case NE -> {
+                    resizePivotX = x;
+                    resizePivotY = y + h;
+                }
+                case SW -> {
+                    resizePivotX = x + w;
+                    resizePivotY = y;
+                }
+                case SE, NONE -> {
+                    resizePivotX = x;
+                    resizePivotY = y;
+                }
+            }
+        }
+        resizeStartDist = Math.max(4f, dist(mouseX, mouseY, resizePivotX, resizePivotY));
+        beginGesture();
+    }
+
+    private void applyResize(HudElement element, double mouseX, double mouseY, boolean fromCenter) {
+        markMutated();
+        didDrag = true;
+        float dist = Math.max(4f, dist(mouseX, mouseY, resizePivotX, resizePivotY));
+        float factor = dist / resizeStartDist;
+        // Uniform scale (SHIFT is redundant — aspect is always locked for HudElement scale).
+        float next = clampSafe(resizeStartScale * factor, HudElement.MIN_SCALE, HudElement.MAX_SCALE);
+        if (showGrid || snapEnabled) {
+            next = Math.round(next * 10f) / 10f; // 0.1 steps
+        }
+        float oldW = element.lastWidth();
+        float oldH = element.lastHeight();
+        float cx = element.lastX() + oldW / 2f;
+        float cy = element.lastY() + oldH / 2f;
+        element.setScale(next);
+        float newW = (oldW / resizeStartScale) * next;
+        float newH = (oldH / resizeStartScale) * next;
+        if (fromCenter) {
+            moveTo(element, cx - newW / 2f, cy - newH / 2f);
+        } else {
+            float nx = resizePivotX;
+            float ny = resizePivotY;
+            switch (resizeHandle) {
+                case NW -> {
+                    nx = resizePivotX - newW;
+                    ny = resizePivotY - newH;
+                }
+                case NE -> {
+                    nx = resizePivotX;
+                    ny = resizePivotY - newH;
+                }
+                case SW -> {
+                    nx = resizePivotX - newW;
+                    ny = resizePivotY;
+                }
+                case SE, NONE -> {
+                    // pivot is top-left
+                }
+            }
+            moveTo(element, nx, ny);
+        }
+    }
+
+    private static float dist(double x, double y, float px, float py) {
+        float dx = (float) x - px;
+        float dy = (float) y - py;
+        return (float) Math.sqrt(dx * dx + dy * dy);
+    }
+
     /**
      * Clamp that survives elements larger than the screen ({@code max < min})
      * instead of throwing like {@link Math#clamp}.
@@ -526,7 +731,7 @@ public final class HudEditor {
     private float applySnapX(HudElement dragged, float x, float width, int screenWidth) {
         SnapResult best = new SnapResult();
         for (HudElement other : hud.all()) {
-            if (other == dragged || !other.isVisible() || other.lastWidth() <= 0) {
+            if (other == dragged || !other.isShown() || other.lastWidth() <= 0) {
                 continue;
             }
             considerTargetX(best, x, width, other.lastX());
@@ -557,7 +762,7 @@ public final class HudEditor {
     private float applySnapY(HudElement dragged, float y, float height, int screenHeight) {
         SnapResult best = new SnapResult();
         for (HudElement other : hud.all()) {
-            if (other == dragged || !other.isVisible() || other.lastHeight() <= 0) {
+            if (other == dragged || !other.isShown() || other.lastHeight() <= 0) {
                 continue;
             }
             considerTargetY(best, y, height, other.lastY());
@@ -639,7 +844,7 @@ public final class HudEditor {
             return false;
         }
         redoStack.addLast(LayoutSnapshot.capture(hud));
-        snapshot.restore();
+        snapshot.restore(hud);
         markLayoutDirty();
         return true;
     }
@@ -650,7 +855,7 @@ public final class HudEditor {
             return false;
         }
         undoStack.addLast(LayoutSnapshot.capture(hud));
-        snapshot.restore();
+        snapshot.restore(hud);
         markLayoutDirty();
         return true;
     }
@@ -676,20 +881,23 @@ public final class HudEditor {
         }
     }
 
-    private record LayoutSnapshot(List<ElementState> states) {
+    private record LayoutSnapshot(List<ElementState> states, List<String> order) {
 
         static LayoutSnapshot capture(HudManager hud) {
             List<ElementState> states = new ArrayList<>();
+            List<String> order = new ArrayList<>();
             for (HudElement element : hud.all()) {
                 states.add(ElementState.capture(element));
+                order.add(element.id());
             }
-            return new LayoutSnapshot(states);
+            return new LayoutSnapshot(states, order);
         }
 
-        void restore() {
+        void restore(HudManager hud) {
             for (ElementState state : states) {
                 state.restore();
             }
+            hud.restoreOrder(order);
         }
     }
 
@@ -709,7 +917,7 @@ public final class HudEditor {
         for (HudElement element : hud.all()) {
             boolean isSelected = element == selected;
             boolean isHovered = element == listHover
-                    || (element.isVisible() && !overUi && element.containsPoint(mouseX, mouseY));
+                    || (element.isShown() && !overUi && element.containsPoint(mouseX, mouseY));
             if (!isSelected && !isHovered) {
                 continue;
             }
@@ -717,7 +925,7 @@ public final class HudEditor {
                 drawSelection(ctx, theme, element);
             } else {
                 drawBorder(ctx, element, ColorUtil.withAlpha(
-                        element.isVisible() ? theme.foreground() : theme.foregroundMuted(), 0.6f));
+                        element.isShown() ? theme.foreground() : theme.foregroundMuted(), 0.6f));
             }
         }
         drawSnapGuides(ctx, theme);
@@ -732,12 +940,28 @@ public final class HudEditor {
         int y = Math.round(element.lastY()) - 2;
         int w = Math.round(element.lastWidth()) + 4;
         int h = Math.round(element.lastHeight()) + 4;
-        int accent = element.isVisible() ? theme.accent() : ColorUtil.withAlpha(theme.accent(), 0.5f);
+        int accent = element.isShown() ? theme.accent() : ColorUtil.withAlpha(theme.accent(), 0.5f);
         ctx.fillRect(x, y, w, 1, accent);
         ctx.fillRect(x, y + h - 1, w, 1, accent);
         ctx.fillRect(x, y + 1, 1, h - 2, accent);
         ctx.fillRect(x + w - 1, y + 1, 1, h - 2, accent);
-        String label = element.isVisible() ? element.name() : element.name() + " (hidden)";
+        if (element.isShown() && !element.isLocked()) {
+            drawHandle(ctx, theme, element.lastX(), element.lastY());
+            drawHandle(ctx, theme, element.lastX() + element.lastWidth(), element.lastY());
+            drawHandle(ctx, theme, element.lastX(), element.lastY() + element.lastHeight());
+            drawHandle(ctx, theme, element.lastX() + element.lastWidth(),
+                    element.lastY() + element.lastHeight());
+        }
+        String label;
+        if (!element.isActive()) {
+            label = element.name() + " (module off)";
+        } else if (!element.isVisible()) {
+            label = element.name() + " (hidden)";
+        } else if (element.isLocked()) {
+            label = element.name() + " (locked)";
+        } else {
+            label = element.name();
+        }
         int labelW = ctx.uiTextWidth(label) + 8;
         int labelH = ctx.uiFontHeight() + 4;
         int labelX = (int) clampSafe(x + (w - labelW) / 2f, 0, screenWidth - labelW);
@@ -745,6 +969,14 @@ public final class HudEditor {
         ctx.fillRoundedRect(labelX, labelY, labelW, labelH, PrimeDesign.RADIUS_SM,
                 ColorUtil.withAlpha(theme.background(), 0.9f));
         ctx.drawUiText(label, labelX + 4, labelY + 2, theme.foreground());
+    }
+
+    private void drawHandle(RenderContext ctx, Theme theme, float cx, float cy) {
+        int s = HANDLE_DRAW;
+        int hx = Math.round(cx) - s / 2;
+        int hy = Math.round(cy) - s / 2;
+        ctx.fillRoundedRect(hx, hy, s, s, 1, 0xFFFFFFFF);
+        ctx.fillRoundedRect(hx + 1, hy + 1, s - 2, s - 2, 1, theme.accent());
     }
 
     private static void drawBorder(RenderContext ctx, HudElement element, int argb) {

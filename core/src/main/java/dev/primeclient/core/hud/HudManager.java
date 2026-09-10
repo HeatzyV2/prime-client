@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.config.ConfigBinding;
+import dev.primeclient.core.hud.editor.HudEditorState;
 import dev.primeclient.core.hud.vanilla.VanillaHudComponent;
 import dev.primeclient.core.hud.vanilla.VanillaHudMeasurements;
 import dev.primeclient.core.hud.vanilla.VanillaHudProxyElement;
@@ -57,13 +58,26 @@ public final class HudManager implements ConfigBinding {
             layout(ctx, false);
         }
         long now = System.currentTimeMillis();
+        boolean editorOpen = HudEditorState.isActive();
         HudElement[] elements = this.renderList;
         for (int i = 0; i < elements.length; i++) {
             HudElement element = elements[i];
-            if (!element.isVisible()) {
+            if (editorOpen) {
+                // Editor: show layout-visible elements even when the module is off (dimmed).
+                if (!element.isVisible()) {
+                    continue;
+                }
+            } else if (!element.isShown()) {
                 continue;
             }
-            drawElement(ctx, element, now);
+            if (editorOpen && !element.isActive()) {
+                float savedOpacity = element.opacity();
+                element.setOpacity(savedOpacity * 0.45f);
+                drawElement(ctx, element, now);
+                element.setOpacity(savedOpacity);
+            } else {
+                drawElement(ctx, element, now);
+            }
         }
     }
 
@@ -75,7 +89,8 @@ public final class HudManager implements ConfigBinding {
     /**
      * Computes element bounds without drawing.
      *
-     * @param includeHidden when {@code true}, also measures hidden elements (HUD editor hit-testing)
+     * @param includeHidden when {@code true}, also measures layout-hidden / module-inactive
+     *                      elements (HUD editor hit-testing and list recovery)
      */
     public void layout(RenderContext ctx, boolean includeHidden) {
         int screenWidth = ctx.screenWidth();
@@ -83,7 +98,7 @@ public final class HudManager implements ConfigBinding {
         HudElement[] elements = this.renderList;
         for (int i = 0; i < elements.length; i++) {
             HudElement element = elements[i];
-            if (!includeHidden && !element.isVisible()) {
+            if (!includeHidden && !element.isShown()) {
                 continue;
             }
             float scale = element.scale();
@@ -136,25 +151,28 @@ public final class HudManager implements ConfigBinding {
         return elementAt(x, y, false);
     }
 
-    /** Editor hit-test — includes hidden elements so they can be re-selected. */
+    /** Editor hit-test — includes hidden elements so they can be re-selected from the list. */
     public HudElement elementAt(double x, double y, boolean includeHidden) {
         HudElement[] elements = this.renderList;
         for (int i = elements.length - 1; i >= 0; i--) {
             HudElement element = elements[i];
-            if ((includeHidden || element.isVisible()) && element.containsPoint(x, y)) {
+            if ((includeHidden || element.isShown()) && element.containsPoint(x, y)) {
                 return element;
             }
         }
         return null;
     }
 
-    /** All hit elements under the cursor, topmost first (for Alt-cycle selection). */
+    /**
+     * All hit elements under the cursor, topmost first (for Alt-cycle selection).
+     * When {@code includeHidden} is false, only {@linkplain HudElement#isShown() shown} elements.
+     */
     public java.util.List<HudElement> elementsAt(double x, double y, boolean includeHidden) {
         java.util.ArrayList<HudElement> hits = new java.util.ArrayList<>();
         HudElement[] elements = this.renderList;
         for (int i = elements.length - 1; i >= 0; i--) {
             HudElement element = elements[i];
-            if ((includeHidden || element.isVisible()) && element.containsPoint(x, y)) {
+            if ((includeHidden || element.isShown()) && element.containsPoint(x, y)) {
                 hits.add(element);
             }
         }
@@ -192,6 +210,26 @@ public final class HudManager implements ConfigBinding {
 
     private void rebuildRenderList() {
         renderList = byId.values().toArray(new HudElement[0]);
+    }
+
+    /** Restores paint/hit order from a list of element ids (HUD editor undo). */
+    public void restoreOrder(java.util.List<String> order) {
+        if (order == null || order.isEmpty()) {
+            return;
+        }
+        Map<String, HudElement> rebuilt = new LinkedHashMap<>();
+        for (String id : order) {
+            HudElement hudElement = byId.get(id);
+            if (hudElement != null) {
+                rebuilt.put(id, hudElement);
+            }
+        }
+        for (Map.Entry<String, HudElement> e : byId.entrySet()) {
+            rebuilt.putIfAbsent(e.getKey(), e.getValue());
+        }
+        byId.clear();
+        byId.putAll(rebuilt);
+        rebuildRenderList();
     }
 
     @Override

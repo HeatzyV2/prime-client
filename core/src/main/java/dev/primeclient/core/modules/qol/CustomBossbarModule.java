@@ -14,16 +14,16 @@ public final class CustomBossbarModule extends Module {
     public CustomBossbarModule(HudManager hud, ThemeManager themes) {
         super("custom-bossbar", "Custom Bossbar", "Frosted glass pill overhaul for bossbars", ModuleCategory.QOL);
         this.element = hud.register(new CustomBossbarElement(themes));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 }

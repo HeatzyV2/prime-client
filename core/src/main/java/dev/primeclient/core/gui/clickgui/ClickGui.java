@@ -10,10 +10,12 @@ import dev.primeclient.core.cloud.CloudSyncManager;
 import dev.primeclient.core.cosmetics.CosmeticManager;
 import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.gui.GuiLayout;
+import dev.primeclient.core.gui.RecentlyUsedManager;
 import dev.primeclient.core.gui.menu.MainMenuRenderer;
 import dev.primeclient.core.gui.menu.OnboardingManager;
 import dev.primeclient.core.gui.menu.OnboardingScreen;
 import dev.primeclient.core.gui.component.ColorPickerWidget;
+import dev.primeclient.core.gui.component.SearchField;
 import dev.primeclient.core.gui.component.TextInputField;
 import dev.primeclient.core.module.ColorSetting;
 import dev.primeclient.core.module.StringSetting;
@@ -26,7 +28,6 @@ import dev.primeclient.core.theme.ThemeManager;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.gui.TooltipRenderer;
 import dev.primeclient.core.i18n.PrimeLang;
-import dev.primeclient.core.gui.clickgui.ModuleCardBrowser;
 import dev.primeclient.core.gui.menu.ConfigurationsMenuRenderer;
 import dev.primeclient.core.gui.menu.CosmeticsMenuRenderer;
 import dev.primeclient.core.gui.menu.SettingsMenuRenderer;
@@ -38,19 +39,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Prime ClickGUI with main menu, favorites, category panels and search.
+ * Prime ClickGUI V3 — hub menu, card browser, search, favorites, and settings.
  */
 public final class ClickGui implements ConfigBinding {
 
-    private static final int SEARCH_MIN_WIDTH = 90;
-    private static final int SEARCH_HEIGHT = 14;
-    private static final int MENU_WIDTH = 140;
-    private static final int MENU_ROW = 18;
-    private static final int MENU_PADDING = 12;
+    private static final int CHROME_PAD = PrimeDesign.SPACE_MD;
 
     private final ModuleManager modules;
     private final ThemeManager themes;
     private final FavoritesManager favorites;
+    private final RecentlyUsedManager recent = new RecentlyUsedManager();
     private final MinecraftAdapter adapter;
     private final OnboardingManager onboarding;
     private final CloudSyncManager cloudSync;
@@ -60,6 +58,7 @@ public final class ClickGui implements ConfigBinding {
     private final TooltipRenderer tooltips;
     private final MainMenuRenderer mainMenu = new MainMenuRenderer();
     private final ModuleCardBrowser cardBrowser;
+    private final SearchField searchField;
     private final SettingsMenuRenderer settingsMenu = new SettingsMenuRenderer();
     private final CosmeticsMenuRenderer cosmeticsMenu = new CosmeticsMenuRenderer();
     private final ConfigurationsMenuRenderer configurationsMenu = new ConfigurationsMenuRenderer();
@@ -75,9 +74,7 @@ public final class ClickGui implements ConfigBinding {
     private final List<Panel> panels = new ArrayList<>();
     private Panel favoritesPanel;
     private int favoritesRevision = Integer.MIN_VALUE;
-    private final StringBuilder searchQuery = new StringBuilder();
 
-    private Panel searchPanel;
     private Panel draggingPanel;
     private Panel sliderPanel;
     private Setting sliderSetting;
@@ -107,8 +104,10 @@ public final class ClickGui implements ConfigBinding {
         this.profiles = profiles;
         this.keybinds = keybinds;
         this.tooltips = tooltips;
-        this.cardBrowser = new ModuleCardBrowser(modules, favorites);
+        this.cardBrowser = new ModuleCardBrowser(modules, favorites, recent);
         this.cardBrowser.setTooltips(tooltips);
+        this.searchField = new SearchField(
+                PrimeLang.get("prime.gui.clickgui.search.placeholder", "Search modules…"), 48);
         // Legacy panels kept only for config round-trip / test helpers — Browse uses cards.
         float x = 8;
         for (ModuleCategory category : ModuleCategory.values()) {
@@ -126,8 +125,9 @@ public final class ClickGui implements ConfigBinding {
     }
 
     public void onOpen() {
-        searchQuery.setLength(0);
-        searchPanel = null;
+        searchField.clear();
+        searchField.setFocused(false);
+        cardBrowser.setSearchQuery("");
         draggingPanel = null;
         sliderPanel = null;
         sliderSetting = null;
@@ -147,8 +147,10 @@ public final class ClickGui implements ConfigBinding {
     /** For tests: skip the main menu and show category panels. */
     public void showBrowse() {
         view = ClickGuiView.BROWSE;
+        cardBrowser.showOverviewTab();
         openFade = 1f;
         menuSlide = 0f;
+        searchField.setFocused(true);
     }
 
     /** Opens ClickGUI on the settings hub (title screen shortcut). */
@@ -189,6 +191,15 @@ public final class ClickGui implements ConfigBinding {
         return view;
     }
 
+    /** Top-left Y of the module card grid (below search + tabs). Exposed for layout tests. */
+    public int browseContentY() {
+        return browserY() + ModuleCardBrowser.TAB_H + PrimeDesign.SPACE_SM;
+    }
+
+    public int browserY() {
+        return CHROME_PAD + PrimeDesign.SEARCH_HEIGHT + PrimeDesign.SPACE_SM;
+    }
+
     public void tick(float deltaSeconds) {
         float dt = deltaSeconds;
         if (dt <= 0f) {
@@ -212,9 +223,7 @@ public final class ClickGui implements ConfigBinding {
         if (favoritesPanel != null) {
             favoritesPanel.tick(dt);
         }
-        if (searchPanel != null) {
-            searchPanel.tick(dt);
-        }
+        searchField.tick(dt);
         cardBrowser.tick(dt);
         refreshSelectedPanel();
         tooltips.tick(Math.max(1, Math.round(dt * 1000f)));
@@ -236,9 +245,39 @@ public final class ClickGui implements ConfigBinding {
         }
         if (selectedModulePanel == null || !selectedModulePanel.hasModule(sel)) {
             selectedModulePanel = new Panel(sel.name(), List.of(sel), favorites,
-                    screenWidth - Panel.WIDTH - 12, 8);
-            selectedModulePanel.collapsed = false;
+                    screenWidth - Panel.WIDTH - CHROME_PAD, browserY());
+            selectedModulePanel.expandModule(sel);
         }
+    }
+
+    private boolean isModuleBrowserView() {
+        return view == ClickGuiView.BROWSE || view == ClickGuiView.FAVORITES;
+    }
+
+    private int browserX() {
+        return CHROME_PAD;
+    }
+
+    private int browserW() {
+        return selectedModulePanel != null
+                ? screenWidth - Panel.WIDTH - CHROME_PAD * 3
+                : screenWidth - CHROME_PAD * 2;
+    }
+
+    private int browserH() {
+        return Math.max(40, screenHeight - browserY() - CHROME_PAD);
+    }
+
+    private int searchX() {
+        return CHROME_PAD;
+    }
+
+    private int searchY() {
+        return CHROME_PAD;
+    }
+
+    private int searchW() {
+        return Math.min(320, screenWidth - CHROME_PAD * 2);
     }
 
     public void render(RenderContext ctx, double mouseX, double mouseY) {
@@ -250,11 +289,7 @@ public final class ClickGui implements ConfigBinding {
         this.fontHeight = ctx.fontHeight();
         Theme theme = themes.active();
 
-        if (isSearching()) {
-            cardBrowser.setSearchQuery(searchQuery.toString());
-        } else {
-            cardBrowser.setSearchQuery("");
-        }
+        cardBrowser.setSearchQuery(searchField.query());
 
         switch (view) {
             case MAIN_MENU -> {
@@ -268,7 +303,7 @@ public final class ClickGui implements ConfigBinding {
             case SETTINGS -> {
                 mainMenu.renderBackground(ctx, theme, openFade);
                 settingsMenu.render(ctx, theme, themes, profiles, cloudSync, adapter, keybinds,
-                        screenWidth, screenHeight, mouseX, mouseY);
+                        modules, screenWidth, screenHeight, mouseX, mouseY);
             }
             case COSMETICS -> {
                 mainMenu.renderBackground(ctx, theme, openFade);
@@ -278,23 +313,22 @@ public final class ClickGui implements ConfigBinding {
                 mainMenu.renderBackground(ctx, theme, openFade);
                 configurationsMenu.render(ctx, theme, cloudSync, profiles, screenWidth, screenHeight, mouseX, mouseY);
             }
-            case FAVORITES -> {
-                renderSearchBar(ctx, theme);
-                refreshFavoritesPanelIfNeeded();
-                favoritesPanel.render(ctx, theme, mouseX, mouseY);
-            }
-            case BROWSE -> {
-                renderSearchBar(ctx, theme);
-                int browserW = selectedModulePanel != null ? screenWidth - Panel.WIDTH - 24 : screenWidth - 16;
-                cardBrowser.render(ctx, theme, 8, 8, browserW, screenHeight - 40, mouseX, mouseY);
-                if (selectedModulePanel != null) {
-                    selectedModulePanel.render(ctx, theme, mouseX, mouseY);
-                    selectedModulePanel.renderDropdown(ctx, theme, mouseX, mouseY);
-                }
-            }
+            case FAVORITES, BROWSE -> renderModuleBrowser(ctx, theme, mouseX, mouseY);
         }
         renderEditors(ctx, theme);
         tooltips.render(ctx, theme);
+    }
+
+    private void renderModuleBrowser(RenderContext ctx, Theme theme, double mouseX, double mouseY) {
+        mainMenu.renderBackground(ctx, theme, openFade);
+        searchField.render(ctx, theme, searchX(), searchY(), searchW());
+        cardBrowser.render(ctx, theme, browserX(), browserY(), browserW(), browserH(), mouseX, mouseY);
+        if (selectedModulePanel != null) {
+            selectedModulePanel.x = screenWidth - Panel.WIDTH - CHROME_PAD;
+            selectedModulePanel.y = browserY();
+            selectedModulePanel.render(ctx, theme, mouseX, mouseY);
+            selectedModulePanel.renderDropdown(ctx, theme, mouseX, mouseY);
+        }
     }
 
     private void renderEditors(RenderContext ctx, Theme theme) {
@@ -326,38 +360,6 @@ public final class ClickGui implements ConfigBinding {
         view = ClickGuiView.MAIN_MENU;
     }
 
-    private void renderSimpleMenu(RenderContext ctx, Theme theme, String title, String... lines) {
-        mainMenu.renderBackground(ctx, theme, openFade);
-        int w = 260;
-        int h = 80 + lines.length * 14;
-        int x = (screenWidth - w) / 2;
-        int y = (screenHeight - h) / 2;
-        ctx.fillRect(x, y, w, h, theme.background());
-        ctx.fillRect(x, y, w, 2, theme.accent());
-        ctx.drawText(title, x + 12, y + 12, theme.accent(), true);
-        int ly = y + 32;
-        for (String line : lines) {
-            ctx.drawText(line, x + 12, ly, theme.foregroundMuted(), true);
-            ly += 14;
-        }
-    }
-
-    private void renderSearchBar(RenderContext ctx, Theme theme) {
-        String label = searchQuery.isEmpty()
-                ? PrimeLang.get("prime.gui.clickgui.search.placeholder", "Type to search...")
-                : searchQuery.toString();
-        int labelColor = searchQuery.isEmpty() ? theme.foregroundMuted() : theme.foreground();
-        int maxWidth = ctx.screenWidth() - 32;
-        int width = Math.min(maxWidth, Math.max(SEARCH_MIN_WIDTH, GuiLayout.labelWidth(ctx, label) + 16));
-        int x = (ctx.screenWidth() - width) / 2;
-        int y = ctx.screenHeight() - SEARCH_HEIGHT - 8;
-        ctx.fillRoundedRect(x, y, width, SEARCH_HEIGHT, PrimeDesign.RADIUS_MD, theme.backgroundLight());
-        ctx.fillGradientHorizontal(x + 2, y + SEARCH_HEIGHT - 2, width - 4, 2,
-                theme.accent(), dev.primeclient.core.util.ColorUtil.withAlpha(theme.accent(), 0.05f));
-        GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, label, width - 12),
-                x + 6, y + (SEARCH_HEIGHT - ctx.uiFontHeight()) / 2 + 1, labelColor);
-    }
-
     public boolean mousePressed(double mouseX, double mouseY, int button) {
         if (colorPicker != null && colorPicker.mousePressed(mouseX, mouseY, editorX, editorY, button)) {
             return true;
@@ -380,7 +382,8 @@ public final class ClickGui implements ConfigBinding {
             return handleMainMenuPress(mouseX, mouseY);
         }
         if (view == ClickGuiView.SETTINGS) {
-            return settingsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, themes, keybinds, adapter);
+            return settingsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, themes, keybinds,
+                    adapter, modules, profiles);
         }
         if (view == ClickGuiView.COSMETICS) {
             return cosmeticsMenu.mousePressed(textMetrics, mouseX, mouseY, screenWidth, screenHeight, cosmetics);
@@ -389,28 +392,41 @@ public final class ClickGui implements ConfigBinding {
             return configurationsMenu.mousePressed(mouseX, mouseY, button, cloudSync, profiles,
                     screenWidth, screenHeight);
         }
-        if (view == ClickGuiView.FAVORITES) {
-            refreshFavoritesPanelIfNeeded();
-            return dispatchPress(favoritesPanel, mouseX, mouseY, button);
-        }
-        if (view == ClickGuiView.BROWSE) {
-            if (selectedModulePanel != null
-                    && selectedModulePanel.dropdownMousePressed(mouseX, mouseY)) {
-                return true;
-            }
-            if (selectedModulePanel != null && dispatchPress(selectedModulePanel, mouseX, mouseY, button)) {
-                return true;
-            }
-            int browserW = selectedModulePanel != null ? screenWidth - Panel.WIDTH - 24 : screenWidth - 16;
-            return cardBrowser.mousePressed(textMetrics, mouseX, mouseY, 8, 8, browserW, screenHeight - 40, button);
+        if (isModuleBrowserView()) {
+            return pressModuleBrowser(mouseX, mouseY, button);
         }
         return false;
     }
 
+    private boolean pressModuleBrowser(double mouseX, double mouseY, int button) {
+        if (button == 0 && searchField.hit(mouseX, mouseY, searchX(), searchY(), searchW())) {
+            searchField.setFocused(true);
+            return true;
+        }
+        if (selectedModulePanel != null
+                && selectedModulePanel.dropdownMousePressed(mouseX, mouseY)) {
+            touchSelectedRecent();
+            return true;
+        }
+        if (selectedModulePanel != null && dispatchPress(selectedModulePanel, mouseX, mouseY, button)) {
+            touchSelectedRecent();
+            return true;
+        }
+        searchField.setFocused(false);
+        return cardBrowser.mousePressed(textMetrics, mouseX, mouseY,
+                browserX(), browserY(), browserW(), browserH(), button);
+    }
+
+    private void touchSelectedRecent() {
+        Module sel = cardBrowser.selected();
+        if (sel != null) {
+            recent.touch(sel.id());
+        }
+    }
+
     public boolean mouseScrolled(double mouseX, double mouseY, double verticalAmount) {
-        if (view == ClickGuiView.BROWSE) {
-            int browserW = selectedModulePanel != null ? screenWidth - Panel.WIDTH - 24 : screenWidth - 16;
-            return cardBrowser.mouseScrolled(verticalAmount, 8, 8, browserW, screenHeight - 40);
+        if (isModuleBrowserView()) {
+            return cardBrowser.mouseScrolled(verticalAmount, browserX(), browserY(), browserW(), browserH());
         }
         if (view == ClickGuiView.COSMETICS) {
             return cosmeticsMenu.scroll(verticalAmount);
@@ -437,6 +453,13 @@ public final class ClickGui implements ConfigBinding {
         ClickGuiView next = mainMenu.viewForButton(btn);
         if (next != null) {
             view = next;
+            if (next == ClickGuiView.FAVORITES) {
+                cardBrowser.showFavoritesTab();
+                searchField.setFocused(true);
+            } else if (next == ClickGuiView.BROWSE) {
+                cardBrowser.showOverviewTab();
+                searchField.setFocused(true);
+            }
         }
         return true;
     }
@@ -495,6 +518,7 @@ public final class ClickGui implements ConfigBinding {
         }
         if (sliderSetting != null) {
             sliderPanel.dragSlider(sliderSetting, mouseX);
+            touchSelectedRecent();
             return;
         }
         if (draggingPanel != null) {
@@ -515,6 +539,12 @@ public final class ClickGui implements ConfigBinding {
     }
 
     public boolean charTyped(char character) {
+        if (colorPicker != null && colorPicker.charTyped(character)) {
+            if (editingColor != null) {
+                editingColor.set(colorPicker.selectedArgb());
+            }
+            return true;
+        }
         if (stringEditor != null && stringEditor.charTyped(character)) {
             if (editingString != null) {
                 editingString.set(stringEditor.text());
@@ -530,27 +560,44 @@ public final class ClickGui implements ConfigBinding {
         if (view == ClickGuiView.CONFIGURATIONS || view == ClickGuiView.COSMETICS) {
             return false;
         }
-        // Module search only on Browse / Favorites.
-        if (view != ClickGuiView.BROWSE && view != ClickGuiView.FAVORITES) {
+        if (!isModuleBrowserView()) {
             return false;
         }
         if (character < ' ') {
             return false;
         }
-        searchQuery.append(character);
-        cardBrowser.setSearchQuery(searchQuery.toString());
-        return true;
+        searchField.setFocused(true);
+        if (searchField.charTyped(character)) {
+            cardBrowser.setSearchQuery(searchField.query());
+            return true;
+        }
+        return false;
     }
 
     public boolean keyPressed(int glfwKey) {
-        if (stringEditor != null && stringEditor.keyPressed(glfwKey)) {
-            if (editingString != null) {
-                editingString.set(stringEditor.text());
-            }
-            if (glfwKey == 256) {
-                closeEditors();
+        if (colorPicker != null && colorPicker.keyPressed(glfwKey)) {
+            if (editingColor != null) {
+                editingColor.set(colorPicker.selectedArgb());
             }
             return true;
+        }
+        if (stringEditor != null) {
+            boolean handled = stringEditor.keyPressed(glfwKey);
+            if (handled && editingString != null && glfwKey != 256) {
+                editingString.set(stringEditor.text());
+            }
+            // Escape closes without further navigation; Enter commits + closes.
+            if (glfwKey == 256 || glfwKey == 257) {
+                if (glfwKey == 257 && editingString != null) {
+                    editingString.set(stringEditor.text());
+                }
+                closeEditors();
+                return true;
+            }
+            // Keep focus: don't leak Backspace/arrows into module search.
+            if (handled || stringEditor.focused()) {
+                return true;
+            }
         }
         if (view == ClickGuiView.SETTINGS && settingsMenu.capturingKey()) {
             return settingsMenu.captureKey(glfwKey, keybinds);
@@ -563,8 +610,8 @@ public final class ClickGui implements ConfigBinding {
             return true;
         }
         if (glfwKey == 256 && isSearching()) {
-            searchQuery.setLength(0);
-            searchPanel = null;
+            searchField.clear();
+            searchField.setFocused(false);
             cardBrowser.setSearchQuery("");
             return true;
         }
@@ -573,7 +620,7 @@ public final class ClickGui implements ConfigBinding {
             completeOnboarding();
             return true;
         }
-        if (glfwKey == 256 && view == ClickGuiView.BROWSE && selectedModulePanel != null) {
+        if (glfwKey == 256 && isModuleBrowserView() && selectedModulePanel != null) {
             selectedModulePanel = null;
             cardBrowser.selectForTests(null);
             return true;
@@ -593,17 +640,22 @@ public final class ClickGui implements ConfigBinding {
         if (view == ClickGuiView.MAIN_MENU) {
             return false;
         }
-        if (glfwKey == 259 && !searchQuery.isEmpty()
-                && (view == ClickGuiView.BROWSE || view == ClickGuiView.FAVORITES)) {
-            searchQuery.setLength(searchQuery.length() - 1);
-            cardBrowser.setSearchQuery(searchQuery.toString());
+        if (isModuleBrowserView() && searchField.focused() && searchField.keyPressed(glfwKey)) {
+            cardBrowser.setSearchQuery(searchField.query());
+            return true;
+        }
+        // Backspace clears search even if focus was lost after typing.
+        if (glfwKey == 259 && isModuleBrowserView() && !searchField.query().isEmpty()) {
+            searchField.setFocused(true);
+            searchField.keyPressed(glfwKey);
+            cardBrowser.setSearchQuery(searchField.query());
             return true;
         }
         return false;
     }
 
     private boolean isSearching() {
-        return !searchQuery.isEmpty();
+        return !searchField.query().isEmpty();
     }
 
     private void refreshFavoritesPanelIfNeeded() {
@@ -634,10 +686,12 @@ public final class ClickGui implements ConfigBinding {
             section.addProperty("collapsed", panel.collapsed);
             json.add(panel.title(), section);
         }
+        refreshFavoritesPanelIfNeeded();
         JsonObject fav = new JsonObject();
         fav.addProperty("x", favoritesPanel.x);
         fav.addProperty("y", favoritesPanel.y);
         json.add("Favorites", fav);
+        json.add("recent", recent.toJson());
         return json;
     }
 
@@ -656,6 +710,9 @@ public final class ClickGui implements ConfigBinding {
             if (section.has("y")) {
                 favoritesPanel.y = section.get("y").getAsFloat();
             }
+        }
+        if (json.has("recent")) {
+            recent.fromJson(json.get("recent"));
         }
     }
 

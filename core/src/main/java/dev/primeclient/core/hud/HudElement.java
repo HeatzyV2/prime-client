@@ -26,7 +26,13 @@ public abstract class HudElement {
     private float rotation;
     private float opacity = 1.0f;
     private int tintArgb;
+    /** User layout preference (persisted). Hidden elements stay configurable in the editor list. */
     private boolean visible = true;
+    /**
+     * Module gate (not persisted). When {@code false}, the element is not drawn in-game and
+     * is not interactive on the editor canvas — even if {@link #visible} is true.
+     */
+    private boolean active = true;
     private boolean locked;
 
     private float lastX;
@@ -55,6 +61,7 @@ public abstract class HudElement {
         this.opacity = 1.0f;
         this.tintArgb = 0;
         this.visible = true;
+        // {@code active} is owned by the binding module — reset leaves it alone.
         this.locked = false;
     }
 
@@ -106,6 +113,19 @@ public abstract class HudElement {
 
     public final void setVisible(boolean visible) {
         this.visible = visible;
+    }
+
+    public final boolean isActive() {
+        return active;
+    }
+
+    public final void setActive(boolean active) {
+        this.active = active;
+    }
+
+    /** In-game draw + canvas pick: layout-visible and module-enabled. */
+    public final boolean isShown() {
+        return visible && active;
     }
 
     public final boolean isLocked() {
@@ -161,7 +181,29 @@ public abstract class HudElement {
         return lastHeight;
     }
 
+    /**
+     * Hit-test against the axis-aligned bounds of the unrotated box, or the
+     * rotated OBB when rotation is applied (inverse-rotate the cursor around the center).
+     */
     public final boolean containsPoint(double x, double y) {
-        return x >= lastX && x < lastX + lastWidth && y >= lastY && y < lastY + lastHeight;
+        if (lastWidth <= 0 || lastHeight <= 0) {
+            return false;
+        }
+        float cx = lastX + lastWidth / 2f;
+        float cy = lastY + lastHeight / 2f;
+        double lx = x - cx;
+        double ly = y - cy;
+        float rot = rotation;
+        if (rot != 0f) {
+            double rad = Math.toRadians(-rot);
+            double cos = Math.cos(rad);
+            double sin = Math.sin(rad);
+            double rx = lx * cos - ly * sin;
+            double ry = lx * sin + ly * cos;
+            lx = rx;
+            ly = ry;
+        }
+        return lx >= -lastWidth / 2f && lx < lastWidth / 2f
+                && ly >= -lastHeight / 2f && ly < lastHeight / 2f;
     }
 }

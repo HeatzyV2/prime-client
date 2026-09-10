@@ -85,6 +85,7 @@ public final class VoiceChatModule extends Module {
         this.talkKey = keybinds.register(new Keybind(
                 "prime-voice-talk", "Prime Voice Talk", "Prime", DEFAULT_TALK_KEY));
         this.overlay = hud.register(new OverlayElement(themes));
+        overlay.setActive(false);
 
         listen(ClientTickEvent.class, event -> onTick());
         listen(WorldJoinEvent.class, event -> onWorldJoin());
@@ -99,6 +100,7 @@ public final class VoiceChatModule extends Module {
         }
         syncSettings();
         applyGroupActions();
+        overlay.setActive(true);
         overlay.setVisible(showHud.get());
         if (adapter.isMultiplayer()) {
             voice.start(adapter);
@@ -108,7 +110,7 @@ public final class VoiceChatModule extends Module {
     @Override
     protected void onDisable() {
         voice.stop();
-        overlay.setVisible(false);
+        overlay.setActive(false);
     }
 
     private void onWorldJoin() {
@@ -132,7 +134,8 @@ public final class VoiceChatModule extends Module {
     private void onTick() {
         syncSettings();
         applyGroupActions();
-        overlay.setVisible(showHud.get() && isEnabled());
+        overlay.setVisible(showHud.get());
+        overlay.setActive(isEnabled());
         if (!isEnabled()) {
             return;
         }

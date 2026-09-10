@@ -132,9 +132,9 @@ class ClickGuiTest {
 
     // Legacy category panel for QoL: PvP, Survival, Performance, then QoL → index 3
     private static final double LEGACY_PANEL_X = 8 + 3 * (Panel.WIDTH + 8);
-    private static final double PANEL_X = SCREEN_W - Panel.WIDTH - 12;
-    private static final double HEADER_Y = 8;
-    private static final double FIRST_ROW_Y = HEADER_Y + 18;
+    private static final double PANEL_X = SCREEN_W - Panel.WIDTH - PrimeDesign.SPACE_MD;
+    private double headerY;
+    private double firstRowY;
 
     @BeforeEach
     void setUp() {
@@ -158,29 +158,34 @@ class ClickGuiTest {
         gui.showBrowse();
         gui.selectModuleForTests(module);
         gui.tick(1f / 20f);
+        headerY = gui.browserY();
+        firstRowY = headerY + Panel.HEADER_HEIGHT;
     }
 
     @Test
     void leftClickOnRowTogglesModule() {
-        assertTrue(gui.mousePressed(PANEL_X + 10, FIRST_ROW_Y + 5, 0));
+        assertTrue(gui.mousePressed(PANEL_X + 10, firstRowY + 5, 0));
         assertTrue(module.isEnabled());
         gui.mouseReleased();
 
-        assertTrue(gui.mousePressed(PANEL_X + 10, FIRST_ROW_Y + 5, 0));
+        assertTrue(gui.mousePressed(PANEL_X + 10, firstRowY + 5, 0));
         assertFalse(module.isEnabled());
     }
 
     @Test
     void rightClickExpandsAndSettingRowsWork() {
-        assertTrue(gui.mousePressed(PANEL_X + 10, FIRST_ROW_Y + 5, 1));
+        // Already expanded by selectModuleForTests — click module row to collapse, then expand again.
+        assertTrue(gui.mousePressed(PANEL_X + 10, firstRowY + 5, 1));
+        gui.mouseReleased();
+        assertTrue(gui.mousePressed(PANEL_X + 10, firstRowY + 5, 1));
         gui.mouseReleased();
 
-        double flagRowY = FIRST_ROW_Y + 16;
+        double flagRowY = firstRowY + Panel.ROW_HEIGHT;
         assertTrue(gui.mousePressed(PANEL_X + 10, flagRowY + 5, 0));
         assertTrue(module.flag.get());
         gui.mouseReleased();
 
-        double sliderRowY = flagRowY + 16;
+        double sliderRowY = flagRowY + Panel.ROW_HEIGHT;
         assertTrue(gui.mousePressed(PANEL_X + Panel.WIDTH - 6, sliderRowY + 5, 0));
         assertEquals(10, module.range.get());
         gui.mouseReleased();
@@ -188,7 +193,7 @@ class ClickGuiTest {
 
     @Test
     void middleClickTogglesFavorite() {
-        int cardY = 8 + ModuleCardBrowser.TAB_H + 4 + 10;
+        int cardY = gui.browseContentY() + 10;
         gui.render(new FakeRenderContext(SCREEN_W, 600), 8 + 10, cardY);
         assertFalse(favorites.isFavorite("zoom"));
         assertTrue(gui.mousePressed(8 + 10, cardY, 2));
@@ -203,23 +208,22 @@ class ClickGuiTest {
 
     @Test
     void panelHeaderDragMovesPanel() {
-        assertTrue(gui.pressCategoryPanel(ModuleCategory.QOL, LEGACY_PANEL_X + 10, HEADER_Y + 5, 0));
-        gui.dragCategoryPanel(ModuleCategory.QOL, LEGACY_PANEL_X + 60, HEADER_Y + 45, SCREEN_W, 600);
+        assertTrue(gui.pressCategoryPanel(ModuleCategory.QOL, LEGACY_PANEL_X + 10, 8 + 5, 0));
+        gui.dragCategoryPanel(ModuleCategory.QOL, LEGACY_PANEL_X + 60, 8 + 45, SCREEN_W, 600);
         gui.mouseReleased();
 
         JsonObject saved = gui.saveConfig().getAsJsonObject();
         JsonObject qol = saved.getAsJsonObject("QoL");
         assertEquals(LEGACY_PANEL_X + 50, qol.get("x").getAsFloat());
-        assertEquals(HEADER_Y + 40, qol.get("y").getAsFloat());
+        assertEquals(8 + 40, qol.get("y").getAsFloat());
     }
 
     @Test
     void searchFiltersAndEscapeClearsBeforeClosing() {
         assertTrue(gui.charTyped('z'));
-        // Click the toggle on the first matching card (Overview/search filter keeps Zoom).
-        int contentY = 8 + ModuleCardBrowser.TAB_H + PrimeDesign.SPACE_SM;
-        int toggleX = 8 + ModuleCardBrowser.CARD_W - PrimeDesign.TOGGLE_WIDTH - 6;
-        int toggleY = contentY + 8;
+        int contentY = gui.browseContentY();
+        int toggleX = PrimeDesign.SPACE_MD + ModuleCardBrowser.CARD_W - PrimeDesign.TOGGLE_WIDTH - 6;
+        int toggleY = contentY + 10;
         assertTrue(gui.mousePressed(toggleX + 1, toggleY + 1, 0));
         assertTrue(module.isEnabled());
         gui.mouseReleased();
@@ -231,13 +235,14 @@ class ClickGuiTest {
 
     @Test
     void configRoundTripsPanelState() {
-        gui.pressCategoryPanel(ModuleCategory.QOL, LEGACY_PANEL_X + 10, HEADER_Y + 5, 1);
+        gui.pressCategoryPanel(ModuleCategory.QOL, LEGACY_PANEL_X + 10, 8 + 5, 1);
         JsonObject saved = gui.saveConfig().getAsJsonObject();
 
         ClickGui fresh = new ClickGui(modules, new ThemeManager(), favorites, adapter,
                 new OnboardingManager(), cloudSync, cosmetics, profiles, keybinds, new TooltipRenderer());
         fresh.loadConfig(saved);
         assertTrue(fresh.saveConfig().getAsJsonObject().getAsJsonObject("QoL").get("collapsed").getAsBoolean());
+        assertTrue(saved.has("recent"));
     }
 
     @Test
@@ -263,7 +268,6 @@ class ClickGuiTest {
         gui.showSettings();
         assertTrue(gui.charTyped('z')); // settings has its own search field
         assertEquals(ClickGuiView.SETTINGS, gui.view());
-        // Module search overlay only activates on Browse/Favorites — settings stays put.
         FakeRenderContext ctx = new FakeRenderContext(SCREEN_W, 600);
         gui.render(ctx, 100, 100);
         assertEquals(ClickGuiView.SETTINGS, gui.view());
@@ -273,7 +277,6 @@ class ClickGuiTest {
     void favoritesViewIsReachableFromMainMenu() {
         gui.onOpen();
         gui.tick(1f);
-        // Favorites is button index 2 on the main menu (after Resume, Modules).
         ClickGuiView fav = new MainMenuRenderer().viewForButton(2);
         assertEquals(ClickGuiView.FAVORITES, fav);
     }
@@ -283,5 +286,12 @@ class ClickGuiTest {
         assertTrue(gui.keyPressed(256)); // clear selected module panel
         assertTrue(gui.keyPressed(256)); // back to main menu
         assertEquals(ClickGuiView.MAIN_MENU, gui.view());
+    }
+
+    @Test
+    void recentListTracksOpenedModules() {
+        JsonObject saved = gui.saveConfig().getAsJsonObject();
+        assertTrue(saved.getAsJsonArray("recent").size() >= 1);
+        assertEquals("zoom", saved.getAsJsonArray("recent").get(0).getAsString());
     }
 }

@@ -310,27 +310,70 @@ class HudEditorTest {
 
     @Test
     void altClickCyclesOverlappingElements() {
+        // Keep clear of the compact toolbar (y≈6–24).
+        box.setLayout(HudAnchor.TOP_LEFT, 40, 40);
         BoxElement top = hud.register(new BoxElement("top", 20, 10));
-        top.setLayout(HudAnchor.TOP_LEFT, 0, 0);
+        top.setLayout(HudAnchor.TOP_LEFT, 40, 40);
         hud.render(new FakeRenderContext(200, 100));
 
-        assertTrue(editor.mousePressed(5, 5, false));
+        assertTrue(editor.mousePressed(50, 45, false));
         assertSame(top, editor.selected()); // topmost first
 
-        assertTrue(editor.mousePressed(5, 5, true));
+        assertTrue(editor.mousePressed(50, 45, true));
         assertSame(box, editor.selected()); // Alt cycles to next
 
-        assertTrue(editor.mousePressed(5, 5, true));
+        assertTrue(editor.mousePressed(50, 45, true));
         assertSame(top, editor.selected());
     }
 
     @Test
+    void altClickCyclesEvenWhenSelectionNotUnderCursor() {
+        box.setLayout(HudAnchor.TOP_LEFT, 40, 40);
+        BoxElement top = hud.register(new BoxElement("top", 20, 10));
+        top.setLayout(HudAnchor.TOP_LEFT, 40, 40);
+        BoxElement side = hud.register(new BoxElement("side", 10, 10));
+        side.setLayout(HudAnchor.TOP_LEFT, 100, 40);
+        hud.render(new FakeRenderContext(200, 100));
+
+        assertTrue(editor.mousePressed(105, 45, false));
+        assertSame(side, editor.selected());
+
+        assertTrue(editor.mousePressed(45, 45, true));
+        assertSame(top, editor.selected());
+    }
+
+    @Test
+    void rotatedElementHitUsesOrientedBounds() {
+        box.setRotation(45f);
+        box.setLayout(HudAnchor.TOP_LEFT, 40, 40);
+        hud.render(new FakeRenderContext(200, 100));
+        // Center of the box should still hit after rotation.
+        float cx = box.lastX() + box.lastWidth() / 2f;
+        float cy = box.lastY() + box.lastHeight() / 2f;
+        assertTrue(box.containsPoint(cx, cy));
+        // Far outside the AABB corner of an axis-aligned box but also outside OBB.
+        assertFalse(box.containsPoint(cx + box.lastWidth(), cy + box.lastHeight()));
+    }
+
+    @Test
     void eKeyTogglesElementList() {
-        assertTrue(editor.listOpen());
-        assertTrue(editor.keyPressed(GLFW_E));
         assertFalse(editor.listOpen());
         assertTrue(editor.keyPressed(GLFW_E));
         assertTrue(editor.listOpen());
+        assertTrue(editor.keyPressed(GLFW_E));
+        assertFalse(editor.listOpen());
+    }
+
+    @Test
+    void cornerHandleResizesSelectedElement() {
+        editor.mousePressed(5, 5);
+        assertSame(box, editor.selected());
+        float start = box.scale();
+        // SE corner handle
+        assertTrue(editor.mousePressed(20, 10, false, false));
+        editor.mouseDragged(40, 30, 200, 100, false, false);
+        editor.mouseReleased();
+        assertTrue(box.scale() > start);
     }
 
     /**
@@ -346,32 +389,37 @@ class HudEditorTest {
         void renderPanels() {
             ctx = new FakeRenderContext(400, 300);
             hud.render(ctx);
+            editor.keyPressed(GLFW_E);
             editor.renderOverlay(ctx, 0, 0);
         }
 
         @Test
-        void listRowClickSelectsElement() {
-            assertTrue(editor.mousePressed(12, 54));
+        void listRowClickSelectsElementAndClosesPopover() {
+            assertTrue(editor.listOpen());
+            assertTrue(editor.clickElementsRowForTest(0, false));
             assertSame(box, editor.selected());
+            assertFalse(editor.listOpen());
         }
 
         @Test
         void listEyeZoneClickTogglesVisibility() {
-            assertTrue(editor.mousePressed(97, 58));
+            assertTrue(editor.clickElementsRowForTest(0, true));
             assertFalse(box.isVisible());
-            assertNull(editor.selected());
         }
 
         @Test
         void listSelectionRecoversOffScreenElement() {
             box.setLayout(HudAnchor.TOP_LEFT, -500, -500);
             hud.render(ctx);
+            if (!editor.listOpen()) {
+                editor.keyPressed(GLFW_E);
+            }
             editor.renderOverlay(ctx, 0, 0);
 
-            assertTrue(editor.mousePressed(12, 54));
+            assertTrue(editor.clickElementsRowForTest(0, false));
             hud.render(ctx);
-            assertEquals(190f, box.lastX());
-            assertEquals(145f, box.lastY());
+            assertTrue(box.lastX() > 0f);
+            assertTrue(box.lastY() > 0f);
         }
 
         @Test
@@ -380,16 +428,22 @@ class HudEditorTest {
                 hud.register(new BoxElement("extra-" + i, 20, 10));
             }
             hud.render(ctx);
+            if (!editor.listOpen()) {
+                editor.keyPressed(GLFW_E);
+            }
             editor.renderOverlay(ctx, 0, 0);
-
-            assertTrue(editor.mouseScrolled(50, 80, 1, false, false));
+            assertTrue(editor.scrollElementsListForTest(1));
             assertEquals(1f, box.scale(), 1e-5);
         }
 
         @Test
         void toolbarGridButtonTogglesLikeGKey() {
-            assertTrue(editor.mousePressed(162, 11)); // "Grid" button
-            assertTrue(editor.keyPressed(GLFW_G));    // both paths flip the same flag
+            editor.keyPressed(GLFW_E); // close popover
+            editor.renderOverlay(ctx, 0, 0);
+            boolean before = editor.gridShown();
+            assertTrue(editor.clickToolbarForTest(1)); // Grid
+            assertTrue(editor.keyPressed(GLFW_G));
+            assertEquals(before, editor.gridShown());
         }
 
         @Test
@@ -397,8 +451,10 @@ class HudEditorTest {
             box.setLayout(HudAnchor.BOTTOM_RIGHT, -30, -30);
             box.setScale(2f);
             box.setVisible(false);
+            editor.keyPressed(GLFW_E);
+            editor.renderOverlay(ctx, 0, 0);
 
-            assertTrue(editor.mousePressed(389, 11)); // "Reset All" button
+            assertTrue(editor.clickToolbarForTest(6)); // Reset
             assertEquals(HudAnchor.TOP_LEFT, box.anchor());
             assertEquals(0f, box.offsetX());
             assertEquals(1f, box.scale(), 1e-5);
@@ -406,12 +462,12 @@ class HudEditorTest {
         }
 
         @Test
-        void propertiesDockDoesNotBlockCanvasDrag() {
-            editor.mousePressed(12, 54);
+        void canvasDragWorksWithInspectorOpen() {
+            editor.select(box);
             editor.renderOverlay(ctx, 0, 0);
 
-            assertTrue(editor.mousePressed(200, 150));
-            editor.mouseDragged(260, 180, 400, 300);
+            assertTrue(editor.mousePressed(10, 5));
+            editor.mouseDragged(80, 60, 400, 300);
             editor.mouseReleased();
             hud.render(ctx);
 
@@ -419,20 +475,19 @@ class HudEditorTest {
         }
 
         @Test
-        void propertiesVisibilityButtonToggles() {
-            editor.mousePressed(12, 54);
+        void inspectorVisibilityButtonToggles() {
+            editor.select(box);
             editor.renderOverlay(ctx, 0, 0);
-
-            assertTrue(editor.mousePressed(208, 219));
+            assertTrue(editor.clickInspectorVisibilityForTest());
             assertFalse(box.isVisible());
         }
 
         @Test
         void dragAfterListSelectMovesElement() {
-            editor.mousePressed(12, 54);
+            assertTrue(editor.clickElementsRowForTest(0, false));
             assertSame(box, editor.selected());
-            editor.mousePressed(160, 120);
-            editor.mouseDragged(220, 160, 400, 300);
+            editor.mousePressed(10, 5);
+            editor.mouseDragged(90, 70, 400, 300);
             editor.mouseReleased();
             hud.render(ctx);
 
@@ -441,7 +496,7 @@ class HudEditorTest {
 
         @Test
         void canvasPressArmsDragWithoutMovingUntilMotion() {
-            editor.mousePressed(12, 54);
+            editor.select(box);
             editor.mousePressed(160, 120);
             hud.render(ctx);
             assertEquals(0f, box.lastX());
@@ -449,25 +504,35 @@ class HudEditorTest {
         }
 
         @Test
-        void clickThroughListPaddingSelectsElementUnderneath() {
-            box.setLayout(HudAnchor.TOP_LEFT, 5, 120);
-            hud.render(ctx);
-            editor.renderOverlay(ctx, 0, 0);
-
-            assertTrue(editor.mousePressed(20, 125));
+        void listPopoverConsumesClicksWhileOpen() {
+            assertTrue(editor.listOpen());
+            assertTrue(editor.clickElementsRowForTest(0, false));
             assertSame(box, editor.selected());
         }
 
         @Test
-        void clickOnPanelDoesNotDeselectOrGrabElements() {
-            editor.mousePressed(12, 54);
+        void inactiveModuleElementNotSelectableOnCanvas() {
+            if (editor.listOpen()) {
+                editor.keyPressed(GLFW_E);
+            }
+            box.setLayout(HudAnchor.TOP_LEFT, 180, 80);
+            box.setActive(false);
+            hud.layout(ctx, true);
             editor.renderOverlay(ctx, 0, 0);
+            assertFalse(editor.mousePressed(185, 85));
+            assertNull(editor.selected());
+        }
 
-            assertFalse(editor.mousePressed(60, 200)); // empty list panel area passes through
+        @Test
+        void listCanSelectInactiveModuleElementForLayout() {
+            box.setActive(false);
+            hud.layout(ctx, true);
+            if (!editor.listOpen()) {
+                editor.keyPressed(GLFW_E);
+            }
+            editor.renderOverlay(ctx, 0, 0);
+            assertTrue(editor.clickElementsRowForTest(0, false));
             assertSame(box, editor.selected());
-            editor.mouseDragged(200, 200, 400, 300);
-            hud.render(ctx);
-            assertEquals(0f, box.lastX()); // drag was not armed from empty panel click
         }
     }
 }

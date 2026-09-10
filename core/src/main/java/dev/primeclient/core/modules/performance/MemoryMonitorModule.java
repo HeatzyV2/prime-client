@@ -18,17 +18,17 @@ public final class MemoryMonitorModule extends Module {
     public MemoryMonitorModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("memory-monitor", "Memory Monitor", "Shows used and max memory", ModuleCategory.PERFORMANCE);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

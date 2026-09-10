@@ -26,19 +26,19 @@ public final class DateHudModule extends Module {
         super("date-hud", "Date HUD", "Shows today's real-world local date", ModuleCategory.SURVIVAL);
         this.element = hud.register(new SimpleLineHud(
                 "date-hud", "Date HUD", themes, HudAnchor.TOP_LEFT, 4, 68));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

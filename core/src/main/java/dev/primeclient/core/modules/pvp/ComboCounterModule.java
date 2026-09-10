@@ -23,17 +23,17 @@ public final class ComboCounterModule extends Module {
         listen(AttackEntityEvent.class, event -> combo++);
         listen(PlayerDamageEvent.class, event -> combo = 0);
         this.element = hud.register(new Element(themes, adapter, this::combo));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
         combo = 0;
     }
 

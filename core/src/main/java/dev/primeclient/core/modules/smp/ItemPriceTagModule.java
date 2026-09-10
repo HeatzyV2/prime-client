@@ -26,19 +26,19 @@ public final class ItemPriceTagModule extends Module {
         super("item-price-tag", "Item Price Tag", "Shows configured price for held item", ModuleCategory.QOL);
         this.adapter = adapter;
         this.element = hud.register(new Element(themes));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

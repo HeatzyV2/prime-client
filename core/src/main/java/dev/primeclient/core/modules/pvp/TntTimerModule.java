@@ -29,19 +29,19 @@ public final class TntTimerModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "tnt-timer", "TNT Timer", themes, HudAnchor.TOP_CENTER, 0, 36));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

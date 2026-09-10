@@ -21,19 +21,19 @@ public final class SpeedHudModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "speed-hud", "Speed HUD", themes, HudAnchor.TOP_LEFT, 4, 100));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

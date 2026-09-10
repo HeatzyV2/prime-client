@@ -1,5 +1,7 @@
 package dev.primeclient.core.notification;
 
+import dev.primeclient.core.design.PrimeDesign;
+
 import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.function.Consumer;
@@ -14,7 +16,7 @@ import java.util.function.Consumer;
 public final class NotificationManager {
 
     /** Oldest entries are evicted beyond this, screen space is finite. */
-    private static final int MAX_ACTIVE = 5;
+    private static final int MAX_ACTIVE = PrimeDesign.NOTIF_MAX_ACTIVE;
 
     private final ArrayDeque<Notification> active = new ArrayDeque<>(MAX_ACTIVE);
 

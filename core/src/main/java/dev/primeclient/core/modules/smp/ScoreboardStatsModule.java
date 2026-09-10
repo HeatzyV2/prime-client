@@ -33,19 +33,19 @@ public final class ScoreboardStatsModule extends Module {
         super("scoreboard-stats", "Scoreboard Stats", "Economy lines from the sidebar scoreboard", ModuleCategory.QOL);
         this.adapter = adapter;
         this.element = hud.register(new Element(themes));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

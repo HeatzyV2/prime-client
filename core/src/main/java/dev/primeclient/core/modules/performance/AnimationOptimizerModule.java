@@ -4,7 +4,12 @@ import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 
-/** Disables fancy graphics to reduce animation and effect overhead. */
+/**
+ * Disables fancy graphics to reduce animation and effect overhead.
+ *
+ * @deprecated Unregistered — superseded by {@link PerformanceProfilesModule}. Kept for reference.
+ */
+@Deprecated
 public final class AnimationOptimizerModule extends Module {
 
     private final MinecraftAdapter adapter;

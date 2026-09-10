@@ -14,16 +14,16 @@ public final class SoundRadarModule extends Module {
     public SoundRadarModule(HudManager hud, ThemeManager themes) {
         super("sound-radar", "Sound Radar", "Directional HUD radar for nearby footsteps and sounds", ModuleCategory.PVP);
         this.element = hud.register(new SoundRadarElement(themes));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 }

@@ -18,17 +18,17 @@ public final class BiomeCoordsModule extends Module {
     public BiomeCoordsModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("biome-coords", "Biome Coords", "Shows position and current biome", ModuleCategory.SURVIVAL);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

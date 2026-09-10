@@ -11,7 +11,7 @@ import dev.primeclient.core.notification.NotificationManager;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-/** Saves last N seconds of position snapshots on death. */
+/** Saves last N seconds of position snapshots on death (trail log — not playback). */
 public final class DeathReplayModule extends Module {
 
     private record Snapshot(double x, double y, double z, long millis) {
@@ -26,7 +26,7 @@ public final class DeathReplayModule extends Module {
     private int tickCounter;
 
     public DeathReplayModule(MinecraftAdapter adapter, NotificationManager notifications) {
-        super("death-replay", "Death Replay", "Review last death position trail", ModuleCategory.QOL);
+        super("death-replay", "Death Trail Log", "Logs last death position trail (not playback)", ModuleCategory.QOL);
         this.adapter = adapter;
         this.notifications = notifications;
         listen(ClientTickEvent.class, event -> record());
@@ -61,7 +61,7 @@ public final class DeathReplayModule extends Module {
                 ? String.format("from (%.0f,%.0f,%.0f) → (%.0f,%.0f,%.0f)",
                 first.x, first.y, first.z, last.x, last.y, last.z)
                 : String.format("at (%.0f, %.0f, %.0f)", event.x(), event.y(), event.z());
-        notifications.info("Death Replay", trail + " · " + buffer.size() + " snapshots");
+        notifications.info("Death Trail Log", trail + " · " + buffer.size() + " snapshots");
         buffer.clear();
     }
 }

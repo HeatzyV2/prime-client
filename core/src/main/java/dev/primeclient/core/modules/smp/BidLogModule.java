@@ -28,19 +28,19 @@ public final class BidLogModule extends Module {
         super("bid-log", "Bid Log", "Recent auction and bid chat lines", ModuleCategory.QOL);
         this.element = hud.register(new SmpChatLogHud(
                 "bid-log", "Bid Log", themes, HudAnchor.BOTTOM_LEFT, 4, -112, maxLines.get()));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ChatMessageEvent.class, this::onChat);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         element.sync(log, maxLines.get());
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void onChat(ChatMessageEvent event) {

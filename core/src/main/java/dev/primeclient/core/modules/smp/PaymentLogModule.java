@@ -28,19 +28,19 @@ public final class PaymentLogModule extends Module {
         super("payment-log", "Payment Log", "Recent payment chat history", ModuleCategory.QOL);
         this.element = hud.register(new SmpChatLogHud(
                 "payment-log", "Payment Log", themes, HudAnchor.BOTTOM_LEFT, 4, -128, 3));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ChatMessageEvent.class, this::onChat);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         element.sync(log, maxLines.get());
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void onChat(ChatMessageEvent event) {

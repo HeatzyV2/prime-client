@@ -16,18 +16,18 @@ public final class HitMarkerModule extends Module {
     public HitMarkerModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("hit-marker", "Hit Marker", "Renders a neon cross marker when hitting targets", ModuleCategory.PVP);
         this.element = hud.register(new HitMarkerElement(themes));
-        element.setVisible(false);
+        element.setActive(false);
         listen(AttackEntityEvent.class, event -> onAttack());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void onAttack() {

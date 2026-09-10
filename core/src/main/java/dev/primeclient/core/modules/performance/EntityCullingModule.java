@@ -4,7 +4,12 @@ import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 
-/** Reduces how far away entities are rendered. */
+/**
+ * Reduces how far away entities are rendered.
+ *
+ * @deprecated Unregistered — superseded by {@link PerformanceProfilesModule}. Kept for reference.
+ */
+@Deprecated
 public final class EntityCullingModule extends Module {
 
     private static final int CULLED_ENTITY_DISTANCE = 50;

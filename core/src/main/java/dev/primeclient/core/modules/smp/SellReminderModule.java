@@ -22,17 +22,17 @@ public final class SellReminderModule extends Module {
     public SellReminderModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("sell-reminder", "Sell Reminder", "Shows held item and your sell price note", ModuleCategory.QOL);
         this.element = hud.register(new Element(themes, adapter, sellPrice));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

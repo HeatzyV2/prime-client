@@ -32,19 +32,19 @@ public final class TradeLogModule extends Module {
     public TradeLogModule(HudManager hud, ThemeManager themes) {
         super("trade-log", "Trade Log", "Shows recent economy chat messages", ModuleCategory.QOL);
         this.element = hud.register(new Element(themes, maxLines));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ChatMessageEvent.class, this::onChat);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         element.sync(log, maxLines.get());
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void onChat(ChatMessageEvent event) {

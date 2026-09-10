@@ -42,19 +42,19 @@ public final class StructureLogModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "structure-log", "Structure Log", themes, HudAnchor.TOP_RIGHT, -4, 76));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> onTick());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
         saveKeyDown = false;
     }
 

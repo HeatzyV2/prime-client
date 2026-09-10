@@ -19,17 +19,17 @@ public final class FpsCounterModule extends Module {
     public FpsCounterModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("fps-counter", "FPS Counter", "Shows your framerate", ModuleCategory.PVP);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

@@ -36,18 +36,18 @@ public final class ShopWaypointModule extends Module {
         super("shop-waypoint", "Shop Waypoint", "Navigate to a saved shop location", ModuleCategory.SURVIVAL);
         this.adapter = adapter;
         this.element = hud.register(new Element(themes, adapter, shopName, x, y, z));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> onTick());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
         saveKeyDown = false;
     }
 

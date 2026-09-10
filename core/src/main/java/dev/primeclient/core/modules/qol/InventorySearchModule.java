@@ -22,17 +22,17 @@ public final class InventorySearchModule extends Module {
     public InventorySearchModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("inventory-search", "Inventory Search", "Highlights items matching your search term", ModuleCategory.QOL);
         this.element = hud.register(new Element(themes, adapter, term));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

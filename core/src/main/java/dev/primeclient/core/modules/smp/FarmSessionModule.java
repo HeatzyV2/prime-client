@@ -25,19 +25,19 @@ public final class FarmSessionModule extends Module {
         super("farm-session", "Farm Session", "Session time and manual profit tracker", ModuleCategory.QOL);
         this.adapter = adapter;
         this.element = hud.register(new Element(themes));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

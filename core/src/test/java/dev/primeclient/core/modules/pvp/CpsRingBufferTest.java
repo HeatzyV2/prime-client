@@ -100,9 +100,9 @@ class CpsRingBufferTest {
         FakeAdapter adapter = new FakeAdapter();
         CpsCounterModule module = new CpsCounterModule(hud, new ThemeManager(), adapter);
 
-        assertFalse(hud.get("cps").isVisible());
+        assertFalse(hud.get("cps").isShown());
         module.setEnabled(true);
-        assertTrue(hud.get("cps").isVisible());
+        assertTrue(hud.get("cps").isShown());
 
         // Simulate a few frames with click edges; must not throw and must draw.
         FakeRenderContext ctx = new FakeRenderContext(400, 240);
@@ -114,6 +114,6 @@ class CpsRingBufferTest {
         assertTrue(ctx.textCalls > 0);
 
         module.setEnabled(false);
-        assertFalse(hud.get("cps").isVisible());
+        assertFalse(hud.get("cps").isShown());
     }
 }

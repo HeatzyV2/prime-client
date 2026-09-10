@@ -28,7 +28,7 @@ public final class PrimeAccountModule extends Module {
         this.adapter = adapter;
         this.account = account;
         this.element = hud.register(new Element(themes, adapter, account, sessionTracker));
-        element.setVisible(false);
+        element.setActive(false);
 
         listen(WorldJoinEvent.class, event -> sessionTracker.onJoin());
         listen(WorldLeaveEvent.class, event -> sessionTracker.onLeave());
@@ -39,12 +39,12 @@ public final class PrimeAccountModule extends Module {
         if (!account.loggedIn() && adapter.hasPlayer()) {
             account.login(adapter.playerName());
         }
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

@@ -19,19 +19,19 @@ public final class XpLevelHudModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SmpLineHud(
                 "xp-level-hud", "XP Level HUD", themes, HudAnchor.TOP_RIGHT, -4, 100));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

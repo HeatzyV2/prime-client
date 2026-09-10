@@ -15,16 +15,16 @@ public final class CustomHealthHudModule extends Module {
     public CustomHealthHudModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("custom-health", "Custom Health Bar", "Smooth glass health bar HUD overlay", ModuleCategory.PVP);
         this.element = hud.register(new CustomHealthHudElement(adapter, themes));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 }

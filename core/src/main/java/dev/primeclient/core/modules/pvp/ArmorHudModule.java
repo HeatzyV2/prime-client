@@ -35,17 +35,17 @@ public final class ArmorHudModule extends Module {
         super("armor-hud", "Armor HUD", "Shows equipped armor durability", ModuleCategory.PVP);
         this.element = hud.register(new Element(
                 themes, adapter, showDurability, showGhosts, showWarnings, warningThreshold));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

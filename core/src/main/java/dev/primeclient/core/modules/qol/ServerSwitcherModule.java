@@ -24,18 +24,18 @@ public final class ServerSwitcherModule extends Module {
         super("server-switcher", "Server Switcher", "Quick-connect to a saved server", ModuleCategory.QOL);
         this.adapter = adapter;
         this.element = hud.register(new Element(themes, adapter, serverIndex));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         adapter.connectToServer(serverIndex.get());
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

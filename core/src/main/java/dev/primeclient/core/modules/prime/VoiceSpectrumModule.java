@@ -14,16 +14,16 @@ public final class VoiceSpectrumModule extends Module {
     public VoiceSpectrumModule(HudManager hud, ThemeManager themes) {
         super("voice-spectrum", "Voice Spectrum", "Reactive audio spectrum HUD for voice chat", ModuleCategory.PRIME);
         this.element = hud.register(new VoiceSpectrumElement(themes));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 }

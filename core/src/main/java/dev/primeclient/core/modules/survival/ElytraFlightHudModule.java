@@ -20,19 +20,19 @@ public final class ElytraFlightHudModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "elytra-flight-hud", "Elytra Flight", themes, HudAnchor.BOTTOM_LEFT, 4, -32));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

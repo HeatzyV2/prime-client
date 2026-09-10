@@ -57,18 +57,18 @@ public final class MinimapModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new Element(themes, adapter, size, zoom,
                 showPlayers, showMobs, rotateWithPlayer, showMark, this));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> onTick());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
         markHere.set(false);
     }
 

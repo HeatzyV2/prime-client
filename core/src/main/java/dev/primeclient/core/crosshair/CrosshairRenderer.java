@@ -35,7 +35,7 @@ public final class CrosshairRenderer {
                 int dynArm = arm + (int) (Math.sin(System.currentTimeMillis() / 200.0) * 2);
                 drawClassic(ctx, center, dynArm, thick, gap, color, config.outline);
             }
-            case CUSTOM, CLASSIC -> drawClassic(ctx, center, arm, thick, gap, color, config.outline);
+            case CLASSIC -> drawClassic(ctx, center, arm, thick, gap, color, config.outline);
         }
 
         if (config.rotation != 0f) {

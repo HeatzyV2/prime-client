@@ -19,21 +19,21 @@ import dev.primeclient.core.util.ColorUtil;
 
 import java.util.List;
 
-/** Lightweight replay recorder with trail, ghost marker and playback controls. */
+/** Local movement trail recorder with ghost marker — not a full Replay Mod. */
 public final class ReplayToolsModule extends Module {
 
     private final BooleanSetting autoRecord =
-            addSetting(new BooleanSetting("record", "Auto record", "Record while enabled", true));
+            addSetting(new BooleanSetting("record", "Auto record", "Record trail while enabled", true));
     private final BooleanSetting showTrail =
             addSetting(new BooleanSetting("trail", "Show trail", "Draw movement trail overlay", true));
     private final BooleanSetting showGhost =
-            addSetting(new BooleanSetting("ghost", "Ghost player", "Show playback ghost marker", true));
+            addSetting(new BooleanSetting("ghost", "Ghost marker", "Show local ghost marker on trail", true));
     private final StringSetting replayFile =
-            addSetting(new StringSetting("file", "Replay file", "Name for save/load", "latest"));
+            addSetting(new StringSetting("file", "Trail file", "Name for save/load", "latest"));
     private final BooleanSetting saveReplay =
-            addSetting(new BooleanSetting("save", "Save replay", "Write timeline to disk", false));
+            addSetting(new BooleanSetting("save", "Save trail", "Write trail to disk", false));
     private final BooleanSetting loadReplay =
-            addSetting(new BooleanSetting("load", "Load replay", "Load timeline from disk", false));
+            addSetting(new BooleanSetting("load", "Load trail", "Load trail from disk", false));
 
     private final MinecraftAdapter adapter;
     private final ReplaySession session;
@@ -42,18 +42,19 @@ public final class ReplayToolsModule extends Module {
 
     public ReplayToolsModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter,
                              ReplaySession session, ReplayStorage storage) {
-        super("replay-tools", "Replay Tools", "Record and replay movement", ModuleCategory.CREATOR);
+        super("replay-tools", "Movement Trail",
+                "Local movement trail + ghost marker (not full Replay Mod)", ModuleCategory.CREATOR);
         this.adapter = adapter;
         this.session = session;
         this.storage = storage;
         this.overlay = hud.register(new OverlayElement(themes, session, showTrail, showGhost));
-        overlay.setVisible(false);
+        overlay.setActive(false);
         listen(ClientTickEvent.class, event -> tick());
     }
 
     @Override
     protected void onEnable() {
-        overlay.setVisible(true);
+        overlay.setActive(true);
         if (autoRecord.get()) {
             session.startRecording();
         }
@@ -63,7 +64,7 @@ public final class ReplayToolsModule extends Module {
     protected void onDisable() {
         session.stopRecording();
         session.stopPlayback();
-        overlay.setVisible(false);
+        overlay.setActive(false);
     }
 
     public void togglePlayback() {
@@ -79,7 +80,7 @@ public final class ReplayToolsModule extends Module {
     }
 
     private void tick() {
-        overlay.setVisible(isEnabled());
+        overlay.setActive(isEnabled());
         if (saveReplay.get()) {
             storage.save(session, replayFile.get());
             saveReplay.set(false);
@@ -116,7 +117,7 @@ public final class ReplayToolsModule extends Module {
 
         OverlayElement(ThemeManager themes, ReplaySession session,
                        BooleanSetting showTrail, BooleanSetting showGhost) {
-            super("replay-overlay", "Replay Overlay", HudAnchor.BOTTOM_LEFT, 4, -4);
+            super("trail-overlay", "Trail Overlay", HudAnchor.BOTTOM_LEFT, 4, -4);
             this.themes = themes;
             this.session = session;
             this.showTrail = showTrail;
@@ -141,7 +142,9 @@ public final class ReplayToolsModule extends Module {
             ctx.fillRect(0, 0, w, h, theme.background());
             ctx.fillRect(0, 0, w, 1, theme.accent());
 
-            String status = session.recording() ? "REC" : session.playing() ? (session.paused() ? "PAUSED" : "PLAY") : "IDLE";
+            String status = session.recording() ? "REC"
+                    : session.playing() ? (session.paused() ? "PAUSED" : "PLAY")
+                    : "TRAIL";
             ctx.drawText(status + "  " + session.frames().size() + " pts  " + session.speed() + "x",
                     PADDING, PADDING, theme.foreground(), true);
 

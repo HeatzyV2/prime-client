@@ -66,6 +66,14 @@ final class Panel {
         return modules.size() == 1 && modules.get(0) == module;
     }
 
+    /** Expand a module's settings rows (used by the Browse inspector). */
+    void expandModule(Module module) {
+        if (module != null && modules.contains(module)) {
+            expanded = module;
+            collapsed = false;
+        }
+    }
+
     void tick(float deltaSeconds) {
         float target = collapsed ? 0f : 1f;
         collapseProgress = PrimeDesign.animate(collapseProgress, target, deltaSeconds, PrimeDesign.MOTION_NORMAL);

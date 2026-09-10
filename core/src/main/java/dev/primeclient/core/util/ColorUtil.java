@@ -94,12 +94,55 @@ public final class ColorUtil {
         return String.format("#%08X", argb);
     }
 
+    public static boolean isHex(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        String raw = text.trim();
+        if (raw.charAt(0) == '#') {
+            raw = raw.substring(1);
+        }
+        int len = raw.length();
+        if (len != 3 && len != 6 && len != 8) {
+            return false;
+        }
+        for (int i = 0; i < len; i++) {
+            char c = raw.charAt(i);
+            if (Character.digit(c, 16) < 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Parses {@code #RGB}, {@code #RRGGBB}, {@code #AARRGGBB} (optional {@code #}).
+     * Returns {@code fallback} when the text is not a valid hex color.
+     */
     public static int parseHex(String text, int fallback) {
-        if (text == null || text.length() != 9 || text.charAt(0) != '#') {
+        if (!isHex(text)) {
             return fallback;
         }
+        String raw = text.trim();
+        if (raw.charAt(0) == '#') {
+            raw = raw.substring(1);
+        }
+        raw = raw.toUpperCase();
         try {
-            return (int) Long.parseLong(text.substring(1), 16);
+            if (raw.length() == 3) {
+                int r = Character.digit(raw.charAt(0), 16);
+                int g = Character.digit(raw.charAt(1), 16);
+                int b = Character.digit(raw.charAt(2), 16);
+                r = r * 16 + r;
+                g = g * 16 + g;
+                b = b * 16 + b;
+                return 0xFF000000 | (r << 16) | (g << 8) | b;
+            }
+            if (raw.length() == 6) {
+                int rgb = Integer.parseInt(raw, 16);
+                return 0xFF000000 | rgb;
+            }
+            return (int) Long.parseLong(raw, 16);
         } catch (NumberFormatException e) {
             return fallback;
         }

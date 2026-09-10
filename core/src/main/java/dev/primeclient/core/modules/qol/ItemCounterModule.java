@@ -18,17 +18,17 @@ public final class ItemCounterModule extends Module {
     public ItemCounterModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("item-counter", "Item Counter", "Shows your held item count", ModuleCategory.QOL);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

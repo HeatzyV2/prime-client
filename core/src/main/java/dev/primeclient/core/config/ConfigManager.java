@@ -29,7 +29,7 @@ import java.util.Map;
 public final class ConfigManager {
 
     /** Bumped when the root profile JSON shape changes in a breaking way. */
-    public static final int SCHEMA_VERSION = 3;
+    public static final int SCHEMA_VERSION = 5;
 
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final Map<String, ConfigBinding> bindings = new LinkedHashMap<>();
@@ -83,8 +83,13 @@ public final class ConfigManager {
             PrimeClient.LOGGER.warn(
                     "Config {} schemaVersion {} is newer than supported {} — loading best-effort",
                     file, version, SCHEMA_VERSION);
+        } else if (version < SCHEMA_VERSION) {
+            try {
+                version = ConfigMigrator.migrate(root, version);
+            } catch (RuntimeException e) {
+                PrimeClient.LOGGER.error("Config migration failed for {} — loading best-effort", file, e);
+            }
         }
-        // Future migrations from version → SCHEMA_VERSION land here.
         for (ConfigBinding binding : bindings.values()) {
             JsonElement section = root.get(binding.configKey());
             if (section == null) {
@@ -98,7 +103,7 @@ public final class ConfigManager {
         }
     }
 
-    /** Exports all bindings into one JSON object (cloud backup / import). */
+    /** Exports all bindings into one JSON object (local backup / import). */
     public JsonObject exportAll() {
         JsonObject root = new JsonObject();
         root.addProperty("schemaVersion", SCHEMA_VERSION);
@@ -118,6 +123,14 @@ public final class ConfigManager {
             return;
         }
         JsonObject root = rootElement.getAsJsonObject();
+        int version = root.has("schemaVersion") ? root.get("schemaVersion").getAsInt() : 2;
+        if (version < SCHEMA_VERSION) {
+            try {
+                ConfigMigrator.migrate(root, version);
+            } catch (RuntimeException e) {
+                PrimeClient.LOGGER.error("Config import migration failed — loading best-effort", e);
+            }
+        }
         for (ConfigBinding binding : bindings.values()) {
             JsonElement section = root.get(binding.configKey());
             if (section == null) {

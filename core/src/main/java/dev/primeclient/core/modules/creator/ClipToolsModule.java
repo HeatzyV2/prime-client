@@ -17,8 +17,8 @@ import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.theme.ThemeManager;
 
 /**
- * Records in-game video clips to {@code config/primeclient/clips/*.mp4}.
- * Prime Launcher scans the same folder on the Media page.
+ * Records local in-game video clips to {@code config/primeclient/clips/*.mp4} on this PC.
+ * Not a cloud upload — Prime Launcher scans the same local folder on the Media page.
  */
 public final class ClipToolsModule extends Module {
 
@@ -40,11 +40,12 @@ public final class ClipToolsModule extends Module {
 
     public ClipToolsModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter,
                            ClipRecorder recorder, KeybindManager keybinds) {
-        super("clip-recorder", "Clip Recorder", "Export MP4 clips to config/primeclient/clips", ModuleCategory.CREATOR);
+        super("clip-recorder", "Clip Recorder",
+                "Local MP4 clips under config/primeclient/clips (this PC only)", ModuleCategory.CREATOR);
         this.recorder = recorder;
         this.adapter = adapter;
         this.overlay = hud.register(new OverlayElement(themes, recorder));
-        overlay.setVisible(false);
+        overlay.setActive(false);
 
         keybinds.register(new Keybind("clip-record", "Record Clip", "Creator", DEFAULT_RECORD_KEY)
                 .onPress(this::onRecordHotkey));
@@ -63,7 +64,7 @@ public final class ClipToolsModule extends Module {
     @Override
     protected void onEnable() {
         recorder.configure(fps.get(), maxDuration.get());
-        overlay.setVisible(true);
+        overlay.setActive(true);
         lastRecordToggle = recordToggle.get();
     }
 
@@ -72,7 +73,7 @@ public final class ClipToolsModule extends Module {
         if (recorder.isRecording()) {
             recorder.stop(adapter);
         }
-        overlay.setVisible(false);
+        overlay.setActive(false);
         recordToggle.set(false);
         lastRecordToggle = false;
     }

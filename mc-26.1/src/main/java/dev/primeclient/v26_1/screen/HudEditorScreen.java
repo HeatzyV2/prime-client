@@ -55,8 +55,7 @@ public final class HudEditorScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == 0 && PrimeClient.get().hudEditor().mousePressed(
-                event.x(), event.y(), isAltDown())) {
+        if (event.button() == 0 && PrimeClient.get().hudEditor().mousePressed(event.x(), event.y(), isAltDown(), hasShiftDown())) {
             return true;
         }
         return super.mouseClicked(event, doubleClick);
@@ -65,7 +64,7 @@ public final class HudEditorScreen extends Screen {
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
         if (event.button() == 0) {
-            PrimeClient.get().hudEditor().mouseDragged(event.x(), event.y(), width, height);
+            PrimeClient.get().hudEditor().mouseDragged(event.x(), event.y(), width, height, Minecraft.getInstance().hasShiftDown(), Minecraft.getInstance().hasAltDown());
             return true;
         }
         return super.mouseDragged(event, dragX, dragY);

@@ -3,7 +3,9 @@ package dev.primeclient.v1_21_8;
 import dev.primeclient.core.PrimeClient;
 import dev.primeclient.core.hook.PrimeHooks;
 import dev.primeclient.core.gui.menu.EmoteWheelRenderer;
+import dev.primeclient.core.gui.menu.RadialMenuRenderer;
 import dev.primeclient.core.state.EmoteState;
+import dev.primeclient.core.state.RadialMenuState;
 import dev.primeclient.v1_21_8.render.GuiRenderContext;
 import dev.primeclient.v1_21_8.network.MainNetworking;
 import dev.primeclient.v1_21_8.network.PresenceNetworking;
@@ -79,26 +81,38 @@ public final class PrimeClientEntrypoint implements ClientModInitializer {
                     if (client.loadingOverlay().visible()) {
                         client.loadingOverlay().render(renderContext, client.themes().active());
                     }
-                    if (EmoteState.wheelOpen()) {
+                    if (EmoteState.wheelOpen() || RadialMenuState.open()) {
                         var mc = net.minecraft.client.Minecraft.getInstance();
                         double mx = mc.mouseHandler.xpos()
                                 * mc.getWindow().getGuiScaledWidth() / Math.max(1, mc.getWindow().getScreenWidth());
                         double my = mc.mouseHandler.ypos()
                                 * mc.getWindow().getGuiScaledHeight() / Math.max(1, mc.getWindow().getScreenHeight());
-                        emoteWheel.render(renderContext, client.themes().active(),
-                                mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), mx, my);
+                        if (EmoteState.wheelOpen()) {
+                            emoteWheel.render(renderContext, client.themes().active(),
+                                    mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight(), mx, my);
+                        }
+                        if (RadialMenuState.open()) {
+                            RadialMenuRenderer.render(renderContext, client.themes().active(), mx, my);
+                        }
                     }
                 });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             boolean left = client.mouseHandler.isLeftPressed();
-            if (EmoteState.wheelOpen() && left && !wasLeftDown[0]) {
+            if (left && !wasLeftDown[0]) {
                 double mx = client.mouseHandler.xpos()
                         * client.getWindow().getGuiScaledWidth() / Math.max(1, client.getWindow().getScreenWidth());
                 double my = client.mouseHandler.ypos()
                         * client.getWindow().getGuiScaledHeight() / Math.max(1, client.getWindow().getScreenHeight());
-                emoteWheel.mousePressed(mx, my,
-                        client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
+                int sw = client.getWindow().getGuiScaledWidth();
+                int sh = client.getWindow().getGuiScaledHeight();
+                if (EmoteState.wheelOpen()) {
+                    emoteWheel.mousePressed(mx, my, sw, sh);
+                } else if (RadialMenuState.open()) {
+                    var pc = PrimeClient.get();
+                    RadialMenuRenderer.mousePressed(mx, my, sw, sh,
+                            pc.profiles(), pc.adapter(), pc.modules());
+                }
             }
             wasLeftDown[0] = left;
         });

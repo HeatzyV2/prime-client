@@ -20,19 +20,19 @@ public final class DayTimeModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "day-time", "Day Time", themes, HudAnchor.TOP_LEFT, 4, 4));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

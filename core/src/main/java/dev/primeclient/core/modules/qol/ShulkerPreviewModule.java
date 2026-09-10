@@ -18,17 +18,17 @@ public final class ShulkerPreviewModule extends Module {
     public ShulkerPreviewModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("shulker-preview", "Shulker Preview", "Shows shulker contents on hover", ModuleCategory.QOL);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

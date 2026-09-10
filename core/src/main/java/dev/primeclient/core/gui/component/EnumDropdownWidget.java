@@ -14,7 +14,7 @@ public final class EnumDropdownWidget {
     private int menuX;
     private int menuY;
     private int menuW;
-    private int rowH = 14;
+    private int rowH = PrimeDesign.DROPDOWN_ROW;
 
     public boolean isOpen() {
         return openSetting != null;

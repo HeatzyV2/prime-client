@@ -111,6 +111,75 @@ public final class ProfileManager {
         return activeProfile;
     }
 
+    /**
+     * Creates a new profile by writing the current in-memory config to {@code name}.
+     * Does not switch the active profile.
+     *
+     * @throws IllegalArgumentException if the name is invalid or already exists
+     */
+    public void create(String name) {
+        requireValidName(name);
+        Path file = profileFile(name);
+        if (Files.isRegularFile(file)) {
+            throw new IllegalArgumentException("Profile already exists: '" + name + "'");
+        }
+        configManager.saveTo(file);
+        PrimeClient.LOGGER.info("Created profile '{}'", name);
+    }
+
+    /**
+     * Copies {@code from} to a new profile {@code to}. Does not switch the active profile.
+     *
+     * @throws IllegalArgumentException if names are invalid, {@code from} is missing, or {@code to} exists
+     */
+    public void duplicate(String from, String to) {
+        requireValidName(from);
+        requireValidName(to);
+        if (from.equals(to)) {
+            throw new IllegalArgumentException("Cannot duplicate profile onto itself");
+        }
+        Path dest = profileFile(to);
+        if (Files.isRegularFile(dest)) {
+            throw new IllegalArgumentException("Profile already exists: '" + to + "'");
+        }
+        if (from.equals(activeProfile)) {
+            saveActive();
+        }
+        Path src = profileFile(from);
+        if (!Files.isRegularFile(src)) {
+            throw new IllegalArgumentException("Profile not found: '" + from + "'");
+        }
+        try {
+            Files.createDirectories(profilesDir);
+            Files.copy(src, dest);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to duplicate profile '" + from + "' → '" + to + "'", e);
+        }
+        PrimeClient.LOGGER.info("Duplicated profile '{}' → '{}'", from, to);
+    }
+
+    /**
+     * Deletes {@code name}. Refuses to delete {@link #DEFAULT_PROFILE}.
+     * If the active profile is deleted, switches to {@link #DEFAULT_PROFILE} first.
+     *
+     * @throws IllegalArgumentException if the name is invalid or is {@code default}
+     */
+    public void delete(String name) {
+        requireValidName(name);
+        if (DEFAULT_PROFILE.equals(name)) {
+            throw new IllegalArgumentException("Cannot delete the default profile");
+        }
+        if (name.equals(activeProfile)) {
+            switchTo(DEFAULT_PROFILE);
+        }
+        try {
+            Files.deleteIfExists(profileFile(name));
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to delete profile '" + name + "'", e);
+        }
+        PrimeClient.LOGGER.info("Deleted profile '{}'", name);
+    }
+
     /** Profiles present on disk. Scans the directory — not a hot path. */
     public List<String> listProfiles() {
         if (!Files.isDirectory(profilesDir)) {

@@ -19,17 +19,17 @@ public final class SpawnCompassModule extends Module {
     public SpawnCompassModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("spawn-compass", "Spawn Compass", "Direction and distance to world spawn", ModuleCategory.SURVIVAL);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

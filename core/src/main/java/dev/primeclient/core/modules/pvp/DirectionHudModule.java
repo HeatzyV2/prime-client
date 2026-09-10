@@ -18,17 +18,17 @@ public final class DirectionHudModule extends Module {
     public DirectionHudModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("direction-hud", "Direction HUD", "Shows which direction you are facing", ModuleCategory.PVP);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

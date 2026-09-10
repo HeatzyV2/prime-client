@@ -20,19 +20,19 @@ public final class KnockbackIndicatorModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "knockback-indicator", "Knockback Indicator", themes, HudAnchor.BOTTOM_CENTER, 0, -64));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

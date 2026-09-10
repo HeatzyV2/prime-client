@@ -35,18 +35,18 @@ public final class WaypointsModule extends Module {
         super("waypoints", "Waypoints", "Shows distance and direction to a saved waypoint", ModuleCategory.SURVIVAL);
         this.adapter = adapter;
         this.element = hud.register(new Element(themes, adapter, name, x, y, z));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> onTick());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
         saveKeyDown = false;
     }
 

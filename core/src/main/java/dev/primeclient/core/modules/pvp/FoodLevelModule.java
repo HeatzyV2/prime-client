@@ -24,19 +24,19 @@ public final class FoodLevelModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "food-level", "Food Level", themes, HudAnchor.TOP_LEFT, 4, 20));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

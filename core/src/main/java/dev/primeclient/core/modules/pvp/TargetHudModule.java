@@ -18,17 +18,17 @@ public final class TargetHudModule extends Module {
     public TargetHudModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("target-hud", "Target HUD", "Shows your current target's name and health", ModuleCategory.PVP);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

@@ -22,19 +22,19 @@ public final class MoneyGoalModule extends Module {
         super("money-goal", "Money Goal", "Progress bar toward a savings or buy goal", ModuleCategory.QOL);
         this.element = hud.register(new SmpLineHud(
                 "money-goal", "Money Goal", themes, HudAnchor.TOP_LEFT, 4, 124));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

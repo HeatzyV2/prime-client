@@ -6,7 +6,12 @@ import dev.primeclient.core.module.BooleanSetting;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 
-/** Periodically suggests garbage collection to free heap memory. */
+/**
+ * Periodically suggests garbage collection to free heap memory.
+ *
+ * @deprecated Unregistered — forced GC removed from product; prefer {@link MemoryMonitorModule}.
+ */
+@Deprecated
 public final class RamCleanerModule extends Module {
 
     private static final int GC_INTERVAL_TICKS = 600;

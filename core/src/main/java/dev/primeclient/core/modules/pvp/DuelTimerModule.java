@@ -33,21 +33,21 @@ public final class DuelTimerModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "duel-timer", "Duel Timer", themes, HudAnchor.TOP_CENTER, 0, 4));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> onTick());
         listen(ChatMessageEvent.class, this::onChat);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
         running = false;
-        element.setVisible(false);
+        element.setActive(false);
         keyDown = false;
     }
 

@@ -14,16 +14,16 @@ public final class CustomPotionGridModule extends Module {
     public CustomPotionGridModule(HudManager hud, ThemeManager themes) {
         super("custom-potion-grid", "Custom Potion Grid", "Glass potion status card with expiry pulse", ModuleCategory.PVP);
         this.element = hud.register(new CustomPotionGridElement(themes));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 }

@@ -9,6 +9,5 @@ public enum CrosshairStyle {
     DOT,
     DYNAMIC,
     CIRCLE,
-    T_SHAPE,
-    CUSTOM
+    T_SHAPE
 }

@@ -6,7 +6,7 @@ package dev.primeclient.core.hud.editor;
 public final class HudEditorHints {
 
     public static final String LINE_1 =
-            "List · drag · Alt+click cycle · Front/Back layers · L lock · H guides · Esc";
+            "Drag · corners resize · Alt+click stack · E elements · L lock · Esc";
     public static final String LINE_2 = "";
 
     private HudEditorHints() {
@@ -14,12 +14,10 @@ public final class HudEditorHints {
 
     public static String[] lines() {
         return new String[] {
-            "LMB drag · RMB props · Scroll scale",
-            "Arrows nudge · Shift ×4 · Alt+click cycle",
-            "G grid · H guides · S snap · L lock",
-            "E / toolbar Elements · Del remove",
-            "Ctrl+Z / Y undo · R reset",
-            "Esc close"
+            "LMB drag · corner handles resize · Alt+click cycle stack",
+            "Scroll scale · Shift+scroll rotate · Ctrl+scroll opacity",
+            "E elements popover · G grid · H guides · S snap · L lock",
+            "Front/Back · R tint · Ctrl+Z / Y undo · Esc close"
         };
     }
 }

@@ -95,6 +95,9 @@ public final class TextInputField {
             cursor = buffer.length();
             return true;
         }
+        if (glfwKey == 256 || glfwKey == 257) { // Escape / Enter — consumed by parent
+            return true;
+        }
         return false;
     }
 

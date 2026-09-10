@@ -23,20 +23,20 @@ public final class DeathCostModule extends Module {
         super("death-cost", "Death Cost", "Shows XP lost and death location reminder", ModuleCategory.SURVIVAL);
         this.adapter = adapter;
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> trackXp());
         listen(PlayerDeathEvent.class, event -> element.recordDeath(lastXpLevel, event.x(), event.y(), event.z()));
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         lastXpLevel = adapter.playerXpLevel();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void trackXp() {

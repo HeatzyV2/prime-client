@@ -19,18 +19,18 @@ public final class DeathWaypointModule extends Module {
     public DeathWaypointModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("death-waypoint", "Death Waypoint", "Shows distance to your last death", ModuleCategory.SURVIVAL);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
         listen(PlayerDeathEvent.class, event -> element.setDeath(event.x(), event.y(), event.z()));
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

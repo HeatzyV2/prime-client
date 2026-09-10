@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Config backup contract. v1 ships a local on-disk store under {@code cloud/};
- * swap the implementation for a remote API later without changing callers.
+ * Local config backup contract. v1 is an on-disk store under {@code cloud/} on this PC
+ * (folder name is historical — not a remote cloud service).
  */
 public interface CloudClient {
 

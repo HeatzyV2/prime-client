@@ -11,13 +11,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * HUD editor chrome: top toolbar, element list (left), properties panel (right)
- * and the hint bar. Geometry is computed each frame in {@link #render} and
- * reused for input hit-testing between frames.
+ * HUD Editor V3 chrome — canvas-first.
+ *
+ * <ul>
+ *   <li>Compact top toolbar</li>
+ *   <li>Elements popover (not a permanent left column)</li>
+ *   <li>Contextual inspector dock when something is selected</li>
+ *   <li>Discrete hint strip</li>
+ * </ul>
  */
 final class HudEditorUi {
 
-    private record Rect(int x, int y, int w, int h) {
+    record Rect(int x, int y, int w, int h) {
         static final Rect EMPTY = new Rect(0, 0, 0, 0);
 
         boolean contains(double px, double py) {
@@ -29,16 +34,16 @@ final class HudEditorUi {
         NONE, SCALE, OPACITY, ROTATION
     }
 
-    private static final int PANEL_TOP = 34;
-    private static final int LIST_WIDTH = 108;
-    private static final int BOTTOM_DOCK_HEIGHT = 74;
-    private static final int HINT_RESERVE = 14;
-    private static final int ROW_HEIGHT = 13;
-    private static final int SWATCH = 12;
+    private static final int TOOLBAR_Y = 6;
+    private static final int POPOVER_WIDTH = PrimeDesign.EDITOR_POPOVER_W;
+    private static final int POPOVER_MAX_H = PrimeDesign.EDITOR_POPOVER_MAX_H;
+    private static final int INSPECTOR_H = PrimeDesign.EDITOR_INSPECTOR_HEIGHT;
+    private static final int HINT_RESERVE = 12;
+    private static final int ROW_HEIGHT = 15;
+    private static final int SWATCH = 11;
 
     private final HudEditor editor;
 
-    // Toolbar
     private Rect toolbar = Rect.EMPTY;
     private Rect btnElements = Rect.EMPTY;
     private Rect btnGrid = Rect.EMPTY;
@@ -48,14 +53,13 @@ final class HudEditorUi {
     private Rect btnRedo = Rect.EMPTY;
     private Rect btnResetAll = Rect.EMPTY;
 
-    // Element list
+    /** Floating elements popover (V3 — replaces the full-height left rail). */
     private Rect listPanel = Rect.EMPTY;
     private Rect listView = Rect.EMPTY;
     private final List<HudElement> listElements = new ArrayList<>();
     private float listScroll;
     private int listContentHeight;
 
-    // Properties panel
     private Rect propsPanel = Rect.EMPTY;
     private Rect btnVisibility = Rect.EMPTY;
     private Rect btnLock = Rect.EMPTY;
@@ -70,6 +74,7 @@ final class HudEditorUi {
     private Rect btnReset = Rect.EMPTY;
 
     private Rect hintBar = Rect.EMPTY;
+    private Rect stackBadge = Rect.EMPTY;
 
     private Slider activeSlider = Slider.NONE;
 
@@ -79,29 +84,22 @@ final class HudEditorUi {
 
     boolean isOverUi(double mouseX, double mouseY) {
         return toolbar.contains(mouseX, mouseY)
-                || (editor.listOpen() && listRowIndexAt(mouseX, mouseY) >= 0)
-                || propsInteractiveHit(mouseX, mouseY);
+                || (editor.listOpen() && listPanel.contains(mouseX, mouseY))
+                || (editor.selected() != null && propsPanel.contains(mouseX, mouseY))
+                || hintBar.contains(mouseX, mouseY)
+                || stackBadge.contains(mouseX, mouseY);
     }
 
-    /** Bottom dock + toolbar only; side panels never block canvas drags. */
     boolean blocksCanvasDrag(double mouseX, double mouseY) {
-        return toolbar.contains(mouseX, mouseY)
-                || (editor.listOpen() && listRowIndexAt(mouseX, mouseY) >= 0)
-                || propsInteractiveHit(mouseX, mouseY);
+        return isOverUi(mouseX, mouseY);
     }
 
-    int bottomDockTop(int screenHeight) {
-        return screenHeight - HINT_RESERVE - BOTTOM_DOCK_HEIGHT - 4;
-    }
-
-    /** Empty glass chrome on the side panels — clicks pass through without deselecting. */
     boolean isPanelBackdrop(double mouseX, double mouseY) {
-        if (editor.listOpen() && listPanel.contains(mouseX, mouseY) && listRowIndexAt(mouseX, mouseY) < 0) {
-            return true;
-        }
-        return editor.selected() != null
-                && propsPanel.contains(mouseX, mouseY)
-                && !propsInteractiveHit(mouseX, mouseY);
+        return false;
+    }
+
+    int inspectorTop(int screenHeight) {
+        return screenHeight - HINT_RESERVE - INSPECTOR_H - 6;
     }
 
     HudElement hoveredListElement(double mouseX, double mouseY) {
@@ -109,11 +107,50 @@ final class HudEditorUi {
         return index >= 0 ? listElements.get(index) : null;
     }
 
+    /** Test helper: simulate a row / eye click in the open elements popover. */
+    boolean clickListRowForTest(int index, boolean eye) {
+        if (!editor.listOpen() || index < 0 || index >= listElements.size() || listView.w() <= 0) {
+            return false;
+        }
+        double y = listView.y() + index * ROW_HEIGHT + ROW_HEIGHT / 2.0 - listScroll;
+        double x = eye ? listView.x() + listView.w() - 6 : listView.x() + 8;
+        return mousePressed(x, y);
+    }
+
+    /** Test helper: click a toolbar label by matching drawn button order. */
+    boolean clickToolbarButtonForTest(int index) {
+        Rect[] buttons = {btnElements, btnGrid, btnGuides, btnSnap, btnUndo, btnRedo, btnResetAll};
+        if (index < 0 || index >= buttons.length || buttons[index].w() <= 0) {
+            return false;
+        }
+        Rect r = buttons[index];
+        return mousePressed(r.x() + r.w() / 2.0, r.y() + r.h() / 2.0);
+    }
+
+    boolean scrollListForTest(double delta) {
+        if (!editor.listOpen() || listView.w() <= 0) {
+            return false;
+        }
+        return mouseScrolled(listView.x() + listView.w() / 2.0, listView.y() + listView.h() / 2.0, delta);
+    }
+
+    boolean clickVisibilityForTest() {
+        if (btnVisibility.w() <= 0) {
+            return false;
+        }
+        return mousePressed(btnVisibility.x() + btnVisibility.w() / 2.0,
+                btnVisibility.y() + btnVisibility.h() / 2.0);
+    }
+
     // ------------------------------------------------------------------
     // Input
     // ------------------------------------------------------------------
 
     boolean mousePressed(double mouseX, double mouseY) {
+        if (stackBadge.contains(mouseX, mouseY)) {
+            editor.cycleStackUnderCursor();
+            return true;
+        }
         if (toolbar.contains(mouseX, mouseY)) {
             if (btnElements.contains(mouseX, mouseY)) {
                 editor.toggleList();
@@ -140,47 +177,56 @@ final class HudEditorUi {
                     editor.toggleVisibility(element);
                 } else {
                     editor.select(element);
+                    editor.closeList();
                 }
-                return true;
-            }
-            return false;
-        }
-        if (editor.selected() != null && propsInteractiveHit(mouseX, mouseY)) {
-            HudElement selected = editor.selected();
-            if (btnVisibility.contains(mouseX, mouseY)) {
-                editor.toggleVisibility(selected);
-            } else if (btnLock.contains(mouseX, mouseY)) {
-                editor.toggleLockSelected();
-            } else if (trackHit(trackScale, mouseX, mouseY)) {
-                activeSlider = Slider.SCALE;
-                editor.beginGesture();
-                applySlider(mouseX);
-            } else if (trackHit(trackOpacity, mouseX, mouseY)) {
-                activeSlider = Slider.OPACITY;
-                editor.beginGesture();
-                applySlider(mouseX);
-            } else if (trackHit(trackRotation, mouseX, mouseY)) {
-                activeSlider = Slider.ROTATION;
-                editor.beginGesture();
-                applySlider(mouseX);
-            } else if (swatchRow.contains(mouseX, mouseY)) {
-                int index = (int) ((mouseX - swatchRow.x()) / (SWATCH + 3));
-                if (index >= 0 && index < HudEditor.TINT_PRESETS.length
-                        && mouseX - swatchRow.x() - index * (SWATCH + 3) < SWATCH) {
-                    editor.setSelectedTint(HudEditor.TINT_PRESETS[index]);
-                }
-            } else if (btnCenterX.contains(mouseX, mouseY)) {
-                editor.centerSelectedX();
-            } else if (btnCenterY.contains(mouseX, mouseY)) {
-                editor.centerSelectedY();
-            } else if (btnFront.contains(mouseX, mouseY)) {
-                editor.bringSelectedToFront();
-            } else if (btnBack.contains(mouseX, mouseY)) {
-                editor.sendSelectedToBack();
-            } else if (btnReset.contains(mouseX, mouseY)) {
-                editor.resetSelected();
             }
             return true;
+        }
+        if (editor.selected() != null && propsPanel.contains(mouseX, mouseY)) {
+            if (propsInteractiveHit(mouseX, mouseY)) {
+                HudElement selected = editor.selected();
+                if (btnVisibility.contains(mouseX, mouseY)) {
+                    editor.toggleVisibility(selected);
+                } else if (btnLock.contains(mouseX, mouseY)) {
+                    editor.toggleLockSelected();
+                } else if (trackHit(trackScale, mouseX, mouseY)) {
+                    activeSlider = Slider.SCALE;
+                    editor.beginGesture();
+                    applySlider(mouseX);
+                } else if (trackHit(trackOpacity, mouseX, mouseY)) {
+                    activeSlider = Slider.OPACITY;
+                    editor.beginGesture();
+                    applySlider(mouseX);
+                } else if (trackHit(trackRotation, mouseX, mouseY)) {
+                    activeSlider = Slider.ROTATION;
+                    editor.beginGesture();
+                    applySlider(mouseX);
+                } else if (swatchRow.contains(mouseX, mouseY)) {
+                    int index = (int) ((mouseX - swatchRow.x()) / (SWATCH + 3));
+                    if (index >= 0 && index < HudEditor.TINT_PRESETS.length
+                            && mouseX - swatchRow.x() - index * (SWATCH + 3) < SWATCH) {
+                        editor.setSelectedTint(HudEditor.TINT_PRESETS[index]);
+                    }
+                } else if (btnCenterX.contains(mouseX, mouseY)) {
+                    editor.centerSelectedX();
+                } else if (btnCenterY.contains(mouseX, mouseY)) {
+                    editor.centerSelectedY();
+                } else if (btnFront.contains(mouseX, mouseY)) {
+                    editor.bringSelectedToFront();
+                } else if (btnBack.contains(mouseX, mouseY)) {
+                    editor.sendSelectedToBack();
+                } else if (btnReset.contains(mouseX, mouseY)) {
+                    editor.resetSelected();
+                }
+            }
+            return true;
+        }
+        if (hintBar.contains(mouseX, mouseY)) {
+            return true;
+        }
+        // Click outside closes the elements popover.
+        if (editor.listOpen()) {
+            editor.closeList();
         }
         return false;
     }
@@ -202,7 +248,6 @@ final class HudEditorUi {
                 || btnReset.contains(mouseX, mouseY);
     }
 
-    /** Widens a 4px slider track to a comfortable click target. */
     private static boolean trackHit(Rect track, double mouseX, double mouseY) {
         return track.w() > 0
                 && mouseX >= track.x() - 2 && mouseX < track.x() + track.w() + 2
@@ -229,7 +274,7 @@ final class HudEditorUi {
                 return true;
             }
         }
-        return toolbar.contains(mouseX, mouseY) || propsInteractiveHit(mouseX, mouseY);
+        return isOverUi(mouseX, mouseY);
     }
 
     private void applySlider(double mouseX) {
@@ -260,7 +305,6 @@ final class HudEditorUi {
         }
     }
 
-    /** Rotation slider sticks to the useful angles. */
     private static float snapRotation(float degrees) {
         for (int snap = -180; snap <= 180; snap += 45) {
             if (Math.abs(degrees - snap) <= 3f) {
@@ -282,10 +326,6 @@ final class HudEditorUi {
     }
 
     int listRowIndexAt(double mouseX, double mouseY) {
-        return listRowIndexAtInternal(mouseX, mouseY);
-    }
-
-    private int listRowIndexAtInternal(double mouseX, double mouseY) {
         if (!listView.contains(mouseX, mouseY)) {
             return -1;
         }
@@ -299,32 +339,33 @@ final class HudEditorUi {
 
     void render(RenderContext ctx, Theme theme, double mouseX, double mouseY) {
         renderToolbar(ctx, theme, mouseX, mouseY);
-        renderElementList(ctx, theme, mouseX, mouseY);
-        renderProperties(ctx, theme, mouseX, mouseY);
+        renderElementPopover(ctx, theme, mouseX, mouseY);
+        renderInspector(ctx, theme, mouseX, mouseY);
+        renderStackBadge(ctx, theme, mouseX, mouseY);
         renderHints(ctx, theme);
     }
 
     private void renderToolbar(RenderContext ctx, Theme theme, double mouseX, double mouseY) {
-        String title = "HUD Editor";
-        String[] labels = {"Elements", "Grid", "Guides", "Snap", "Undo", "Redo", "Reset All"};
-        int pad = 6;
-        int gap = 4;
-        int buttonH = 16;
+        String title = "HUD";
+        String[] labels = {"Elements", "Grid", "Guides", "Snap", "Undo", "Redo", "Reset"};
+        int pad = 5;
+        int gap = 3;
+        int buttonH = 15;
         int titleW = ctx.uiTextWidth(title);
-        int total = titleW + 10;
+        int total = titleW + 8;
         int[] widths = new int[labels.length];
         for (int i = 0; i < labels.length; i++) {
             widths[i] = ctx.uiTextWidth(labels[i]) + pad * 2;
             total += widths[i] + gap;
         }
         int x = Math.max(4, (ctx.screenWidth() - total - pad * 2) / 2);
-        int y = 6;
-        toolbar = new Rect(x, y, total + pad * 2, buttonH + 8);
+        int y = TOOLBAR_Y;
+        toolbar = new Rect(x, y, total + pad * 2, buttonH + 6);
         UiChrome.editorPanel(ctx, theme, toolbar.x(), toolbar.y(), toolbar.w(), toolbar.h());
-        int textY = y + 4 + (buttonH - ctx.uiFontHeight()) / 2;
+        int textY = y + 3 + (buttonH - ctx.uiFontHeight()) / 2;
         int cursor = x + pad;
         ctx.drawUiText(title, cursor, textY, theme.accent());
-        cursor += titleW + 10;
+        cursor += titleW + 8;
         Rect[] rects = new Rect[labels.length];
         boolean[] active = {
                 editor.listOpen(), editor.gridShown(), editor.guidesOn(), editor.snapOn(),
@@ -332,9 +373,9 @@ final class HudEditorUi {
         };
         boolean[] enabled = {true, true, true, true, editor.canUndo(), editor.canRedo(), true};
         for (int i = 0; i < labels.length; i++) {
-            rects[i] = new Rect(cursor, y + 4, widths[i], buttonH);
+            rects[i] = new Rect(cursor, y + 3, widths[i], buttonH);
             boolean hover = enabled[i] && rects[i].contains(mouseX, mouseY);
-            UiChrome.button(ctx, theme, cursor, y + 4, widths[i], buttonH, hover, active[i]);
+            UiChrome.button(ctx, theme, cursor, y + 3, widths[i], buttonH, hover, active[i]);
             int color = !enabled[i] ? ColorUtil.withAlpha(theme.foregroundMuted(), 0.5f)
                     : active[i] ? 0xFFFFFFFF : theme.foreground();
             ctx.drawUiText(labels[i], cursor + pad, textY, color);
@@ -349,7 +390,7 @@ final class HudEditorUi {
         btnResetAll = rects[6];
     }
 
-    private void renderElementList(RenderContext ctx, Theme theme, double mouseX, double mouseY) {
+    private void renderElementPopover(RenderContext ctx, Theme theme, double mouseX, double mouseY) {
         if (!editor.listOpen()) {
             listPanel = Rect.EMPTY;
             listView = Rect.EMPTY;
@@ -358,16 +399,21 @@ final class HudEditorUi {
         }
         listElements.clear();
         listElements.addAll(editor.hud().all());
-        int x = 6;
-        int dockTop = editor.selected() != null
-                ? bottomDockTop(ctx.screenHeight())
-                : ctx.screenHeight() - HINT_RESERVE - 4;
-        int h = Math.max(40, dockTop - PANEL_TOP - 4);
-        listPanel = new Rect(x, PANEL_TOP, LIST_WIDTH, h);
-        UiChrome.editorPanel(ctx, theme, x, PANEL_TOP, LIST_WIDTH, h);
-        ctx.drawUiText("Elements", x + 8, PANEL_TOP + 6, theme.foregroundMuted());
-        int viewY = PANEL_TOP + 6 + ctx.uiFontHeight() + 4;
-        listView = new Rect(x + 4, viewY, LIST_WIDTH - 8, PANEL_TOP + h - viewY - 6);
+        int x = Math.max(6, btnElements.x());
+        int y = toolbar.y() + toolbar.h() + 4;
+        int contentH = Math.min(POPOVER_MAX_H, 28 + listElements.size() * ROW_HEIGHT);
+        int h = Math.max(48, contentH);
+        if (y + h > inspectorTop(ctx.screenHeight()) - 4) {
+            h = Math.max(48, inspectorTop(ctx.screenHeight()) - y - 4);
+        }
+        if (x + POPOVER_WIDTH > ctx.screenWidth() - 6) {
+            x = ctx.screenWidth() - POPOVER_WIDTH - 6;
+        }
+        listPanel = new Rect(x, y, POPOVER_WIDTH, h);
+        UiChrome.editorPanel(ctx, theme, x, y, POPOVER_WIDTH, h);
+        ctx.drawUiText("Elements", x + 8, y + 5, theme.foregroundMuted());
+        int viewY = y + 5 + ctx.uiFontHeight() + 4;
+        listView = new Rect(x + 4, viewY, POPOVER_WIDTH - 8, y + h - viewY - 5);
         listContentHeight = listElements.size() * ROW_HEIGHT;
         int maxScroll = Math.max(0, listContentHeight - listView.h());
         listScroll = HudEditor.clampSafe(listScroll, 0, maxScroll);
@@ -382,28 +428,29 @@ final class HudEditorUi {
                 if (isSelected || hover) {
                     ctx.fillRoundedRect(listView.x(), rowY, listView.w(), ROW_HEIGHT - 1, PrimeDesign.RADIUS_SM,
                             ColorUtil.withAlpha(isSelected ? theme.accent() : theme.surfaceElevated(),
-                                    isSelected ? 0.30f : 0.55f));
+                                    isSelected ? 0.28f : 0.5f));
                 }
-                int nameColor = element.isVisible() ? theme.foreground()
-                        : ColorUtil.withAlpha(theme.foregroundMuted(), 0.7f);
+                int nameColor;
+                if (!element.isActive()) {
+                    nameColor = ColorUtil.withAlpha(theme.warning(), 0.85f);
+                } else if (element.isVisible()) {
+                    nameColor = theme.foreground();
+                } else {
+                    nameColor = ColorUtil.withAlpha(theme.foregroundMuted(), 0.7f);
+                }
                 ctx.drawUiText(truncate(ctx, element.name(), listView.w() - 20),
                         listView.x() + 3, rowY + (ROW_HEIGHT - ctx.uiFontHeight()) / 2, nameColor);
-                int dot = element.isVisible() ? theme.success() : ColorUtil.withAlpha(theme.error(), 0.8f);
+                int dot = !element.isActive()
+                        ? ColorUtil.withAlpha(theme.warning(), 0.9f)
+                        : element.isVisible() ? theme.success() : ColorUtil.withAlpha(theme.error(), 0.8f);
                 ctx.fillRoundedRect(listView.x() + listView.w() - 9, rowY + (ROW_HEIGHT - 5) / 2, 5, 5, 2, dot);
             }
             rowY += ROW_HEIGHT;
         }
         ctx.popClip();
-
-        if (maxScroll > 0) {
-            int barH = Math.max(8, listView.h() * listView.h() / listContentHeight);
-            int barY = listView.y() + Math.round((listView.h() - barH) * (listScroll / maxScroll));
-            ctx.fillRoundedRect(x + LIST_WIDTH - 4, barY, 2, barH, 1,
-                    ColorUtil.withAlpha(theme.accent(), 0.6f));
-        }
     }
 
-    private void renderProperties(RenderContext ctx, Theme theme, double mouseX, double mouseY) {
+    private void renderInspector(RenderContext ctx, Theme theme, double mouseX, double mouseY) {
         HudElement selected = editor.selected();
         if (selected == null) {
             propsPanel = Rect.EMPTY;
@@ -421,48 +468,51 @@ final class HudEditorUi {
             return;
         }
         int pad = 6;
-        int fontH = ctx.uiFontHeight();
-        int x = editor.listOpen() ? LIST_WIDTH + 12 : 6;
-        int w = ctx.screenWidth() - x - 6;
-        int y = bottomDockTop(ctx.screenHeight());
-        int h = BOTTOM_DOCK_HEIGHT;
+        int w = Math.min(440, ctx.screenWidth() - 16);
+        int x = (ctx.screenWidth() - w) / 2;
+        int y = inspectorTop(ctx.screenHeight());
+        int h = INSPECTOR_H;
         propsPanel = new Rect(x, y, w, h);
         UiChrome.editorPanel(ctx, theme, x, y, w, h);
 
         int row1Y = y + 5;
-        int nameW = Math.min(ctx.uiTextWidth(selected.name()) + 4, 72);
-        ctx.drawUiText(truncate(ctx, selected.name(), 68), x + pad, row1Y, theme.foreground());
+        String title = selected.name();
+        if (!selected.isActive()) {
+            title = title + " · off";
+        }
+        int nameW = Math.min(ctx.uiTextWidth(title) + 4, 96);
+        ctx.drawUiText(truncate(ctx, title, 92), x + pad, row1Y, theme.foreground());
 
         boolean visible = selected.isVisible();
-        btnVisibility = new Rect(x + pad + nameW + 4, row1Y - 1, 52, 14);
-        UiChrome.button(ctx, theme, btnVisibility.x(), btnVisibility.y(), btnVisibility.w(), 14,
+        btnVisibility = new Rect(x + pad + nameW + 4, row1Y - 1, 44, 13);
+        UiChrome.button(ctx, theme, btnVisibility.x(), btnVisibility.y(), btnVisibility.w(), 13,
                 btnVisibility.contains(mouseX, mouseY), visible);
         String visLabel = visible ? "Hide" : "Show";
         ctx.drawUiText(visLabel, btnVisibility.x() + (btnVisibility.w() - ctx.uiTextWidth(visLabel)) / 2,
                 row1Y, visible ? 0xFFFFFFFF : theme.foregroundMuted());
 
         boolean locked = selected.isLocked();
-        btnLock = new Rect(btnVisibility.x() + btnVisibility.w() + 4, row1Y - 1, 52, 14);
-        UiChrome.button(ctx, theme, btnLock.x(), btnLock.y(), btnLock.w(), 14,
+        btnLock = new Rect(btnVisibility.x() + btnVisibility.w() + 3, row1Y - 1, 44, 13);
+        UiChrome.button(ctx, theme, btnLock.x(), btnLock.y(), btnLock.w(), 13,
                 btnLock.contains(mouseX, mouseY), locked);
         String lockLabel = locked ? "Unlock" : "Lock";
         ctx.drawUiText(lockLabel, btnLock.x() + (btnLock.w() - ctx.uiTextWidth(lockLabel)) / 2,
                 row1Y, locked ? 0xFFFFFFFF : theme.foregroundMuted());
 
-        int sliderX = btnLock.x() + btnLock.w() + 8;
-        int sliderW = Math.max(60, (x + w - pad - sliderX - 8) / 3);
+        int sliderX = btnLock.x() + btnLock.w() + 6;
+        int sliderW = Math.max(54, (x + w - pad - sliderX - 6) / 3);
         trackScale = renderSlider(ctx, theme, sliderX, row1Y, sliderW, "Scale",
                 String.format("%.1fx", selected.scale()),
                 (selected.scale() - HudElement.MIN_SCALE) / (HudElement.MAX_SCALE - HudElement.MIN_SCALE));
-        trackOpacity = renderSlider(ctx, theme, sliderX + sliderW + 6, row1Y, sliderW, "Opacity",
+        trackOpacity = renderSlider(ctx, theme, sliderX + sliderW + 5, row1Y, sliderW, "Opacity",
                 String.format("%.0f%%", selected.opacity() * 100f),
                 (selected.opacity() - HudElement.MIN_OPACITY) / (HudElement.MAX_OPACITY - HudElement.MIN_OPACITY));
         float rotation = normalizedRotation(selected);
-        trackRotation = renderSlider(ctx, theme, sliderX + (sliderW + 6) * 2, row1Y, sliderW, "Rot",
+        trackRotation = renderSlider(ctx, theme, sliderX + (sliderW + 5) * 2, row1Y, sliderW, "Rot",
                 String.format("%.0f°", rotation),
                 (rotation + 180f) / 360f);
 
-        int row2Y = y + h - SWATCH - 8;
+        int row2Y = y + h - SWATCH - 7;
         swatchRow = new Rect(x + pad, row2Y, HudEditor.TINT_PRESETS.length * (SWATCH + 2), SWATCH);
         for (int i = 0; i < HudEditor.TINT_PRESETS.length; i++) {
             int tint = HudEditor.TINT_PRESETS[i];
@@ -477,23 +527,35 @@ final class HudEditorUi {
             }
         }
 
-        int btnW = 48;
+        int btnW = 42;
         int btnY = row2Y - 1;
-        btnFront = new Rect(x + w - pad - btnW * 5 - 16, btnY, btnW, 14);
-        btnBack = new Rect(x + w - pad - btnW * 4 - 12, btnY, btnW, 14);
-        btnCenterX = new Rect(x + w - pad - btnW * 3 - 8, btnY, btnW, 14);
-        btnCenterY = new Rect(x + w - pad - btnW * 2 - 4, btnY, btnW, 14);
-        btnReset = new Rect(x + w - pad - btnW, btnY, btnW, 14);
+        btnFront = new Rect(x + w - pad - btnW * 5 - 12, btnY, btnW, 13);
+        btnBack = new Rect(x + w - pad - btnW * 4 - 9, btnY, btnW, 13);
+        btnCenterX = new Rect(x + w - pad - btnW * 3 - 6, btnY, btnW, 13);
+        btnCenterY = new Rect(x + w - pad - btnW * 2 - 3, btnY, btnW, 13);
+        btnReset = new Rect(x + w - pad - btnW, btnY, btnW, 13);
         drawSmallButton(ctx, theme, btnFront, "Front", mouseX, mouseY, theme.foreground());
         drawSmallButton(ctx, theme, btnBack, "Back", mouseX, mouseY, theme.foreground());
-        drawSmallButton(ctx, theme, btnCenterX, "Center X", mouseX, mouseY, theme.foreground());
-        drawSmallButton(ctx, theme, btnCenterY, "Center Y", mouseX, mouseY, theme.foreground());
+        drawSmallButton(ctx, theme, btnCenterX, "Ctr X", mouseX, mouseY, theme.foreground());
+        drawSmallButton(ctx, theme, btnCenterY, "Ctr Y", mouseX, mouseY, theme.foreground());
         drawSmallButton(ctx, theme, btnReset, "Reset", mouseX, mouseY, theme.warning());
+    }
 
-        String info = selected.anchor().name() + "  "
-                + Math.round(selected.offsetX()) + ", " + Math.round(selected.offsetY());
-        ctx.drawUiText(truncate(ctx, info, 120), swatchRow.x() + swatchRow.w() + 8, row2Y + 1,
-                ColorUtil.withAlpha(theme.foregroundMuted(), 0.85f));
+    private void renderStackBadge(RenderContext ctx, Theme theme, double mouseX, double mouseY) {
+        int count = editor.stackCountUnderCursor(mouseX, mouseY);
+        if (count < 2 || isOverUi(mouseX, mouseY)) {
+            stackBadge = Rect.EMPTY;
+            return;
+        }
+        String label = count + " · Alt";
+        int w = ctx.uiTextWidth(label) + 10;
+        int h = ctx.uiFontHeight() + 4;
+        int x = (int) Math.min(mouseX + 12, ctx.screenWidth() - w - 4);
+        int y = (int) Math.min(mouseY + 14, ctx.screenHeight() - h - HINT_RESERVE - 8);
+        stackBadge = new Rect(x, y, w, h);
+        ctx.fillRoundedRect(x, y, w, h, PrimeDesign.RADIUS_SM,
+                ColorUtil.withAlpha(theme.surfaceElevated(), 0.92f));
+        ctx.drawUiText(label, x + 5, y + 2, theme.accent());
     }
 
     private void drawSmallButton(RenderContext ctx, Theme theme, Rect rect, String label,
@@ -508,28 +570,28 @@ final class HudEditorUi {
                               String label, String value, float t) {
         ctx.drawUiText(label, x, y, theme.foregroundMuted());
         ctx.drawUiText(value, x + w - ctx.uiTextWidth(value), y, theme.foreground());
-        int trackY = y + ctx.uiFontHeight() + 3;
-        Rect track = new Rect(x, trackY, w, 4);
-        ctx.fillRoundedRect(x, trackY, w, 4, 2, ColorUtil.withAlpha(theme.backgroundLight(), 0.9f));
+        int trackY = y + ctx.uiFontHeight() + 2;
+        Rect track = new Rect(x, trackY, w, 3);
+        ctx.fillRoundedRect(x, trackY, w, 3, 1, ColorUtil.withAlpha(theme.backgroundLight(), 0.9f));
         int fill = Math.round(HudEditor.clampSafe(t, 0f, 1f) * w);
         if (fill > 0) {
-            ctx.fillRoundedRect(x, trackY, fill, 4, 2, theme.accent());
+            ctx.fillRoundedRect(x, trackY, fill, 3, 1, theme.accent());
         }
         int knobX = x + Math.round(HudEditor.clampSafe(t, 0f, 1f) * (w - 4));
-        ctx.fillRoundedRect(knobX, trackY - 2, 4, 8, 2, 0xFFFFFFFF);
+        ctx.fillRoundedRect(knobX, trackY - 2, 4, 7, 2, 0xFFFFFFFF);
         return track;
     }
 
     private void renderHints(RenderContext ctx, Theme theme) {
         int fontH = ctx.uiFontHeight();
         String line = HudEditorHints.LINE_1;
-        int w = Math.min(ctx.screenWidth() - 24, ctx.uiTextWidth(line) + 20);
+        int w = Math.min(ctx.screenWidth() - 24, ctx.uiTextWidth(line) + 16);
         int x = (ctx.screenWidth() - w) / 2;
-        int y = ctx.screenHeight() - fontH - 6;
-        hintBar = new Rect(x, y - 3, w, fontH + 8);
+        int y = ctx.screenHeight() - fontH - 4;
+        hintBar = new Rect(x, y - 2, w, fontH + 6);
         ctx.fillRoundedRect(hintBar.x(), hintBar.y(), hintBar.w(), hintBar.h(),
-                PrimeDesign.RADIUS_SM, ColorUtil.withAlpha(theme.surfaceElevated(), 0.55f));
-        ctx.drawUiText(line, x + 10, y, ColorUtil.withAlpha(theme.foregroundMuted(), 0.9f));
+                PrimeDesign.RADIUS_SM, ColorUtil.withAlpha(theme.surfaceElevated(), 0.45f));
+        ctx.drawUiText(line, x + 8, y, ColorUtil.withAlpha(theme.foregroundMuted(), 0.88f));
     }
 
     private static String truncate(RenderContext ctx, String text, int maxWidth) {

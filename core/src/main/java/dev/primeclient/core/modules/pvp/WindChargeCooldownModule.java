@@ -20,19 +20,19 @@ public final class WindChargeCooldownModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "wind-cooldown", "Wind Cooldown", themes, HudAnchor.BOTTOM_LEFT, 4, -80));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

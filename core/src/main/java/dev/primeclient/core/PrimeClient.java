@@ -315,8 +315,8 @@ public final class PrimeClient {
         } catch (Exception e) {
             LOGGER.warn("WorldLeave listeners failed", e);
         }
-        // Defer network / disk work off the disconnect thread.
-        final boolean syncCloud = cloudSync.autoSync() && account.loggedIn();
+        // Defer disk backup / social leave off the disconnect thread.
+        final boolean autoBackup = cloudSync.autoSync();
         final String profile = profiles.activeProfile();
         Thread defer = new Thread(() -> {
             try {
@@ -324,11 +324,11 @@ public final class PrimeClient {
             } catch (Exception e) {
                 LOGGER.warn("Social leave failed", e);
             }
-            if (syncCloud) {
+            if (autoBackup) {
                 try {
                     cloudSync.uploadNow(profile);
                 } catch (Exception e) {
-                    LOGGER.warn("Cloud sync on leave failed", e);
+                    LOGGER.warn("Local backup on leave failed", e);
                 }
             }
             try {

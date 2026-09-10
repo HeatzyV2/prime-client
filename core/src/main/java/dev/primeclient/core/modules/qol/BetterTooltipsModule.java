@@ -22,17 +22,17 @@ public final class BetterTooltipsModule extends Module {
     public BetterTooltipsModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("better-tooltips", "Better Tooltips", "Shows hovered item details in HUD", ModuleCategory.QOL);
         this.element = hud.register(new Element(themes, adapter, showName));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

@@ -25,17 +25,17 @@ public final class KeystrokesModule extends Module {
     public KeystrokesModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("keystrokes", "Keystrokes", "Shows your WASD and mouse inputs", ModuleCategory.PVP);
         this.element = hud.register(new Element(themes, adapter, showMouse));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

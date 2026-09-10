@@ -15,16 +15,16 @@ public final class ModernScoreboardModule extends Module {
     public ModernScoreboardModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("modern-scoreboard", "Modern Scoreboard", "Glass-styled scoreboard sidebar replacement", ModuleCategory.QOL);
         this.element = hud.register(new ModernScoreboardElement(adapter, themes));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 }

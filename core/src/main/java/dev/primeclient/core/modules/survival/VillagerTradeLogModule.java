@@ -24,19 +24,19 @@ public final class VillagerTradeLogModule extends Module {
         super("villager-trade-log", "Villager Trade Log", "Recent trades from chat", ModuleCategory.SURVIVAL);
         this.element = hud.register(new SimpleLineHud(
                 "villager-trade-log", "Trade Log", themes, HudAnchor.BOTTOM_RIGHT, -4, -76));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ChatMessageEvent.class, this::onChat);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
         trades.clear();
     }
 

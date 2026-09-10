@@ -4,7 +4,12 @@ import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 
-/** Slightly raises render distance and surfaces fast-loading tips. */
+/**
+ * Slightly raises render distance and surfaces fast-loading tips.
+ *
+ * @deprecated Unregistered — anti-performance; use {@link PerformanceProfilesModule} instead.
+ */
+@Deprecated
 public final class FastLoadingModule extends Module {
 
     private static final int RENDER_DISTANCE_BOOST = 2;

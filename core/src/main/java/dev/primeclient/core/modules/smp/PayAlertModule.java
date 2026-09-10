@@ -27,7 +27,7 @@ public final class PayAlertModule extends Module {
         this.notifications = notifications;
         this.element = hud.register(new SmpLineHud(
                 "pay-alert", "Pay Alert", themes, HudAnchor.BOTTOM_LEFT, 4, -96));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ChatMessageEvent.class, this::onChat);
         listen(ClientTickEvent.class, event -> {
             if (!lastAlert.isEmpty()) {
@@ -38,14 +38,14 @@ public final class PayAlertModule extends Module {
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         lastAlert = "";
         element.setText("Pay: waiting...");
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
         lastAlert = "";
     }
 

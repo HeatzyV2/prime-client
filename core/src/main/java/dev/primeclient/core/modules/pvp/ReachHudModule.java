@@ -20,19 +20,19 @@ public final class ReachHudModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "reach-hud", "Reach HUD", themes, HudAnchor.TOP_CENTER, 0, 20));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

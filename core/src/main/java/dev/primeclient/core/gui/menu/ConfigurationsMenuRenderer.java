@@ -12,7 +12,7 @@ import dev.primeclient.core.util.ColorUtil;
 import java.util.List;
 
 /**
- * Local configuration backups — upload / download / restore.
+ * Local configuration backups — backup / restore / restore version.
  * Storage is on-disk under the game dir (not a remote cloud).
  */
 public final class ConfigurationsMenuRenderer {
@@ -41,11 +41,11 @@ public final class ConfigurationsMenuRenderer {
         int btnY = y + 64;
         int btnW = (PANEL_W - 24 - BTN_GAP * 2) / 3;
         drawButton(ctx, theme, x + 12, btnY, btnW, BTN_H,
-                PrimeLang.get("prime.gui.configurations.upload", "Upload"), mouseX, mouseY, true);
+                PrimeLang.get("prime.gui.configurations.backup", "Backup"), mouseX, mouseY, true);
         drawButton(ctx, theme, x + 12 + btnW + BTN_GAP, btnY, btnW, BTN_H,
-                PrimeLang.get("prime.gui.configurations.download", "Download"), mouseX, mouseY, false);
-        drawButton(ctx, theme, x + 12 + (btnW + BTN_GAP) * 2, btnY, btnW, BTN_H,
                 PrimeLang.get("prime.gui.configurations.restore", "Restore"), mouseX, mouseY, false);
+        drawButton(ctx, theme, x + 12 + (btnW + BTN_GAP) * 2, btnY, btnW, BTN_H,
+                PrimeLang.get("prime.gui.configurations.restore_version", "Restore version"), mouseX, mouseY, false);
 
         List<CloudClient.VersionEntry> versions = cloud.listVersions(profiles.activeProfile());
         if (selectedVersion >= versions.size()) {
@@ -71,14 +71,14 @@ public final class ConfigurationsMenuRenderer {
             shown++;
         }
         if (versions.isEmpty()) {
-            ctx.drawText(PrimeLang.get("prime.gui.configurations.empty", "No backups yet — tap Upload"),
+            ctx.drawText(PrimeLang.get("prime.gui.configurations.empty", "No backups yet — tap Backup"),
                     x + 16, rowY, theme.foregroundMuted(), true);
         }
 
         if (!statusMessage.isBlank()) {
             ctx.drawText(statusMessage, x + 12, y + PANEL_H - 28, theme.foregroundMuted(), true);
         }
-        ctx.drawText(PrimeLang.get("prime.gui.configurations.hint", "Click a version, then Restore"),
+        ctx.drawText(PrimeLang.get("prime.gui.configurations.hint", "Click a version, then Restore version"),
                 x + 12, y + PANEL_H - 14, theme.foregroundMuted(), true);
     }
 

@@ -4,7 +4,12 @@ import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 
-/** Lowers render load by trimming distance, clouds, and particles. */
+/**
+ * Lowers render load by trimming distance, clouds, and particles.
+ *
+ * @deprecated Unregistered — superseded by {@link PerformanceProfilesModule}. Kept for reference.
+ */
+@Deprecated
 public final class FpsBoosterModule extends Module {
 
     private static final int TARGET_RENDER_DISTANCE = 6;

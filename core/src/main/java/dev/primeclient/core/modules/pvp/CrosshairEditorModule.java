@@ -35,6 +35,14 @@ public final class CrosshairEditorModule extends Module {
     private final DoubleSetting rotation = addSetting(new DoubleSetting("rotation", "Rotation", "Rotation in degrees", 0.0, 0.0, 360.0));
     private final EnumSetting<CrosshairStyle> style =
             addSetting(new EnumSetting<>("style", "Style", "Crosshair style", CrosshairStyle.CLASSIC));
+    private final BooleanSetting outline =
+            addSetting(new BooleanSetting("outline", "Outline", "Draw black outline around crosshair", true));
+    private final BooleanSetting hideVanilla =
+            addSetting(new BooleanSetting("hide-vanilla", "Hide vanilla", "Hide the vanilla crosshair while enabled", true));
+    private final BooleanSetting dynamicRecoil =
+            addSetting(new BooleanSetting("dynamic-recoil", "Dynamic recoil", "Pulse gap while aiming", true));
+    private final BooleanSetting invertOnBlock =
+            addSetting(new BooleanSetting("invert-block", "Invert on block", "Invert colors while blocking", false));
     private final EnumSetting<CrosshairPresetName> preset =
             addSetting(new EnumSetting<>("preset", "Preset", "Load a saved preset", CrosshairPresetName.Classic));
     private final StringSetting presetName =
@@ -62,6 +70,7 @@ public final class CrosshairEditorModule extends Module {
         this.presets = presets;
         this.profiles = profiles;
         this.crosshair = hud.register(new CrosshairElement(config));
+        crosshair.setActive(false);
 
         listen(ClientTickEvent.class, event -> syncConfig());
     }
@@ -69,13 +78,13 @@ public final class CrosshairEditorModule extends Module {
     @Override
     protected void onEnable() {
         syncConfig();
-        crosshair.setVisible(true);
+        crosshair.setActive(true);
         CrosshairState.setActive(config, true);
     }
 
     @Override
     protected void onDisable() {
-        crosshair.setVisible(false);
+        crosshair.setActive(false);
         CrosshairState.setActive(config, false);
     }
 
@@ -115,6 +124,10 @@ public final class CrosshairEditorModule extends Module {
         config.opacity = (float) opacity.get();
         config.rotation = (float) rotation.get();
         config.style = style.get();
+        config.outline = outline.get();
+        config.hideVanilla = hideVanilla.get();
+        config.dynamicRecoil = dynamicRecoil.get();
+        config.invertOnBlock = invertOnBlock.get();
         config.serverProfile = adapterProfile();
     }
 
@@ -126,7 +139,11 @@ public final class CrosshairEditorModule extends Module {
         color.set(config.color);
         opacity.set(config.opacity);
         rotation.set(config.rotation);
-        style.set(config.style);
+        style.set(config.style != null ? config.style : CrosshairStyle.CLASSIC);
+        outline.set(config.outline);
+        hideVanilla.set(config.hideVanilla);
+        dynamicRecoil.set(config.dynamicRecoil);
+        invertOnBlock.set(config.invertOnBlock);
     }
 
     private String adapterProfile() {

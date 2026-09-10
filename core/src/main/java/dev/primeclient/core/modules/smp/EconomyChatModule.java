@@ -26,19 +26,19 @@ public final class EconomyChatModule extends Module {
         super("economy-chat", "Economy Chat", "Alerts on economy keywords in chat", ModuleCategory.QOL);
         this.notifications = notifications;
         this.element = hud.register(new Element(themes));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ChatMessageEvent.class, this::onChat);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         element.setLatest("Economy chat watch active");
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
         lastNotified = "";
     }
 

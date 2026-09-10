@@ -24,17 +24,17 @@ public final class DamageIndicatorModule extends Module {
         super("damage-indicator", "Damage Indicator", "Shows damage taken as floating text", ModuleCategory.PVP);
         listen(PlayerDamageEvent.class, event -> showDamage(event.amount()));
         this.element = hud.register(new Element(themes, adapter, this::snapshot));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
         showUntilMillis = 0;
     }
 

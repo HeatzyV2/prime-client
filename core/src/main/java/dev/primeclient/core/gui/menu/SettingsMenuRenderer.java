@@ -11,6 +11,9 @@ import dev.primeclient.core.i18n.PrimeLang;
 import dev.primeclient.core.keybind.KeyNames;
 import dev.primeclient.core.keybind.Keybind;
 import dev.primeclient.core.keybind.KeybindManager;
+import dev.primeclient.core.module.ModuleManager;
+import dev.primeclient.core.modules.performance.PerformanceProfilesModule;
+import dev.primeclient.core.modules.performance.PerformanceProfilesModule.Profile;
 import dev.primeclient.core.profile.ProfileManager;
 import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.theme.ThemeManager;
@@ -96,7 +99,7 @@ public final class SettingsMenuRenderer {
 
     public void render(RenderContext ctx, Theme theme, ThemeManager themes, ProfileManager profiles,
                        CloudSyncManager cloud, MinecraftAdapter adapter, KeybindManager keybinds,
-                       int screenW, int screenH, double mouseX, double mouseY) {
+                       ModuleManager modules, int screenW, int screenH, double mouseX, double mouseY) {
         int panelW = settingsPanelW(screenW);
         int panelH = settingsPanelH(screenH);
         int x = (screenW - panelW) / 2;
@@ -132,9 +135,11 @@ public final class SettingsMenuRenderer {
         ctx.pushClip(x + 4, rowY, panelW - 8, contentBottom - rowY);
         switch (active) {
             case GENERAL -> {
-                row(ctx, theme, x + 12, rowY,
-                        PrimeLang.get("prime.gui.settings.row.profile", "Profile"), profiles.activeProfile());
-                rowY += 16;
+                GuiLayout.label(ctx, PrimeLang.get("prime.gui.settings.row.profile", "Profile"),
+                        x + 12, rowY, theme.foreground());
+                rowY += 14;
+                rowY = drawProfileChips(ctx, theme, profiles, x + 12, rowY, panelW - 24, mouseX, mouseY);
+                rowY += 6;
                 row(ctx, theme, x + 12, rowY,
                         PrimeLang.get("prime.gui.settings.row.minecraft", "Minecraft"), adapter.minecraftVersion());
                 rowY += 16;
@@ -164,10 +169,31 @@ public final class SettingsMenuRenderer {
                 drawThemeChip(ctx, theme, themes, "prime-ember",
                         PrimeLang.get("prime.gui.settings.theme.ember", "Ember"),
                         x + 118, rowY, 100);
+                drawThemeChip(ctx, theme, themes, "prime-violet",
+                        PrimeLang.get("prime.gui.settings.theme.violet", "Violet"),
+                        x + 224, rowY, 100);
+                rowY += 20;
+                drawThemeChip(ctx, theme, themes, "prime-emerald",
+                        PrimeLang.get("prime.gui.settings.theme.emerald", "Emerald"),
+                        x + 12, rowY, 100);
             }
-            case PERFORMANCE -> row(ctx, theme, x + 12, rowY,
-                    PrimeLang.get("prime.gui.settings.row.tip", "Tip"),
-                    PrimeLang.get("prime.gui.settings.tip.performance", "Use Performance Profiles module"));
+            case PERFORMANCE -> {
+                row(ctx, theme, x + 12, rowY,
+                        PrimeLang.get("prime.gui.settings.row.profile_preset", "Preset"),
+                        "");
+                rowY += 18;
+                PerformanceProfilesModule perf = performanceProfiles(modules);
+                Profile selected = (perf != null && perf.isEnabled()) ? perf.currentProfile() : null;
+                drawProfileChip(ctx, theme, selected == Profile.LOW,
+                        PrimeLang.get("prime.gui.settings.perf.low", "LOW"),
+                        x + 12, rowY, 100);
+                drawProfileChip(ctx, theme, selected == Profile.MEDIUM,
+                        PrimeLang.get("prime.gui.settings.perf.med", "MED"),
+                        x + 118, rowY, 100);
+                drawProfileChip(ctx, theme, selected == Profile.HIGH,
+                        PrimeLang.get("prime.gui.settings.perf.high", "HIGH"),
+                        x + 224, rowY, 100);
+            }
             case CONTROLS -> renderControls(ctx, theme, keybinds, x, rowY, panelW, contentBottom);
             case ACCOUNT -> {
                 row(ctx, theme, x + 12, rowY,
@@ -253,7 +279,8 @@ public final class SettingsMenuRenderer {
     }
 
     public boolean mousePressed(RenderContext ctx, double mx, double my, int screenW, int screenH,
-                                ThemeManager themes, KeybindManager keybinds, MinecraftAdapter adapter) {
+                                ThemeManager themes, KeybindManager keybinds, MinecraftAdapter adapter,
+                                ModuleManager modules, ProfileManager profiles) {
         int panelW = settingsPanelW(screenW);
         int panelH = settingsPanelH(screenH);
         int x = (screenW - panelW) / 2;
@@ -280,6 +307,11 @@ public final class SettingsMenuRenderer {
             tabX += tw + 4;
             tabsInRow++;
         }
+        if (active == Category.GENERAL && profiles != null) {
+            if (handleProfileChipClick(ctx, profiles, mx, my, x + 12, tabY + 22 + 14, panelW - 24)) {
+                return true;
+            }
+        }
         if (active == Category.APPEARANCE) {
             int rowY = tabY + 40;
             if (mx >= x + 12 && mx < x + 112 && my >= rowY && my < rowY + 16) {
@@ -302,6 +334,33 @@ public final class SettingsMenuRenderer {
             if (mx >= x + 118 && mx < x + 218 && my >= row2 && my < row2 + 16) {
                 themes.setActive("prime-ember");
                 return true;
+            }
+            if (mx >= x + 224 && mx < x + 324 && my >= row2 && my < row2 + 16) {
+                themes.setActive("prime-violet");
+                return true;
+            }
+            int row3 = row2 + 20;
+            if (mx >= x + 12 && mx < x + 112 && my >= row3 && my < row3 + 16) {
+                themes.setActive("prime-emerald");
+                return true;
+            }
+        }
+        if (active == Category.PERFORMANCE) {
+            PerformanceProfilesModule perf = performanceProfiles(modules);
+            if (perf != null) {
+                int rowY = tabY + 22 + 18;
+                if (mx >= x + 12 && mx < x + 112 && my >= rowY && my < rowY + 16) {
+                    perf.applyPreset(Profile.LOW);
+                    return true;
+                }
+                if (mx >= x + 118 && mx < x + 218 && my >= rowY && my < rowY + 16) {
+                    perf.applyPreset(Profile.MEDIUM);
+                    return true;
+                }
+                if (mx >= x + 224 && mx < x + 324 && my >= rowY && my < rowY + 16) {
+                    perf.applyPreset(Profile.HIGH);
+                    return true;
+                }
             }
         }
         if (active == Category.ACCOUNT && adapter != null && !adapter.isInGame()) {
@@ -396,5 +455,100 @@ public final class SettingsMenuRenderer {
                 selected ? theme.accent() : theme.backgroundLight());
         GuiLayout.label(ctx, label, x + 6, y + 4,
                 selected ? theme.foreground() : theme.foregroundMuted());
+    }
+
+    private static void drawProfileChip(RenderContext ctx, Theme theme, boolean selected,
+                                        String label, int x, int y, int w) {
+        ctx.fillRoundedRect(x, y, w, 16, PrimeDesign.RADIUS_SM,
+                selected ? theme.accent() : theme.backgroundLight());
+        GuiLayout.label(ctx, label, x + 6, y + 4,
+                selected ? theme.foreground() : theme.foregroundMuted());
+    }
+
+    /** Draws profile name chips + New…; returns the Y past the last row. */
+    private static int drawProfileChips(RenderContext ctx, Theme theme, ProfileManager profiles,
+                                        int x, int y, int maxW, double mouseX, double mouseY) {
+        int chipX = x;
+        int chipY = y;
+        String active = profiles.activeProfile();
+        for (String name : profiles.listProfiles()) {
+            int w = Math.max(48, Math.min(120, GuiLayout.labelWidth(ctx, name) + 12));
+            if (chipX + w > x + maxW) {
+                chipX = x;
+                chipY += 18;
+            }
+            boolean selected = name.equals(active);
+            boolean hover = mouseX >= chipX && mouseX < chipX + w && mouseY >= chipY && mouseY < chipY + 16;
+            ctx.fillRoundedRect(chipX, chipY, w, 16, PrimeDesign.RADIUS_SM,
+                    selected ? theme.accent() : (hover ? theme.surfaceElevated() : theme.backgroundLight()));
+            GuiLayout.label(ctx, GuiLayout.trimToWidth(ctx, name, w - 8), chipX + 6, chipY + 4,
+                    selected ? theme.foreground() : theme.foregroundMuted());
+            chipX += w + 4;
+        }
+        String newLabel = PrimeLang.get("prime.gui.settings.profile.new", "New…");
+        int newW = Math.max(48, GuiLayout.labelWidth(ctx, newLabel) + 12);
+        if (chipX + newW > x + maxW) {
+            chipX = x;
+            chipY += 18;
+        }
+        boolean newHover = mouseX >= chipX && mouseX < chipX + newW
+                && mouseY >= chipY && mouseY < chipY + 16;
+        ctx.fillRoundedRect(chipX, chipY, newW, 16, PrimeDesign.RADIUS_SM,
+                newHover ? theme.surfaceElevated() : theme.backgroundLight());
+        GuiLayout.label(ctx, newLabel, chipX + 6, chipY + 4, theme.accent());
+        return chipY + 16;
+    }
+
+    private static boolean handleProfileChipClick(RenderContext ctx, ProfileManager profiles,
+                                                  double mx, double my, int x, int y, int maxW) {
+        int chipX = x;
+        int chipY = y;
+        for (String name : profiles.listProfiles()) {
+            int w = Math.max(48, Math.min(120, GuiLayout.labelWidth(ctx, name) + 12));
+            if (chipX + w > x + maxW) {
+                chipX = x;
+                chipY += 18;
+            }
+            if (mx >= chipX && mx < chipX + w && my >= chipY && my < chipY + 16) {
+                profiles.switchTo(name);
+                return true;
+            }
+            chipX += w + 4;
+        }
+        String newLabel = PrimeLang.get("prime.gui.settings.profile.new", "New…");
+        int newW = Math.max(48, GuiLayout.labelWidth(ctx, newLabel) + 12);
+        if (chipX + newW > x + maxW) {
+            chipX = x;
+            chipY += 18;
+        }
+        if (mx >= chipX && mx < chipX + newW && my >= chipY && my < chipY + 16) {
+            String created = createUniqueProfile(profiles);
+            profiles.create(created);
+            profiles.switchTo(created);
+            return true;
+        }
+        return false;
+    }
+
+    private static String createUniqueProfile(ProfileManager profiles) {
+        String base = "profile-" + (System.currentTimeMillis() / 1000L);
+        if (!profiles.listProfiles().contains(base)) {
+            return base;
+        }
+        for (int i = 2; i < 100; i++) {
+            String candidate = base + "-" + i;
+            if (candidate.length() <= 32 && !profiles.listProfiles().contains(candidate)) {
+                return candidate;
+            }
+        }
+        return "profile-" + Long.toString(System.currentTimeMillis(), 36);
+    }
+
+    private static PerformanceProfilesModule performanceProfiles(ModuleManager modules) {
+        if (modules == null) {
+            return null;
+        }
+        var module = modules.get("performance-profiles");
+        return module instanceof PerformanceProfilesModule profiles ? profiles : null;
     }
 }

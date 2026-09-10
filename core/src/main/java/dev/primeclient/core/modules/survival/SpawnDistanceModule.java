@@ -20,19 +20,19 @@ public final class SpawnDistanceModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SimpleLineHud(
                 "spawn-distance", "Spawn Distance", themes, HudAnchor.TOP_RIGHT, -4, 52));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

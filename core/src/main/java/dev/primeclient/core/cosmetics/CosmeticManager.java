@@ -31,8 +31,8 @@ public final class CosmeticManager implements ConfigBinding {
         seedCatalog();
         // Prime users own everything by default (no paywall).
         owned.addAll(catalog.keySet());
-        equip(CosmeticType.CAPE, "cape-prime-classic");
-        equip(CosmeticType.WINGS, "wings-prime");
+        // Fresh install: nothing equipped; loadConfig restores last saved loadout.
+        syncState();
     }
 
     private void seedCatalog() {

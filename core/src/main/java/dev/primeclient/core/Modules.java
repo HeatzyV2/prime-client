@@ -14,17 +14,10 @@ import dev.primeclient.core.modules.streamers.StreamHudShieldModule;
 import dev.primeclient.core.modules.streamers.StreamNameMaskModule;
 import dev.primeclient.core.modules.streamers.StreamPrivacySuiteModule;
 import dev.primeclient.core.modules.performance.AdaptiveFpsModule;
-import dev.primeclient.core.modules.performance.AnimationOptimizerModule;
-import dev.primeclient.core.modules.performance.ChunkOptimizerModule;
 import dev.primeclient.core.modules.performance.DynamicFpsModule;
-import dev.primeclient.core.modules.performance.EntityCullingModule;
-import dev.primeclient.core.modules.performance.FastLoadingModule;
-import dev.primeclient.core.modules.performance.FpsBoosterModule;
 import dev.primeclient.core.modules.performance.MemoryMonitorModule;
 import dev.primeclient.core.modules.performance.MemorySpikeAlertModule;
-import dev.primeclient.core.modules.performance.ParticleOptimizerModule;
 import dev.primeclient.core.modules.performance.PerformanceProfilesModule;
-import dev.primeclient.core.modules.performance.RamCleanerModule;
 import dev.primeclient.core.modules.prime.AiAssistantModule;
 import dev.primeclient.core.modules.prime.ClientBadgeModule;
 import dev.primeclient.core.modules.prime.CustomSkinModule;
@@ -129,14 +122,19 @@ import dev.primeclient.core.modules.survival.ToolDurabilityModule;
 import dev.primeclient.core.modules.survival.VillagerTradeLogModule;
 import dev.primeclient.core.modules.survival.WeatherHudModule;
 import dev.primeclient.core.modules.smp.AfkAlertModule;
+import dev.primeclient.core.modules.smp.BalanceHudModule;
 import dev.primeclient.core.modules.smp.BiomeCoordsModule;
 import dev.primeclient.core.modules.smp.ChunkCoordsModule;
 import dev.primeclient.core.modules.smp.DeathCostModule;
+import dev.primeclient.core.modules.smp.InventoryValueModule;
+import dev.primeclient.core.modules.smp.MoneyGoalModule;
 import dev.primeclient.core.modules.smp.NetherLinkModule;
+import dev.primeclient.core.modules.smp.PayAlertModule;
 import dev.primeclient.core.modules.smp.RepairAlertModule;
 import dev.primeclient.core.modules.smp.ServerSessionModule;
 import dev.primeclient.core.modules.smp.ShopWaypointModule;
 import dev.primeclient.core.modules.smp.SpawnCompassModule;
+import dev.primeclient.core.modules.smp.TradeLogModule;
 import dev.primeclient.core.modules.smp.TravelEtaModule;
 
 /**
@@ -179,7 +177,8 @@ final class Modules {
         modules.register(new dev.primeclient.core.modules.pvp.SoundRadarModule(hud, themes));
         modules.register(new dev.primeclient.core.modules.pvp.CustomPotionGridModule(hud, themes));
         modules.register(new dev.primeclient.core.modules.qol.CustomBossbarModule(hud, themes));
-        modules.register(new dev.primeclient.core.modules.qol.RadialMenuModule());
+        modules.register(new dev.primeclient.core.modules.qol.RadialMenuModule(
+                client.profiles(), adapter, client.keybinds()));
         modules.register(new dev.primeclient.core.modules.prime.VoiceSpectrumModule(hud, themes));
         modules.register(new dev.primeclient.core.modules.qol.GlassChatModule());
         modules.register(new dev.primeclient.core.modules.qol.ModernScoreboardModule(hud, themes, adapter));
@@ -245,18 +244,18 @@ final class Modules {
         modules.register(new AfkAlertModule(adapter, client.notifications()));
         modules.register(new RepairAlertModule(adapter, client.notifications()));
 
-        // Performance (12)
-        modules.register(new FpsBoosterModule(adapter));
-        modules.register(new EntityCullingModule(adapter));
-        modules.register(new ParticleOptimizerModule(adapter));
+        // SMP economy pack (5) — high-value; remaining economy modules stay unregistered
+        modules.register(new BalanceHudModule(hud, themes, adapter));
+        modules.register(new InventoryValueModule(hud, themes, adapter));
+        modules.register(new PayAlertModule(hud, themes, client.notifications()));
+        modules.register(new TradeLogModule(hud, themes));
+        modules.register(new MoneyGoalModule(hud, themes));
+
+        // Performance (5) — profiles + monitors; redundant optimizers unregistered
         modules.register(new MemoryMonitorModule(hud, themes, adapter));
         modules.register(new MemorySpikeAlertModule(adapter, client.notifications()));
         modules.register(new AdaptiveFpsModule(adapter));
-        modules.register(new RamCleanerModule(adapter));
         modules.register(new DynamicFpsModule(adapter));
-        modules.register(new ChunkOptimizerModule(adapter));
-        modules.register(new AnimationOptimizerModule(adapter));
-        modules.register(new FastLoadingModule(adapter));
         modules.register(new PerformanceProfilesModule(adapter));
 
         // QoL (24)

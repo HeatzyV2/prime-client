@@ -24,7 +24,7 @@ public final class ComboTimerModule extends Module {
         super("combo-timer", "Combo Timer", "Shows time until combo resets", ModuleCategory.PVP);
         this.element = hud.register(new SimpleLineHud(
                 "combo-timer", "Combo Timer", themes, HudAnchor.TOP_RIGHT, -4, 64));
-        element.setVisible(false);
+        element.setActive(false);
         listen(AttackEntityEvent.class, event -> {
             lastHitMillis = System.currentTimeMillis();
             comboActive = true;
@@ -36,13 +36,13 @@ public final class ComboTimerModule extends Module {
     @Override
     protected void onEnable() {
         comboActive = false;
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

@@ -18,17 +18,17 @@ public final class PotionHudModule extends Module {
     public PotionHudModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("potion-hud", "Potion HUD", "Lists your active potion effects", ModuleCategory.PVP);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

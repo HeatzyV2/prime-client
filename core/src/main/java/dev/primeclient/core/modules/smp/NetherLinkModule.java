@@ -19,19 +19,19 @@ public final class NetherLinkModule extends Module {
         this.adapter = adapter;
         this.element = hud.register(new SmpLineHud(
                 "nether-link", "Nether Link", themes, HudAnchor.TOP_RIGHT, -4, 116));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refresh());
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refresh();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void refresh() {

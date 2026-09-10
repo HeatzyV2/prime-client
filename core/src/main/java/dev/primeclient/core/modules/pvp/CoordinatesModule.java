@@ -19,17 +19,17 @@ public final class CoordinatesModule extends Module {
     public CoordinatesModule(HudManager hud, ThemeManager themes, MinecraftAdapter adapter) {
         super("coordinates", "Coordinates HUD", "Shows your block position", ModuleCategory.PVP);
         this.element = hud.register(new Element(themes, adapter));
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private static final class Element extends HudElement {

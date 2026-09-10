@@ -34,6 +34,24 @@ public final class PerformanceProfilesModule extends Module {
         listen(ClientTickEvent.class, this::onTick);
     }
 
+    /** Current preset selection (may not yet be applied if the module is off). */
+    public Profile currentProfile() {
+        return profile.get();
+    }
+
+    /**
+     * Applies a preset from Settings / external callers — same path as enabling the module
+     * or changing the profile setting while active.
+     */
+    public void applyPreset(Profile target) {
+        profile.set(target);
+        if (!isEnabled()) {
+            setEnabled(true);
+        } else {
+            applyProfile(target);
+        }
+    }
+
     @Override
     protected void onEnable() {
         captureOriginals();
@@ -64,7 +82,8 @@ public final class PerformanceProfilesModule extends Module {
         }
     }
 
-    private void applyProfile(Profile target) {
+    /** Applies video-setting knobs for the given preset. */
+    public void applyProfile(Profile target) {
         captureOriginals();
         switch (target) {
             case LOW -> {

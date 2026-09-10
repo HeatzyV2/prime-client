@@ -30,20 +30,20 @@ public final class BalanceHudModule extends Module {
         super("balance-hud", "Balance HUD", "Shows parsed balance from scoreboard or chat", ModuleCategory.QOL);
         this.adapter = adapter;
         this.element = hud.register(new Element(themes));
-        element.setVisible(false);
+        element.setActive(false);
         listen(ClientTickEvent.class, event -> refreshFromScoreboard());
         listen(ChatMessageEvent.class, this::onChat);
     }
 
     @Override
     protected void onEnable() {
-        element.setVisible(true);
+        element.setActive(true);
         refreshFromScoreboard();
     }
 
     @Override
     protected void onDisable() {
-        element.setVisible(false);
+        element.setActive(false);
         lastChatBalance = "";
     }
 

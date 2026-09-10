@@ -4,12 +4,14 @@ import dev.primeclient.core.adapter.RenderContext;
 import dev.primeclient.core.design.PrimeDesign;
 import dev.primeclient.core.gui.FavoritesManager;
 import dev.primeclient.core.gui.GuiLayout;
+import dev.primeclient.core.gui.RecentlyUsedManager;
 import dev.primeclient.core.gui.TooltipRenderer;
 import dev.primeclient.core.gui.UiChrome;
 import dev.primeclient.core.gui.component.ToggleWidget;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 import dev.primeclient.core.module.ModuleManager;
+import dev.primeclient.core.module.Setting;
 import dev.primeclient.core.theme.Theme;
 import dev.primeclient.core.util.ColorUtil;
 
@@ -18,27 +20,30 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
 
-/** Card-based module browser with Overview / Favorites / category tabs. */
+/** Card-based module browser — ClickGUI V3 (Overview / Recent / Favorites / categories). */
 public final class ModuleCardBrowser {
 
-    public static final int CARD_W = 112;
-    public static final int CARD_H = 38;
-    public static final int TAB_H = 18;
-    public static final int TAB_PAD = 26;
+    public static final int CARD_W = 118;
+    public static final int CARD_H = 42;
+    public static final int TAB_H = PrimeDesign.TAB_HEIGHT + 4;
+    public static final int TAB_PAD = 22;
 
     private static final int TITLE_X = 8;
     private static final int TEXT_PAD = 6;
-    private static final int TOGGLE_TOP = 8;
+    private static final int TOGGLE_TOP = 10;
 
     enum Tab {
         OVERVIEW,
+        RECENT,
         FAVORITES,
         CATEGORY
     }
 
     private final ModuleManager modules;
     private final FavoritesManager favorites;
+    private final RecentlyUsedManager recent;
     private final Map<Module, ToggleWidget> toggles = new IdentityHashMap<>();
 
     private Tab activeTab = Tab.OVERVIEW;
@@ -48,14 +53,20 @@ public final class ModuleCardBrowser {
     private float scrollY;
     private float targetScrollY;
     private TooltipRenderer tooltips;
+    private Consumer<Module> onModuleOpened = m -> {};
 
-    public ModuleCardBrowser(ModuleManager modules, FavoritesManager favorites) {
+    public ModuleCardBrowser(ModuleManager modules, FavoritesManager favorites, RecentlyUsedManager recent) {
         this.modules = modules;
         this.favorites = favorites;
+        this.recent = recent;
     }
 
     public void setTooltips(TooltipRenderer tooltips) {
         this.tooltips = tooltips;
+    }
+
+    public void setOnModuleOpened(Consumer<Module> onModuleOpened) {
+        this.onModuleOpened = onModuleOpened != null ? onModuleOpened : m -> {};
     }
 
     public void setSearchQuery(String query) {
@@ -67,12 +78,16 @@ public final class ModuleCardBrowser {
         }
     }
 
+    public String searchQuery() {
+        return searchQuery;
+    }
+
     public Module selected() {
         return selected;
     }
 
     public void tick(float deltaSeconds) {
-        scrollY = PrimeDesign.animate(scrollY, targetScrollY, deltaSeconds, 14f);
+        scrollY = PrimeDesign.animate(scrollY, targetScrollY, deltaSeconds, PrimeDesign.MOTION_NORMAL);
         for (var entry : toggles.entrySet()) {
             entry.getValue().tick(entry.getKey().isEnabled(), deltaSeconds);
         }
@@ -87,6 +102,21 @@ public final class ModuleCardBrowser {
         int contentY = y + TAB_H + PrimeDesign.SPACE_SM;
         int contentH = height - TAB_H - PrimeDesign.SPACE_SM;
         List<Module> list = filteredModules();
+        if (list.isEmpty()) {
+            String empty;
+            if (!searchQuery.isEmpty()) {
+                empty = "No results for \"" + searchQuery + "\"";
+            } else if (activeTab == Tab.FAVORITES) {
+                empty = "No favorites yet — middle-click a card to pin";
+            } else if (activeTab == Tab.RECENT) {
+                empty = "Recently used modules appear here";
+            } else {
+                empty = "No modules here";
+            }
+            ctx.drawUiText(empty, x + PrimeDesign.SPACE_MD, contentY + PrimeDesign.SPACE_LG,
+                    theme.foregroundMuted());
+            return;
+        }
         int cols = Math.max(1, width / (CARD_W + PrimeDesign.SPACE_SM));
         int rows = (list.size() + cols - 1) / cols;
         int totalH = rows * (CARD_H + PrimeDesign.SPACE_SM);
@@ -122,13 +152,15 @@ public final class ModuleCardBrowser {
     private void renderTabs(RenderContext ctx, Theme theme, int x, int y, int width,
                             double mouseX, double mouseY) {
         int tabX = x;
-        tabX = drawTab(ctx, theme, tabX, y, width, mouseX, mouseY, "Overview", "◈",
+        tabX = drawTab(ctx, theme, tabX, y, mouseX, mouseY, "Overview", "◈",
                 theme.accent(), activeTab == Tab.OVERVIEW);
-        tabX = drawTab(ctx, theme, tabX, y, width, mouseX, mouseY, "Favorites", "★",
+        tabX = drawTab(ctx, theme, tabX, y, mouseX, mouseY, "Recent", "↻",
+                theme.accent(), activeTab == Tab.RECENT);
+        tabX = drawTab(ctx, theme, tabX, y, mouseX, mouseY, "Favorites", "★",
                 theme.accent(), activeTab == Tab.FAVORITES);
         for (ModuleCategory cat : ModuleCategory.values()) {
             boolean active = activeTab == Tab.CATEGORY && cat == activeCategory;
-            tabX = drawTab(ctx, theme, tabX, y, width, mouseX, mouseY,
+            tabX = drawTab(ctx, theme, tabX, y, mouseX, mouseY,
                     cat.displayName(), cat.icon(), cat.accent(), active);
             if (tabX > x + width) {
                 break;
@@ -136,21 +168,23 @@ public final class ModuleCardBrowser {
         }
     }
 
-    private int drawTab(RenderContext ctx, Theme theme, int tabX, int y, int width,
+    private int drawTab(RenderContext ctx, Theme theme, int tabX, int y,
                         double mouseX, double mouseY, String label, String icon,
                         int accent, boolean active) {
         int tw = ctx.uiTextWidth(label) + TAB_PAD;
-        if (tabX > width + (tabX - tw)) {
-            // still draw if partially visible
-        }
         boolean hover = mouseX >= tabX && mouseX < tabX + tw && mouseY >= y && mouseY < y + TAB_H;
-        int fill = active ? theme.surfaceElevated() : theme.backgroundLight();
+        int fill = active ? theme.surfaceElevated()
+                : hover ? ColorUtil.withAlpha(theme.backgroundLight(), 0.95f)
+                : ColorUtil.withAlpha(theme.backgroundLight(), 0.55f);
         ctx.fillRoundedRect(tabX, y, tw, TAB_H, PrimeDesign.RADIUS_SM, fill);
-        if (active || hover) {
-            ctx.fillRect(tabX + 2, y + TAB_H - 2, tw - 4, 1, accent);
+        if (active) {
+            int lineW = Math.max(10, tw - 8);
+            ctx.fillRect(tabX + 4, y + TAB_H - 2, lineW, 2, accent);
+        } else if (hover) {
+            ctx.fillRect(tabX + 4, y + TAB_H - 1, tw - 8, 1, ColorUtil.withAlpha(accent, 0.5f));
         }
-        GuiLayout.label(ctx, icon, tabX + 6, y + 4, accent);
-        GuiLayout.label(ctx, label, tabX + 18, y + 4,
+        GuiLayout.label(ctx, icon, tabX + 5, y + 5, accent);
+        GuiLayout.label(ctx, label, tabX + 17, y + 5,
                 active ? theme.foreground() : theme.foregroundMuted());
         return tabX + tw + PrimeDesign.SPACE_XS;
     }
@@ -165,7 +199,7 @@ public final class ModuleCardBrowser {
                     ColorUtil.withAlpha(module.category().accent(), sel ? 0.95f : 0.55f));
         }
 
-        ctx.fillRect(x + 2, y + 5, 2, CARD_H - 10, module.category().accent());
+        ctx.fillRect(x + 2, y + 6, 2, CARD_H - 12, module.category().accent());
 
         int toggleX = cardToggleX(x);
         int toggleY = cardToggleY(y);
@@ -175,19 +209,24 @@ public final class ModuleCardBrowser {
         String desc = module.description();
         String trimmedName = GuiLayout.trimToWidth(ctx, name, textMax);
         String trimmedDesc = GuiLayout.trimToWidth(ctx, desc, textMax);
-        GuiLayout.label(ctx, trimmedName, x + TITLE_X, y + 6, theme.foreground());
-        GuiLayout.label(ctx, trimmedDesc, x + TITLE_X, y + 20, theme.foregroundMuted());
+        GuiLayout.label(ctx, trimmedName, x + TITLE_X, y + 7, theme.foreground());
+        GuiLayout.label(ctx, trimmedDesc, x + TITLE_X, y + 22, theme.foregroundMuted());
 
-        if (hover && tooltips != null && (!trimmedName.equals(name) || !trimmedDesc.equals(desc))) {
-            String tip = name.equals(trimmedName) ? desc : name + " — " + desc;
-            tooltips.show(tip, x, y - 16);
+        if (hover && tooltips != null) {
+            String state = module.isEnabled() ? "Enabled" : "Disabled";
+            String tipTitle = name + " · " + state;
+            String tipDetail = desc;
+            if (favorites.isFavorite(module.id())) {
+                tipDetail = "★ Favorite — " + tipDetail;
+            }
+            tooltips.show(tipTitle, tipDetail, x, Math.max(4, y - 28));
         }
 
         ToggleWidget toggle = toggles.computeIfAbsent(module, m -> new ToggleWidget());
         toggle.render(ctx, theme, toggleX, toggleY, module.isEnabled());
 
         if (favorites.isFavorite(module.id())) {
-            GuiLayout.label(ctx, "★", x + 6, y + CARD_H - 11, theme.accent());
+            GuiLayout.label(ctx, "★", x + 6, y + CARD_H - 12, theme.accent());
         }
     }
 
@@ -208,40 +247,49 @@ public final class ModuleCardBrowser {
                 Module module = list.get(i);
                 if (button == 2) {
                     favorites.toggle(module.id());
-                } else if (button == 0) {
+                    return true;
+                }
+                if (button == 0) {
                     int tx = cardToggleX(cx);
                     int ty = cardToggleY(cy);
                     if (mouseX >= tx && mouseX < tx + PrimeDesign.TOGGLE_WIDTH
                             && mouseY >= ty && mouseY < ty + PrimeDesign.TOGGLE_HEIGHT) {
                         module.toggle();
-                    } else {
-                        selected = module;
+                        recent.touch(module.id());
+                        return true;
                     }
-                } else {
-                    selected = module;
+                    selectModule(module);
+                    return true;
                 }
+                selectModule(module);
                 return true;
             }
+        }
+        if (button == 0) {
+            selected = null;
         }
         return false;
     }
 
+    private void selectModule(Module module) {
+        selected = module;
+        recent.touch(module.id());
+        onModuleOpened.accept(module);
+    }
+
     private boolean pressTab(RenderContext ctx, double mouseX, double mouseY, int x, int y, int width) {
         int tabX = x;
-        int overviewW = ctx.uiTextWidth("Overview") + TAB_PAD;
-        if (mouseX >= tabX && mouseX < tabX + overviewW) {
-            activeTab = Tab.OVERVIEW;
-            resetScroll();
-            return true;
+        String[] fixed = {"Overview", "Recent", "Favorites"};
+        Tab[] fixedTabs = {Tab.OVERVIEW, Tab.RECENT, Tab.FAVORITES};
+        for (int i = 0; i < fixed.length; i++) {
+            int tw = ctx.uiTextWidth(fixed[i]) + TAB_PAD;
+            if (mouseX >= tabX && mouseX < tabX + tw) {
+                activeTab = fixedTabs[i];
+                resetScroll();
+                return true;
+            }
+            tabX += tw + PrimeDesign.SPACE_XS;
         }
-        tabX += overviewW + PrimeDesign.SPACE_XS;
-        int favW = ctx.uiTextWidth("Favorites") + TAB_PAD;
-        if (mouseX >= tabX && mouseX < tabX + favW) {
-            activeTab = Tab.FAVORITES;
-            resetScroll();
-            return true;
-        }
-        tabX += favW + PrimeDesign.SPACE_XS;
         for (ModuleCategory cat : ModuleCategory.values()) {
             int tw = tabWidth(ctx, cat);
             if (tabX > x + width) {
@@ -280,7 +328,23 @@ public final class ModuleCardBrowser {
         if (module != null) {
             activeTab = Tab.CATEGORY;
             activeCategory = module.category();
+            recent.touch(module.id());
         }
+    }
+
+    void showFavoritesTab() {
+        activeTab = Tab.FAVORITES;
+        resetScroll();
+    }
+
+    void showOverviewTab() {
+        activeTab = Tab.OVERVIEW;
+        resetScroll();
+    }
+
+    void showRecentTab() {
+        activeTab = Tab.RECENT;
+        resetScroll();
     }
 
     List<Module> filteredModules() {
@@ -291,6 +355,7 @@ public final class ModuleCardBrowser {
                     source.addAll(modules.byCategory(cat));
                 }
             }
+            case RECENT -> source.addAll(recent.resolve(modules));
             case FAVORITES -> source.addAll(favorites.resolve(modules));
             case CATEGORY -> source.addAll(modules.byCategory(activeCategory));
         }
@@ -300,13 +365,38 @@ public final class ModuleCardBrowser {
         String q = searchQuery.toLowerCase(Locale.ROOT);
         List<Module> out = new ArrayList<>();
         for (Module m : source) {
-            if (m.name().toLowerCase(Locale.ROOT).contains(q)
-                    || m.description().toLowerCase(Locale.ROOT).contains(q)
-                    || m.id().toLowerCase(Locale.ROOT).contains(q)) {
+            if (matches(m, q)) {
                 out.add(m);
             }
         }
+        // Global search: if category/recent/fav filter is empty, fall back to all modules.
+        if (out.isEmpty() && activeTab != Tab.OVERVIEW) {
+            for (ModuleCategory cat : ModuleCategory.values()) {
+                for (Module m : modules.byCategory(cat)) {
+                    if (matches(m, q) && !out.contains(m)) {
+                        out.add(m);
+                    }
+                }
+            }
+        }
         return out;
+    }
+
+    private static boolean matches(Module m, String q) {
+        if (m.name().toLowerCase(Locale.ROOT).contains(q)
+                || m.description().toLowerCase(Locale.ROOT).contains(q)
+                || m.id().toLowerCase(Locale.ROOT).contains(q)
+                || m.category().displayName().toLowerCase(Locale.ROOT).contains(q)) {
+            return true;
+        }
+        for (Setting setting : m.settings()) {
+            if (setting.name().toLowerCase(Locale.ROOT).contains(q)
+                    || setting.id().toLowerCase(Locale.ROOT).contains(q)
+                    || setting.description().toLowerCase(Locale.ROOT).contains(q)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static int cardToggleX(int cardX) {

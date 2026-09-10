@@ -1,5 +1,7 @@
 package dev.primeclient.core.notification;
 
+import dev.primeclient.core.design.PrimeDesign;
+
 /**
  * One HUD notification. Immutable; expiry derives from creation time so no
  * per-tick bookkeeping is needed.
@@ -19,7 +21,7 @@ public record Notification(
         ERROR
     }
 
-    public static final long DEFAULT_DURATION_MILLIS = 4000;
+    public static final long DEFAULT_DURATION_MILLIS = PrimeDesign.DURATION_TOAST_MS;
 
     public static Notification of(String title, String message, Level level) {
         return new Notification(title, message, level, System.currentTimeMillis(), DEFAULT_DURATION_MILLIS);

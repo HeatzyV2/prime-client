@@ -28,7 +28,7 @@ public final class CinematicCameraModule extends Module {
         super("cinematic-camera", "Cinematic Camera", "Smooths camera movement for recordings", ModuleCategory.CREATOR);
         this.adapter = adapter;
         this.element = hud.register(new Element(themes));
-        element.setVisible(false);
+        element.setActive(false);
 
         listen(ClientTickEvent.class, event -> tickSmoothing());
     }
@@ -37,13 +37,13 @@ public final class CinematicCameraModule extends Module {
     protected void onEnable() {
         initialized = false;
         CinematicCameraState.setActive(true);
-        element.setVisible(true);
+        element.setActive(true);
     }
 
     @Override
     protected void onDisable() {
         CinematicCameraState.reset();
-        element.setVisible(false);
+        element.setActive(false);
     }
 
     private void tickSmoothing() {

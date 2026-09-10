@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** In-memory replay timeline with playback controls. */
+/** In-memory movement trail timeline with local playback controls (not full Replay Mod). */
 public final class ReplaySession {
 
     public static final float[] SPEEDS = {0.25f, 0.5f, 1f, 2f};

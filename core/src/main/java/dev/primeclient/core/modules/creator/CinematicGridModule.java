@@ -22,7 +22,7 @@ public final class CinematicGridModule extends Module {
     public CinematicGridModule(HudManager hud) {
         super("cinematic-grid", "Cinematic Grid", "Rule-of-thirds overlay", ModuleCategory.CREATOR);
         this.grid = hud.register(new GridElement());
-        grid.setVisible(false);
+        grid.setActive(false);
         listen(ClientTickEvent.class, event -> updateVisibility());
     }
 
@@ -34,13 +34,13 @@ public final class CinematicGridModule extends Module {
     @Override
     protected void onDisable() {
         CinematicGridState.setActive(false);
-        grid.setVisible(false);
+        grid.setActive(false);
     }
 
     private void updateVisibility() {
         boolean show = isEnabled() || (withCinematic.get() && CinematicCameraState.active());
         CinematicGridState.setActive(show);
-        grid.setVisible(show);
+        grid.setActive(show);
     }
 
     private static final class GridElement extends HudElement {

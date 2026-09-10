@@ -64,9 +64,15 @@ public final class CrosshairConfig implements ConfigBinding {
         if (json.has("opacity")) opacity = json.get("opacity").getAsFloat();
         if (json.has("rotation")) rotation = json.get("rotation").getAsFloat();
         if (json.has("style")) {
-            try {
-                style = CrosshairStyle.valueOf(json.get("style").getAsString());
-            } catch (IllegalArgumentException ignored) {
+            String styleName = json.get("style").getAsString();
+            // Legacy CUSTOM was identical to CLASSIC — map for config compat.
+            if ("CUSTOM".equals(styleName)) {
+                style = CrosshairStyle.CLASSIC;
+            } else {
+                try {
+                    style = CrosshairStyle.valueOf(styleName);
+                } catch (IllegalArgumentException ignored) {
+                }
             }
         }
         if (json.has("outline")) outline = json.get("outline").getAsBoolean();

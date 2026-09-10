@@ -4,7 +4,12 @@ import dev.primeclient.core.adapter.MinecraftAdapter;
 import dev.primeclient.core.module.Module;
 import dev.primeclient.core.module.ModuleCategory;
 
-/** Forces particles to the minimal setting while enabled. */
+/**
+ * Forces particles to the minimal setting while enabled.
+ *
+ * @deprecated Unregistered — superseded by {@link PerformanceProfilesModule}. Kept for reference.
+ */
+@Deprecated
 public final class ParticleOptimizerModule extends Module {
 
     private static final int MINIMAL_PARTICLES = 2;
