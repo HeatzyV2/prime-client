@@ -1,0 +1,330 @@
+.host-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.host-card {
+  text-align: left;
+  border-radius: 14px;
+  border: 1px solid var(--prime-border);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--prime-red-bright) 14%, transparent), transparent 55%),
+    var(--prime-surface);
+  padding: 16px;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.host-card:hover {
+  border-color: color-mix(in srgb, var(--prime-red-bright) 45%, var(--prime-border));
+  transform: translateY(-1px);
+}
+
+.host-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.host-card__top h3 {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+
+.host-card p {
+  margin: 0;
+  color: var(--prime-muted);
+  font-size: var(--text-sm);
+}
+
+.host-card__meta {
+  margin-top: 6px !important;
+  font-size: var(--text-xs) !important;
+}
+
+.host-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 28px 4px;
+  color: var(--prime-muted);
+}
+
+.host-message {
+  margin: 0 0 14px;
+  color: var(--prime-muted);
+  font-size: var(--text-sm);
+}
+
+.host-message--error {
+  color: var(--prime-error, #f87171);
+}
+
+.host-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 560px;
+}
+
+.host-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.host-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--text-sm);
+}
+
+.host-field span {
+  color: var(--prime-muted);
+}
+
+.host-field input,
+.host-field select,
+.host-console__input input,
+.host-plugins__search input {
+  border-radius: 10px;
+  border: 1px solid var(--prime-border);
+  background: var(--prime-surface-2, #121218);
+  color: inherit;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.host-eula {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: var(--text-sm);
+  color: var(--prime-muted);
+}
+
+.host-eula a {
+  color: var(--prime-red-bright);
+}
+
+.host-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--prime-surface-2, #121218);
+  overflow: hidden;
+}
+
+.host-progress__bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--prime-red), var(--prime-red-bright));
+  transition: width 120ms ease;
+}
+
+.host-actions,
+.host-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.host-toolbar {
+  margin-bottom: 16px;
+}
+
+.host-eula-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--prime-red-bright) 40%, var(--prime-border));
+  background: color-mix(in srgb, var(--prime-red) 12%, transparent);
+}
+
+.host-eula-banner p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.host-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.host-tabs__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--prime-muted);
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+.host-tabs__btn.is-active {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--prime-red-bright) 45%, var(--prime-border));
+  background: color-mix(in srgb, var(--prime-red) 22%, transparent);
+}
+
+.host-console {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 360px;
+}
+
+.host-console__log {
+  flex: 1;
+  min-height: 320px;
+  max-height: 52vh;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid var(--prime-border);
+  background: #070709;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.host-console__empty {
+  margin: 0;
+  color: var(--prime-muted);
+}
+
+.host-console__line--stderr {
+  color: #fca5a5;
+}
+
+.host-console__line--system {
+  color: #fbbf24;
+}
+
+.host-console__line--stdout {
+  color: #e5e7eb;
+}
+
+.host-console__input {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.host-settings__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.host-plugins__search {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.host-plugins__hits {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.host-plugin-hit {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--prime-border);
+  background: var(--prime-surface);
+}
+
+.host-plugin-hit p {
+  margin: 6px 0 0;
+  color: var(--prime-muted);
+  font-size: var(--text-sm);
+}
+
+.host-plugin-hit__meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--prime-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.host-plugins__list,
+.host-worlds__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.host-plugins__list li,
+.host-worlds__list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--prime-border);
+  background: var(--prime-surface);
+}
+
+.host-plugins__list .is-disabled {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.host-plugins__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.host-worlds__list span {
+  color: var(--prime-muted);
+  font-size: var(--text-sm);
+}
+
+.host-files {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .host-form__row {
+    grid-template-columns: 1fr;
+  }
+
+  .host-plugin-hit {
+    flex-direction: column;
+  }
+}

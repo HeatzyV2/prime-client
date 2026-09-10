@@ -1,0 +1,73 @@
+// Common Core — pure Java, zero Minecraft/Fabric dependency.
+// Everything version-independent lives here: module system, event bus, config,
+// themes, notifications, profiles, HUD layout model, utils.
+// Minecraft access goes exclusively through the adapter interfaces in
+// dev.primeclient.core.adapter, implemented by each version layer.
+plugins {
+	id 'java-library'
+}
+
+repositories {
+	mavenCentral()
+}
+
+/** Keeps {@code PrimeVersion.VERSION} identical to root {@code mod_version}. */
+tasks.register("generatePrimeVersion") {
+	def versionFile = layout.projectDirectory.file("src/main/java/dev/primeclient/core/design/PrimeVersion.java")
+	inputs.property("modVersion", rootProject.mod_version)
+	outputs.file(versionFile)
+	doLast {
+		versionFile.asFile.text = """\
+package dev.primeclient.core.design;
+
+/** Build-time version — synced from gradle.properties {@code mod_version}. Do not hand-edit. */
+public final class PrimeVersion {
+    public static final String VERSION = "${rootProject.mod_version}";
+
+    private PrimeVersion() {
+    }
+}
+"""
+	}
+}
+
+tasks.named("compileJava").configure {
+	dependsOn("generatePrimeVersion")
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.named("sourcesJar").configure {
+	dependsOn("generatePrimeVersion")
+}
+
+dependencies {
+	// Provided at runtime by Fabric Loader; never bundled.
+	api "org.slf4j:slf4j-api:${slf4j_version}"
+
+	// Provided at runtime by Minecraft itself (both 1.21.11 and 26.2 ship Gson).
+	compileOnly "com.google.code.gson:gson:${gson_version}"
+
+	// Pure-Java MP4 encoder for Creator clip export (no ffmpeg required).
+	api 'org.jcodec:jcodec:0.2.5'
+	api 'org.jcodec:jcodec-javase:0.2.5'
+
+	testImplementation "com.google.code.gson:gson:${gson_version}"
+	testImplementation platform("org.junit:junit-bom:${junit_version}")
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+	useJUnitPlatform()
+}
+
+// Java 21: lowest common denominator (1.21.11 targets 21, 26.2 targets 25).
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+	it.options.encoding = 'UTF-8'
+}

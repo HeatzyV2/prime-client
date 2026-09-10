@@ -1,0 +1,94 @@
+package dev.primeclient.core.modules.prime;
+
+import dev.primeclient.core.cosmetics.CosmeticLoadout;
+import dev.primeclient.core.cosmetics.CosmeticManager;
+import dev.primeclient.core.cosmetics.CosmeticType;
+import dev.primeclient.core.event.ClientTickEvent;
+import dev.primeclient.core.module.BooleanSetting;
+import dev.primeclient.core.module.DoubleSetting;
+import dev.primeclient.core.module.EnumSetting;
+import dev.primeclient.core.module.Module;
+import dev.primeclient.core.module.ModuleCategory;
+import dev.primeclient.core.state.CapePhysicsState;
+import dev.primeclient.core.state.CosmeticsState;
+
+/** Equip Prime cosmetics (capes, wings, auras, trails, hats, badges). */
+public final class PrimeCosmeticsModule extends Module {
+
+    private final EnumSetting<CosmeticType> slot =
+            addSetting(new EnumSetting<>("slot", "Slot", "Cosmetic slot to edit", CosmeticType.CAPE));
+    private final BooleanSetting clothPhysics = addSetting(new BooleanSetting(
+            "cloth-physics", "Cloth Physics",
+            "Lightweight cape swing from movement / jump (Prime capes only)", true));
+    private final DoubleSetting physicsIntensity = addSetting(new DoubleSetting(
+            "physics-intensity", "Physics Intensity",
+            "How strongly the cape reacts to motion", 1.0, 0.0, 1.5));
+
+    private final CosmeticManager cosmetics;
+
+    public PrimeCosmeticsModule(CosmeticManager cosmetics) {
+        super("prime-cosmetics", "Prime Cosmetics",
+                "Capes, wings, auras, trails, hats & badges — visible to Prime peers", ModuleCategory.PRIME);
+        this.cosmetics = cosmetics;
+        listen(ClientTickEvent.class, event -> {
+            if (isEnabled()) {
+                pushState();
+            }
+        });
+    }
+
+    @Override
+    protected void onEnable() {
+        pushState();
+    }
+
+    @Override
+    protected void onDisable() {
+        CosmeticsState.reset();
+    }
+
+    /** Cycles equipped item in the selected slot. */
+    public void cycleEquipped() {
+        CosmeticType type = slot.get();
+        if (type == CosmeticType.EMOTE) {
+            type = CosmeticType.CAPE;
+        }
+        final CosmeticType cycleType = type;
+        var items = cosmetics.catalog().values().stream()
+                .filter(i -> i.type() == cycleType)
+                .filter(i -> !"cape-prime".equals(i.id()))
+                .toList();
+        if (items.isEmpty()) {
+            return;
+        }
+        var current = cosmetics.equipped(type);
+        int idx = 0;
+        if (current != null) {
+            for (int i = 0; i < items.size(); i++) {
+                if (items.get(i).id().equals(current.id())) {
+                    idx = (i + 1) % items.size();
+                    break;
+                }
+            }
+        }
+        cosmetics.equip(type, items.get(idx).id());
+    }
+
+    private void pushState() {
+        CosmeticsState.setLocalLoadout(new CosmeticLoadout(
+                id(CosmeticType.CAPE),
+                id(CosmeticType.WINGS),
+                id(CosmeticType.AURA),
+                id(CosmeticType.TRAIL),
+                id(CosmeticType.HAT),
+                id(CosmeticType.BADGE)));
+        CosmeticsState.bindSettings(cosmetics.settings());
+        CapePhysicsState.setActive(clothPhysics.get());
+        CapePhysicsState.setIntensity((float) physicsIntensity.get());
+    }
+
+    private String id(CosmeticType type) {
+        var item = cosmetics.equipped(type);
+        return item != null ? item.id() : "";
+    }
+}
