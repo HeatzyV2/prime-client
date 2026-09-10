@@ -21,6 +21,7 @@ public final class MainMenuRenderer {
     private static final String[] LABEL_KEYS = {
             "prime.gui.main_menu.resume",
             "prime.gui.main_menu.modules",
+            "prime.gui.main_menu.favorites",
             "prime.gui.main_menu.hud_editor",
             "prime.gui.main_menu.configurations",
             "prime.gui.main_menu.cosmetics",
@@ -28,7 +29,7 @@ public final class MainMenuRenderer {
     };
 
     private static final String[] LABEL_FALLBACKS = {
-            "Resume", "Modules", "HUD Editor", "Configurations", "Cosmetics", "Settings"
+            "Resume", "Modules", "Favorites", "HUD Editor", "Configurations", "Cosmetics", "Settings"
     };
 
     private float particlePhase;
@@ -121,12 +122,13 @@ public final class MainMenuRenderer {
 
     public ClickGuiView viewForButton(int index) {
         return switch (index) {
-            case 0 -> null;
+            case 0 -> null; // Resume
             case 1 -> ClickGuiView.BROWSE;
-            case 2 -> null;
-            case 3 -> ClickGuiView.CONFIGURATIONS;
-            case 4 -> ClickGuiView.COSMETICS;
-            case 5 -> ClickGuiView.SETTINGS;
+            case 2 -> ClickGuiView.FAVORITES;
+            case 3 -> null; // HUD Editor
+            case 4 -> ClickGuiView.CONFIGURATIONS;
+            case 5 -> ClickGuiView.COSMETICS;
+            case 6 -> ClickGuiView.SETTINGS;
             default -> ClickGuiView.MAIN_MENU;
         };
     }

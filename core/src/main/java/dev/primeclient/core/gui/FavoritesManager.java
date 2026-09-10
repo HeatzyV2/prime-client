@@ -17,6 +17,7 @@ import java.util.Set;
 public final class FavoritesManager implements ConfigBinding {
 
     private final LinkedHashSet<String> favoriteIds = new LinkedHashSet<>();
+    private int revision;
 
     public boolean isFavorite(String moduleId) {
         return favoriteIds.contains(moduleId);
@@ -28,14 +29,25 @@ public final class FavoritesManager implements ConfigBinding {
         } else {
             favoriteIds.add(moduleId);
         }
+        revision++;
     }
 
     public void add(String moduleId) {
-        favoriteIds.add(moduleId);
+        if (favoriteIds.add(moduleId)) {
+            revision++;
+        }
     }
 
     public void clear() {
-        favoriteIds.clear();
+        if (!favoriteIds.isEmpty()) {
+            favoriteIds.clear();
+            revision++;
+        }
+    }
+
+    /** Monotonic counter — bumps whenever the favorite set changes. */
+    public int revision() {
+        return revision;
     }
 
     public List<Module> resolve(ModuleManager modules) {
@@ -67,6 +79,7 @@ public final class FavoritesManager implements ConfigBinding {
     public void loadConfig(JsonElement element) {
         favoriteIds.clear();
         if (element == null || !element.isJsonArray()) {
+            revision++;
             return;
         }
         for (JsonElement entry : element.getAsJsonArray()) {
@@ -74,5 +87,6 @@ public final class FavoritesManager implements ConfigBinding {
                 favoriteIds.add(entry.getAsString());
             }
         }
+        revision++;
     }
 }

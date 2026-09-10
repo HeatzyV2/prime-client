@@ -8,6 +8,7 @@ import dev.primeclient.core.util.ColorUtil;
 
 /**
  * Compact HSV color picker: hue bar + saturation/value field + alpha slider + hex preview.
+ * SV field is drawn as horizontal gradient strips (O(height) draw calls, not O(width×height)).
  */
 public final class ColorPickerWidget {
 
@@ -48,36 +49,39 @@ public final class ColorPickerWidget {
         int previewX = hueX;
         int previewY = alphaY;
 
-        // SV field (approximation with horizontal hue strips)
+        // SV field: one horizontal gradient per row (white→hue at value v).
         for (int py = 0; py < svSize; py++) {
             float v = 1f - py / (float) svSize;
-            for (int px = 0; px < svSize; px++) {
-                float s = px / (float) svSize;
-                ctx.fillRect(svX + px, svY + py, 1, 1, ColorUtil.fromHsv(hue, s, v, 1f));
-            }
+            int left = ColorUtil.fromHsv(hue, 0f, v, 1f);
+            int right = ColorUtil.fromHsv(hue, 1f, v, 1f);
+            ctx.fillGradientHorizontal(svX, svY + py, svSize, 1, left, right);
         }
         int cx = svX + Math.round(saturation * svSize);
         int cy = svY + Math.round((1f - value) * svSize);
         ctx.fillRect(cx - 1, cy - 1, 3, 3, theme.foreground());
 
-        // Hue bar
-        for (int i = 0; i < hueH; i++) {
-            float h = i / (float) hueH * 360f;
-            ctx.fillRect(hueX, hueY + i, hueW, 1, ColorUtil.fromHsv(h, 1f, 1f, 1f));
+        // Hue bar — chunked vertical strips (6° steps ≈ 60 fills).
+        int hueSteps = 60;
+        for (int i = 0; i < hueSteps; i++) {
+            float h0 = i / (float) hueSteps * 360f;
+            float h1 = (i + 1) / (float) hueSteps * 360f;
+            int y0 = hueY + i * hueH / hueSteps;
+            int y1 = hueY + (i + 1) * hueH / hueSteps;
+            ctx.fillGradientVertical(hueX, y0, hueW, Math.max(1, y1 - y0),
+                    ColorUtil.fromHsv(h0, 1f, 1f, 1f),
+                    ColorUtil.fromHsv(h1, 1f, 1f, 1f));
         }
         int hy = hueY + Math.round(hue / 360f * hueH);
         ctx.fillRect(hueX - 1, hy, hueW + 2, 2, theme.foreground());
 
-        // Alpha bar
+        // Alpha bar — single horizontal gradient.
         int alphaW = svSize + hueW + PrimeDesign.SPACE_SM;
-        for (int i = 0; i < alphaW; i++) {
-            float a = i / (float) alphaW;
-            ctx.fillRect(x + i, alphaY, 1, 6, ColorUtil.fromHsv(hue, saturation, value, a));
-        }
+        ctx.fillGradientHorizontal(x, alphaY, alphaW, 6,
+                ColorUtil.fromHsv(hue, saturation, value, 0f),
+                ColorUtil.fromHsv(hue, saturation, value, 1f));
         int ax = x + Math.round(alpha * alphaW);
         ctx.fillRect(ax, alphaY - 1, 2, 8, theme.foreground());
 
-        // Preview + hex
         ctx.fillRect(previewX, previewY, 18, 12, selectedArgb());
         GuiLayout.label(ctx, ColorUtil.toHex(selectedArgb()), previewX + 22, previewY + 2, theme.foregroundMuted());
     }

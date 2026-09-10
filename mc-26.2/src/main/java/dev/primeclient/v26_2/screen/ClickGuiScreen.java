@@ -36,7 +36,7 @@ public final class ClickGuiScreen extends Screen {
 
     @Override
     public void tick() {
-        PrimeClient.get().clickGui().tick(1f / 20f);
+        // Animations advance from render via frame-delta timing.
     }
 
     @Override

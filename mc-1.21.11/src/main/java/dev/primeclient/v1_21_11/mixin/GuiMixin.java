@@ -47,8 +47,13 @@ public abstract class GuiMixin {
         }
     }
 
-    @Inject(method = "renderHotbarAndDecorations", at = @At("HEAD"))
+    @Inject(method = "renderHotbarAndDecorations", at = @At("HEAD"), cancellable = true)
     private void primeclient$hotbarHead(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        // Hotbar + XP share this method — hiding hotbar cancels both (XP has no separate draw path).
+        if (VanillaHudTransforms.isHidden(VanillaHudComponent.HOTBAR)) {
+            ci.cancel();
+            return;
+        }
         VanillaHudTransforms.push(graphics, VanillaHudComponent.HOTBAR);
     }
 
@@ -57,8 +62,12 @@ public abstract class GuiMixin {
         VanillaHudTransforms.pop(graphics, VanillaHudComponent.HOTBAR);
     }
 
-    @Inject(method = "renderEffects", at = @At("HEAD"))
+    @Inject(method = "renderEffects", at = @At("HEAD"), cancellable = true)
     private void primeclient$effectsHead(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (VanillaHudTransforms.isHidden(VanillaHudComponent.STATUS_EFFECTS)) {
+            ci.cancel();
+            return;
+        }
         VanillaHudTransforms.push(graphics, VanillaHudComponent.STATUS_EFFECTS);
     }
 
@@ -67,8 +76,12 @@ public abstract class GuiMixin {
         VanillaHudTransforms.pop(graphics, VanillaHudComponent.STATUS_EFFECTS);
     }
 
-    @Inject(method = "renderBossOverlay", at = @At("HEAD"))
+    @Inject(method = "renderBossOverlay", at = @At("HEAD"), cancellable = true)
     private void primeclient$bossHead(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (VanillaHudTransforms.isHidden(VanillaHudComponent.BOSSBAR)) {
+            ci.cancel();
+            return;
+        }
         VanillaHudTransforms.push(graphics, VanillaHudComponent.BOSSBAR);
     }
 
@@ -101,8 +114,12 @@ public abstract class GuiMixin {
         VanillaHudTransforms.pop(graphics, VanillaHudComponent.EXPERIENCE);
     }
 
-    @Inject(method = "renderScoreboardSidebar", at = @At("HEAD"))
+    @Inject(method = "renderScoreboardSidebar", at = @At("HEAD"), cancellable = true)
     private void primeclient$scoreboardHead(GuiGraphics graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (VanillaHudTransforms.isHidden(VanillaHudComponent.SCOREBOARD)) {
+            ci.cancel();
+            return;
+        }
         // Bounds from the previous frame stay valid so the transform matches the editor box.
         VanillaHudTransforms.push(graphics, VanillaHudComponent.SCOREBOARD);
     }

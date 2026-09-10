@@ -1,9 +1,10 @@
-import { mkdir, readFile, writeFile, copyFile, unlink } from 'fs/promises'
+import { mkdir, readFile, copyFile, unlink } from 'fs/promises'
 import { join, dirname } from 'path'
 import { app } from 'electron'
 import { getInstanceGameDir } from '../minecraft/paths'
 import { ecosystemStore } from '../storage/EcosystemStore'
 import { settingsStore } from '../storage/SettingsStore'
+import { atomicWriteJson } from '../storage/atomicWrite'
 import { normalizePrimeTheme } from '../../shared/theme'
 import { applyPerfPresetToModules } from '../../shared/perf-preset-modules'
 import type { PerformancePreset } from '../../shared/content-types'
@@ -27,9 +28,24 @@ function launcherSkinsDir(): string {
   return join(app.getPath('userData'), 'skins')
 }
 
+async function resolveActiveProfileName(primeDir: string): Promise<string> {
+  const statePath = join(primeDir, 'state.json')
+  try {
+    const raw = await readFile(statePath, 'utf8')
+    const state = JSON.parse(raw) as { activeProfile?: string }
+    const name = state.activeProfile
+    if (typeof name === 'string' && /^[a-zA-Z0-9_-]{1,32}$/.test(name)) {
+      return name
+    }
+  } catch {
+    // First run — default profile.
+  }
+  return 'default'
+}
+
 /**
  * Writes launcher state into the instance game dir so Prime Client mod picks it up
- * on next launch (`config/primeclient/profiles/default.json`).
+ * on next launch (active profile under `config/primeclient/profiles/`).
  */
 export class LauncherBridgeService {
   async syncToInstance(instanceId: string): Promise<{ ok: boolean; error?: string }> {
@@ -37,7 +53,8 @@ export class LauncherBridgeService {
       const [db, settings] = await Promise.all([ecosystemStore.load(), settingsStore.load()])
       const gameDir = getInstanceGameDir(instanceId)
       const primeDir = join(gameDir, 'config', 'primeclient')
-      const profilePath = join(primeDir, 'profiles', 'default.json')
+      const activeProfile = await resolveActiveProfileName(primeDir)
+      const profilePath = join(primeDir, 'profiles', `${activeProfile}.json`)
       const customSkinPath = join(primeDir, 'custom_skin.png')
 
       let root: Record<string, unknown> = {}
@@ -67,7 +84,7 @@ export class LauncherBridgeService {
       root.modules = modules
 
       await mkdir(dirname(profilePath), { recursive: true })
-      await writeFile(profilePath, JSON.stringify(root, null, 2), 'utf8')
+      await atomicWriteJson(profilePath, root)
 
       await this.syncActiveSkin(customSkinPath, settings.activeSkinId ?? null)
 

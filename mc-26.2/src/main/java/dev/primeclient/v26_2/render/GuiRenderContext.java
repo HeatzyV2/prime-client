@@ -19,12 +19,14 @@ public final class GuiRenderContext implements RenderContext {
     private GuiGraphicsExtractor extractor;
     private Font font;
     private float drawOpacity = 1f;
+    private int drawTint;
     private int clipDepth;
 
     public void prepare(GuiGraphicsExtractor extractor) {
         this.extractor = extractor;
         this.font = Minecraft.getInstance().font;
         this.drawOpacity = 1f;
+        this.drawTint = 0;
         this.clipDepth = 0;
     }
 
@@ -102,6 +104,11 @@ public final class GuiRenderContext implements RenderContext {
     @Override
     public void setDrawOpacity(float opacity) {
         this.drawOpacity = Math.clamp(opacity, 0f, 1f);
+    }
+
+    @Override
+    public void setDrawTint(int tintArgb) {
+        this.drawTint = tintArgb;
     }
 
     @Override
@@ -195,7 +202,8 @@ public final class GuiRenderContext implements RenderContext {
     }
 
     private int applyOpacity(int argb) {
-        return drawOpacity >= 0.999f ? argb : ColorUtil.withAlpha(argb, drawOpacity);
+        int tinted = drawTint == 0 ? argb : ColorUtil.tint(argb, drawTint);
+        return drawOpacity >= 0.999f ? tinted : ColorUtil.withAlpha(tinted, drawOpacity);
     }
 
     private int textureTint(int argb) {

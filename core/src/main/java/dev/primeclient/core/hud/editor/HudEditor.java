@@ -159,12 +159,10 @@ public final class HudEditor {
         lastPressY = mouseY;
         dragArmed = false;
         if (ui.mousePressed(mouseX, mouseY)) {
-            if (ui.listRowIndexAt(mouseX, mouseY) >= 0) {
-                dragArmed = true;
-            }
             return true;
         }
-        HudElement hit = hud.elementAt(mouseX, mouseY, true);
+        // Canvas ignores hidden elements — re-select them from the Elements list only.
+        HudElement hit = hud.elementAt(mouseX, mouseY, false);
         if (hit != null) {
             this.selected = hit;
             this.dragging = hit;
@@ -175,7 +173,8 @@ public final class HudEditor {
             beginGesture();
             return true;
         }
-        if (selected != null && !ui.blocksCanvasDrag(mouseX, mouseY) && !ui.isPanelBackdrop(mouseX, mouseY)) {
+        if (selected != null && selected.isVisible()
+                && !ui.blocksCanvasDrag(mouseX, mouseY) && !ui.isPanelBackdrop(mouseX, mouseY)) {
             dragArmed = true;
             this.dragging = null;
             this.didDrag = false;
@@ -195,14 +194,15 @@ public final class HudEditor {
             return;
         }
         HudElement element = dragging;
-        if (element == null && dragArmed && selected != null && !ui.blocksCanvasDrag(mouseX, mouseY)) {
+        if (element == null && dragArmed && selected != null && selected.isVisible()
+                && !ui.blocksCanvasDrag(mouseX, mouseY)) {
             element = selected;
             dragging = selected;
             grabOffsetX = (float) (lastPressX - selected.lastX());
             grabOffsetY = (float) (lastPressY - selected.lastY());
             beginGesture();
         }
-        if (element == null) {
+        if (element == null || !element.isVisible()) {
             return;
         }
         markMutated();
@@ -233,10 +233,10 @@ public final class HudEditor {
         if (ui.mouseScrolled(mouseX, mouseY, scrollDelta)) {
             return true;
         }
-        HudElement target = selected != null && selected.containsPoint(mouseX, mouseY)
+        HudElement target = selected != null && selected.isVisible() && selected.containsPoint(mouseX, mouseY)
                 ? selected
-                : hud.elementAt(mouseX, mouseY, true);
-        if (target == null) {
+                : hud.elementAt(mouseX, mouseY, false);
+        if (target == null || !target.isVisible()) {
             return false;
         }
         snapshotCoalesced();
@@ -622,11 +622,8 @@ public final class HudEditor {
         for (HudElement element : hud.all()) {
             boolean isSelected = element == selected;
             boolean isHovered = element == listHover
-                    || (!overUi && element.containsPoint(mouseX, mouseY));
+                    || (element.isVisible() && !overUi && element.containsPoint(mouseX, mouseY));
             if (!isSelected && !isHovered) {
-                if (!element.isVisible()) {
-                    drawBorder(ctx, element, ColorUtil.withAlpha(theme.foregroundMuted(), 0.25f));
-                }
                 continue;
             }
             if (isSelected) {
@@ -653,11 +650,6 @@ public final class HudEditor {
         ctx.fillRect(x, y + h - 1, w, 1, accent);
         ctx.fillRect(x, y + 1, 1, h - 2, accent);
         ctx.fillRect(x + w - 1, y + 1, 1, h - 2, accent);
-        int handle = 3;
-        ctx.fillRect(x - 1, y - 1, handle, handle, accent);
-        ctx.fillRect(x + w - 2, y - 1, handle, handle, accent);
-        ctx.fillRect(x - 1, y + h - 2, handle, handle, accent);
-        ctx.fillRect(x + w - 2, y + h - 2, handle, handle, accent);
         String label = element.isVisible() ? element.name() : element.name() + " (hidden)";
         int labelW = ctx.uiTextWidth(label) + 8;
         int labelH = ctx.uiFontHeight() + 4;

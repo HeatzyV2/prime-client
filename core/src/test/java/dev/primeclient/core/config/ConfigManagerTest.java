@@ -74,6 +74,18 @@ class ConfigManagerTest {
         Files.writeString(file, "{ not json !!!");
         manager.loadFrom(file);
         assertEquals("default", binding.value);
+        assertTrue(Files.list(dir)
+                .anyMatch(p -> p.getFileName().toString().startsWith("broken.json.corrupt-")));
+    }
+
+    @Test
+    void saveWritesSchemaVersion(@TempDir Path dir) throws Exception {
+        ConfigManager manager = new ConfigManager();
+        manager.register(new StringBinding("greeting", "hello"));
+        Path file = dir.resolve("profiles").resolve("default.json");
+        manager.saveTo(file);
+        String raw = Files.readString(file);
+        assertTrue(raw.contains("\"schemaVersion\": " + ConfigManager.SCHEMA_VERSION));
     }
 
     @Test

@@ -125,7 +125,9 @@ public final class HudManager implements ConfigBinding {
         ctx.pushTransform(x + width / 2f, y + height / 2f, scale,
                 element.rotation(), pivotX, pivotY);
         ctx.setDrawOpacity(element.opacity());
+        ctx.setDrawTint(element.tintArgb());
         element.render(ctx, now);
+        ctx.setDrawTint(0);
         ctx.setDrawOpacity(1f);
         ctx.popTransform();
     }

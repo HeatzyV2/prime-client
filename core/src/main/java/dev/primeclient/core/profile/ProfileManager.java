@@ -164,12 +164,7 @@ public final class ProfileManager {
     private void persistState() {
         JsonObject state = new JsonObject();
         state.addProperty("activeProfile", activeProfile);
-        try {
-            Files.createDirectories(stateFile.getParent());
-            Files.writeString(stateFile, state.toString(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            PrimeClient.LOGGER.error("Failed to persist active profile", e);
-        }
+        ConfigManager.atomicWrite(stateFile, state.toString());
     }
 
     private static long readMtime(Path file) {

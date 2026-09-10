@@ -1,8 +1,8 @@
 import { app } from 'electron'
-import { mkdir, readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import type { PerformancePreset } from '../../shared/content-types'
 import { normalizePrimeTheme, type PrimeThemeId } from '../../shared/theme'
+import { atomicWriteJson, quarantineCorrupt, readJsonFile } from './atomicWrite'
 
 export type GameDisplayMode = 'windowed' | 'borderless' | 'fullscreen'
 
@@ -91,15 +91,15 @@ export class SettingsStore {
     if (this.settings) {
       return this.settings
     }
-    try {
-      const raw = await readFile(this.path, 'utf8')
-      const parsed = JSON.parse(raw) as Partial<LauncherSettings> & { theme?: string }
+    const parsed = await readJsonFile<Partial<LauncherSettings> & { theme?: string }>(this.path)
+    if (parsed) {
       this.settings = {
         ...DEFAULT_SETTINGS(),
         ...parsed,
         theme: normalizePrimeTheme(parsed.theme)
       }
-    } catch {
+    } else {
+      await quarantineCorrupt(this.path)
       this.settings = DEFAULT_SETTINGS()
       await this.save()
     }
@@ -110,8 +110,7 @@ export class SettingsStore {
     if (!this.settings) {
       return
     }
-    await mkdir(app.getPath('userData'), { recursive: true })
-    await writeFile(this.path, JSON.stringify(this.settings, null, 2), 'utf8')
+    await atomicWriteJson(this.path, this.settings)
   }
 
   async mutate(fn: (s: LauncherSettings) => void): Promise<LauncherSettings> {

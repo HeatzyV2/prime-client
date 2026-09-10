@@ -74,6 +74,7 @@ public final class ClickGui implements ConfigBinding {
 
     private final List<Panel> panels = new ArrayList<>();
     private Panel favoritesPanel;
+    private int favoritesRevision = Integer.MIN_VALUE;
     private final StringBuilder searchQuery = new StringBuilder();
 
     private Panel searchPanel;
@@ -88,6 +89,7 @@ public final class ClickGui implements ConfigBinding {
     private ClickGuiView view = ClickGuiView.MAIN_MENU;
     private float openFade;
     private float menuSlide;
+    private long lastAnimNanos;
     private Runnable onboardingCompleteHandler;
 
     public ClickGui(ModuleManager modules, ThemeManager themes,
@@ -114,6 +116,7 @@ public final class ClickGui implements ConfigBinding {
         }
         favoritesPanel = new Panel(PrimeLang.get("prime.gui.clickgui.favorites", "Favorites"),
                 favorites.resolve(modules), favorites, 8, 8);
+        favoritesRevision = favorites.revision();
     }
 
     public void setOnboardingCompleteHandler(Runnable handler) {
@@ -185,22 +188,41 @@ public final class ClickGui implements ConfigBinding {
     }
 
     public void tick(float deltaSeconds) {
-        openFade = Easing.lerp(openFade, 1f, deltaSeconds * 8f);
+        float dt = deltaSeconds;
+        if (dt <= 0f) {
+            dt = frameDeltaSeconds();
+        }
+        if (PrimeDesign.reducedMotion) {
+            openFade = 1f;
+            menuSlide = 0f;
+        } else {
+            openFade = Easing.lerp(openFade, 1f, dt * 8f);
+            if (view == ClickGuiView.MAIN_MENU || view == ClickGuiView.ONBOARDING) {
+                menuSlide = Easing.lerp(menuSlide, 0f, dt * 10f);
+            }
+        }
         if (view == ClickGuiView.MAIN_MENU || view == ClickGuiView.ONBOARDING) {
-            menuSlide = Easing.lerp(menuSlide, 0f, deltaSeconds * 10f);
-            mainMenu.tick(deltaSeconds);
+            mainMenu.tick(dt);
         }
         for (Panel panel : panels) {
-            panel.tick(deltaSeconds);
+            panel.tick(dt);
         }
         if (favoritesPanel != null) {
-            favoritesPanel.tick(deltaSeconds);
+            favoritesPanel.tick(dt);
         }
         if (searchPanel != null) {
-            searchPanel.tick(deltaSeconds);
+            searchPanel.tick(dt);
         }
-        cardBrowser.tick(deltaSeconds);
+        cardBrowser.tick(dt);
         refreshSelectedPanel();
+    }
+
+    /** Frame-time delta for render-driven animation (capped). */
+    private float frameDeltaSeconds() {
+        long now = System.nanoTime();
+        float dt = lastAnimNanos == 0L ? 1f / 60f : (now - lastAnimNanos) / 1_000_000_000f;
+        lastAnimNanos = now;
+        return Math.clamp(dt, 0f, 0.05f);
     }
 
     private void refreshSelectedPanel() {
@@ -217,6 +239,8 @@ public final class ClickGui implements ConfigBinding {
     }
 
     public void render(RenderContext ctx, double mouseX, double mouseY) {
+        // Drive animations from render so motion stays smooth at display refresh rate.
+        tick(frameDeltaSeconds());
         this.textMetrics = ctx;
         this.screenWidth = ctx.screenWidth();
         this.screenHeight = ctx.screenHeight();
@@ -255,7 +279,7 @@ public final class ClickGui implements ConfigBinding {
             }
             case FAVORITES -> {
                 renderSearchBar(ctx, theme);
-                refreshFavoritesPanel();
+                refreshFavoritesPanelIfNeeded();
                 favoritesPanel.render(ctx, theme, mouseX, mouseY);
             }
             case BROWSE -> {
@@ -367,7 +391,7 @@ public final class ClickGui implements ConfigBinding {
             return dispatchPress(searchPanel, mouseX, mouseY, button);
         }
         if (view == ClickGuiView.FAVORITES) {
-            refreshFavoritesPanel();
+            refreshFavoritesPanelIfNeeded();
             return dispatchPress(favoritesPanel, mouseX, mouseY, button);
         }
         if (view == ClickGuiView.BROWSE) {
@@ -403,7 +427,7 @@ public final class ClickGui implements ConfigBinding {
             adapter.closeCurrentScreen();
             return true;
         }
-        if (btn == 2) {
+        if (btn == 3) {
             adapter.openHudEditor();
             return true;
         }
@@ -497,6 +521,16 @@ public final class ClickGui implements ConfigBinding {
         if (view == ClickGuiView.MAIN_MENU || view == ClickGuiView.ONBOARDING) {
             return false;
         }
+        if (view == ClickGuiView.SETTINGS) {
+            return settingsMenu.charTyped(character);
+        }
+        if (view == ClickGuiView.CONFIGURATIONS || view == ClickGuiView.COSMETICS) {
+            return false;
+        }
+        // Module search only on Browse / Favorites.
+        if (view != ClickGuiView.BROWSE && view != ClickGuiView.FAVORITES) {
+            return false;
+        }
         if (character < ' ') {
             return false;
         }
@@ -518,12 +552,26 @@ public final class ClickGui implements ConfigBinding {
         if (view == ClickGuiView.SETTINGS && settingsMenu.capturingKey()) {
             return settingsMenu.captureKey(glfwKey, keybinds);
         }
+        if (glfwKey == 256 && colorPicker != null) {
+            closeEditors();
+            return true;
+        }
+        if (glfwKey == 256 && isSearching()) {
+            searchQuery.setLength(0);
+            searchPanel = null;
+            return true;
+        }
         if (glfwKey == 256 && view == ClickGuiView.ONBOARDING) {
             onboarding.skip();
             completeOnboarding();
             return true;
         }
-        if (glfwKey == 256 && view != ClickGuiView.MAIN_MENU && view != ClickGuiView.BROWSE) {
+        if (glfwKey == 256 && view == ClickGuiView.BROWSE && selectedModulePanel != null) {
+            selectedModulePanel = null;
+            cardBrowser.selectForTests(null);
+            return true;
+        }
+        if (glfwKey == 256 && view != ClickGuiView.MAIN_MENU) {
             closeEditors();
             view = ClickGuiView.MAIN_MENU;
             return true;
@@ -535,26 +583,13 @@ public final class ClickGui implements ConfigBinding {
         if (view == ClickGuiView.SETTINGS && settingsMenu.keyPressed(glfwKey)) {
             return true;
         }
-        if (glfwKey == 256 && view == ClickGuiView.BROWSE && selectedModulePanel != null) {
-            selectedModulePanel = null;
-            cardBrowser.selectForTests(null);
-            return true;
-        }
-        if (glfwKey == 256 && colorPicker != null) {
-            closeEditors();
-            return true;
-        }
         if (view == ClickGuiView.MAIN_MENU) {
             return false;
         }
-        if (glfwKey == 259 && !searchQuery.isEmpty()) {
+        if (glfwKey == 259 && !searchQuery.isEmpty()
+                && (view == ClickGuiView.BROWSE || view == ClickGuiView.FAVORITES)) {
             searchQuery.setLength(searchQuery.length() - 1);
             rebuildSearchPanel();
-            return true;
-        }
-        if (glfwKey == 256 && isSearching()) {
-            searchQuery.setLength(0);
-            searchPanel = null;
             return true;
         }
         return false;
@@ -575,10 +610,17 @@ public final class ClickGui implements ConfigBinding {
                 searchPanel != null ? searchPanel.x : 8, 8);
     }
 
-    private void refreshFavoritesPanel() {
+    private void refreshFavoritesPanelIfNeeded() {
+        int revision = favorites.revision();
+        if (favoritesPanel != null && revision == favoritesRevision) {
+            return;
+        }
+        float x = favoritesPanel != null ? favoritesPanel.x : 8;
+        float y = favoritesPanel != null ? favoritesPanel.y : 8;
         favoritesPanel = new Panel(PrimeLang.get("prime.gui.clickgui.favorites", "Favorites"),
-                favorites.resolve(modules), favorites, favoritesPanel.x, favoritesPanel.y);
+                favorites.resolve(modules), favorites, x, y);
         favoritesPanel.collapsed = false;
+        favoritesRevision = revision;
     }
 
     @Override

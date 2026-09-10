@@ -405,7 +405,7 @@ final class HudEditorUi {
         btnVisibility = new Rect(x + pad + nameW + 4, row1Y - 1, 52, 14);
         UiChrome.button(ctx, theme, btnVisibility.x(), btnVisibility.y(), btnVisibility.w(), 14,
                 btnVisibility.contains(mouseX, mouseY), visible);
-        String visLabel = visible ? "Show" : "Hide";
+        String visLabel = visible ? "Hide" : "Show";
         ctx.drawUiText(visLabel, btnVisibility.x() + (btnVisibility.w() - ctx.uiTextWidth(visLabel)) / 2,
                 row1Y, visible ? 0xFFFFFFFF : theme.foregroundMuted());
 

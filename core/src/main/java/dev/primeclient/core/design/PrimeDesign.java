@@ -28,6 +28,9 @@ public final class PrimeDesign {
     public static final float MOTION_NORMAL = 12f;
     public static final float MOTION_SLOW = 8f;
 
+    /** When true, UI animations snap to their targets (accessibility). */
+    public static volatile boolean reducedMotion = false;
+
     // Component sizes
     public static final int ROW_HEIGHT = 16;
     public static final int TOGGLE_WIDTH = 22;

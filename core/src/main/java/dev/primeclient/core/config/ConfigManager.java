@@ -28,6 +28,9 @@ import java.util.Map;
  */
 public final class ConfigManager {
 
+    /** Bumped when the root profile JSON shape changes in a breaking way. */
+    public static final int SCHEMA_VERSION = 3;
+
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final Map<String, ConfigBinding> bindings = new LinkedHashMap<>();
 
@@ -45,6 +48,7 @@ public final class ConfigManager {
     /** Serializes every binding into {@code file}, creating parent directories. */
     public void saveTo(Path file) {
         JsonObject root = new JsonObject();
+        root.addProperty("schemaVersion", SCHEMA_VERSION);
         for (ConfigBinding binding : bindings.values()) {
             try {
                 root.add(binding.configKey(), binding.saveConfig());
@@ -52,25 +56,15 @@ public final class ConfigManager {
                 PrimeClient.LOGGER.error("Failed to serialize config section '{}'", binding.configKey(), e);
             }
         }
-        try {
-            Files.createDirectories(file.getParent());
-            Path temp = file.resolveSibling(file.getFileName() + ".tmp");
-            Files.writeString(temp, gson.toJson(root), StandardCharsets.UTF_8);
-            try {
-                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
-                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } catch (IOException e) {
-            PrimeClient.LOGGER.error("Failed to save config to {}", file, e);
-        }
+        atomicWrite(file, gson.toJson(root));
     }
 
     /**
      * Loads {@code file} and dispatches each section to its binding.
      *
      * <p>Missing file, unreadable JSON or a broken section never abort the
-     * client: affected bindings simply keep their current (default) state.</p>
+     * client: affected bindings simply keep their current (default) state.
+     * Corrupt files are quarantined to {@code *.corrupt-<timestamp>}.</p>
      */
     public void loadFrom(Path file) {
         if (!Files.isRegularFile(file)) {
@@ -81,8 +75,16 @@ public final class ConfigManager {
             root = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
         } catch (IOException | RuntimeException e) {
             PrimeClient.LOGGER.error("Failed to read config {} — keeping defaults", file, e);
+            quarantineCorrupt(file);
             return;
         }
+        int version = root.has("schemaVersion") ? root.get("schemaVersion").getAsInt() : 2;
+        if (version > SCHEMA_VERSION) {
+            PrimeClient.LOGGER.warn(
+                    "Config {} schemaVersion {} is newer than supported {} — loading best-effort",
+                    file, version, SCHEMA_VERSION);
+        }
+        // Future migrations from version → SCHEMA_VERSION land here.
         for (ConfigBinding binding : bindings.values()) {
             JsonElement section = root.get(binding.configKey());
             if (section == null) {
@@ -99,6 +101,7 @@ public final class ConfigManager {
     /** Exports all bindings into one JSON object (cloud backup / import). */
     public JsonObject exportAll() {
         JsonObject root = new JsonObject();
+        root.addProperty("schemaVersion", SCHEMA_VERSION);
         for (ConfigBinding binding : bindings.values()) {
             try {
                 root.add(binding.configKey(), binding.saveConfig());
@@ -150,6 +153,31 @@ public final class ConfigManager {
             binding.loadConfig(section);
         } catch (IOException | RuntimeException e) {
             PrimeClient.LOGGER.debug("Failed to reload config section '{}' from {}", key, file);
+        }
+    }
+
+    public static void atomicWrite(Path file, String contents) {
+        try {
+            Files.createDirectories(file.getParent());
+            Path temp = file.resolveSibling(file.getFileName() + ".tmp");
+            Files.writeString(temp, contents, StandardCharsets.UTF_8);
+            try {
+                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException e) {
+            PrimeClient.LOGGER.error("Failed to save config to {}", file, e);
+        }
+    }
+
+    private static void quarantineCorrupt(Path file) {
+        try {
+            Path quarantine = file.resolveSibling(file.getFileName() + ".corrupt-" + System.currentTimeMillis());
+            Files.move(file, quarantine, StandardCopyOption.REPLACE_EXISTING);
+            PrimeClient.LOGGER.warn("Quarantined corrupt config to {}", quarantine);
+        } catch (IOException moveFailed) {
+            PrimeClient.LOGGER.error("Failed to quarantine corrupt config {}", file, moveFailed);
         }
     }
 }

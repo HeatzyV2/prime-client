@@ -1,8 +1,9 @@
 import { app } from 'electron'
-import { mkdir, readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import type { LauncherProfile, PrimeAccount } from '../../shared/types'
 import type { StoredMinecraftAccount } from './account-types'
+import { atomicWriteJson, quarantineCorrupt, readJsonFile } from './atomicWrite'
+import { openSecret, sealSecret } from './secretSeal'
 
 export interface AccountDatabase {
   version: 1
@@ -36,6 +37,26 @@ const DEFAULT_DB = (): AccountDatabase => ({
   ]
 })
 
+function sealAccounts(db: AccountDatabase): AccountDatabase {
+  return {
+    ...db,
+    accounts: db.accounts.map((account) => ({
+      ...account,
+      msRefreshToken: account.msRefreshToken ? sealSecret(account.msRefreshToken) : account.msRefreshToken
+    }))
+  }
+}
+
+function openAccounts(db: AccountDatabase): AccountDatabase {
+  return {
+    ...db,
+    accounts: db.accounts.map((account) => ({
+      ...account,
+      msRefreshToken: openSecret(account.msRefreshToken)
+    }))
+  }
+}
+
 export class AccountStore {
   private db: AccountDatabase | null = null
 
@@ -47,10 +68,11 @@ export class AccountStore {
     if (this.db) {
       return this.db
     }
-    try {
-      const raw = await readFile(this.path, 'utf8')
-      this.db = JSON.parse(raw) as AccountDatabase
-    } catch {
+    const parsed = await readJsonFile<AccountDatabase>(this.path)
+    if (parsed) {
+      this.db = openAccounts(parsed)
+    } else {
+      await quarantineCorrupt(this.path)
       this.db = DEFAULT_DB()
       await this.save()
     }
@@ -61,8 +83,7 @@ export class AccountStore {
     if (!this.db) {
       return
     }
-    await mkdir(app.getPath('userData'), { recursive: true })
-    await writeFile(this.path, JSON.stringify(this.db, null, 2), 'utf8')
+    await atomicWriteJson(this.path, sealAccounts(this.db))
   }
 
   async getDb(): Promise<AccountDatabase> {

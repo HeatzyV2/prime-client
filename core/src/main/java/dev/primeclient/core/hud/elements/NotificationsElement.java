@@ -19,8 +19,7 @@ public final class NotificationsElement extends HudElement implements Consumer<N
     private static final int WIDTH = 168;
     private static final int ROW_HEIGHT = 26;
     private static final int GAP = 4;
-    private static final int PADDING = 4;
-    private static final int ACCENT_WIDTH = 3;
+    private static final float ENTER_FRACTION = 0.12f;
 
     private final NotificationManager notifications;
     private final ThemeManager themes;
@@ -51,6 +50,10 @@ public final class NotificationsElement extends HudElement implements Consumer<N
 
     @Override
     public void render(RenderContext ctx, long nowMillis) {
+        // Keep layout synced with notification prefs (HUD editor can still move offsets).
+        if (anchor() != prefs.anchor()) {
+            setLayout(prefs.anchor(), offsetX(), offsetY());
+        }
         this.ctx = ctx;
         this.now = nowMillis;
         this.cursorY = 0;
@@ -62,30 +65,33 @@ public final class NotificationsElement extends HudElement implements Consumer<N
     public void accept(Notification notification) {
         Theme theme = themes.active();
         float progress = notification.progress(now);
-        float slide = (1f - Easing.easeOutCubic(1f - progress)) * 12f * prefs.slideStrength();
+        // Slide-in during the first slice of lifetime; settle after that.
+        float enter = Math.clamp(progress / ENTER_FRACTION, 0f, 1f);
+        float slide = (1f - Easing.easeOutCubic(enter)) * 12f * prefs.slideStrength();
         int y = cursorY + Math.round(slide);
 
         int radius = ROW_HEIGHT / 2;
         int levelCol = levelColor(notification, theme);
-        int bgFill = ColorUtil.withAlpha(0xFF0D0D10, 0.94f);
+        int bgFill = ColorUtil.withAlpha(theme.surfaceElevated(), 0.94f);
 
-        // Dynamic Island pill shape with soft shadow and glowing accent border
         ctx.fillSoftShadow(0, y, WIDTH, ROW_HEIGHT, radius, 0x80000000);
         ctx.fillRoundedBorder(0, y, WIDTH, ROW_HEIGHT, radius, 1,
                 ColorUtil.withAlpha(levelCol, 0.55f), bgFill);
 
-        // Circular badge for level icon
-        int badgeSize = 16;
-        int badgeX = 5;
-        int badgeY = y + (ROW_HEIGHT - badgeSize) / 2;
-        ctx.fillRoundedRect(badgeX, badgeY, badgeSize, badgeSize, badgeSize / 2, ColorUtil.withAlpha(levelCol, 0.25f));
-        ctx.drawSmoothText(levelIcon(notification), badgeX + 4, badgeY + 1, levelCol, 0.75f);
+        int textX = 8;
+        if (prefs.showIcons()) {
+            int badgeSize = 16;
+            int badgeX = 5;
+            int badgeY = y + (ROW_HEIGHT - badgeSize) / 2;
+            ctx.fillRoundedRect(badgeX, badgeY, badgeSize, badgeSize, badgeSize / 2,
+                    ColorUtil.withAlpha(levelCol, 0.25f));
+            ctx.drawSmoothText(levelIcon(notification), badgeX + 4, badgeY + 1, levelCol, 0.75f);
+            textX = badgeX + badgeSize + 6;
+        }
 
-        int textX = badgeX + badgeSize + 6;
         ctx.drawSmoothText(notification.title(), textX, y + 3, theme.foreground(), 0.75f);
         ctx.drawSmoothText(notification.message(), textX, y + 13, theme.foregroundMuted(), 0.65f);
 
-        // Glowing progress bar at bottom of pill
         int barWidth = Math.max(0, Math.round((WIDTH - 24) * (1f - progress)));
         if (barWidth > 0) {
             ctx.fillRoundedRect(12, y + ROW_HEIGHT - 3, barWidth, 2, 1, ColorUtil.withAlpha(levelCol, 0.85f));

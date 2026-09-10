@@ -8,6 +8,7 @@ import dev.primeclient.core.cosmetics.CosmeticManager;
 import dev.primeclient.core.event.EventBus;
 import dev.primeclient.core.gui.FavoritesManager;
 import dev.primeclient.core.gui.TooltipRenderer;
+import dev.primeclient.core.gui.menu.MainMenuRenderer;
 import dev.primeclient.core.gui.menu.OnboardingManager;
 import dev.primeclient.core.hud.FakeRenderContext;
 import dev.primeclient.core.keybind.KeybindManager;
@@ -249,5 +250,32 @@ class ClickGuiTest {
         FakeRenderContext ctx = new FakeRenderContext(SCREEN_W, 600);
         gui.render(ctx, 100, 100);
         assertEquals(0, ctx.clipDepth());
+    }
+
+    @Test
+    void settingsViewDoesNotOpenModuleSearch() {
+        gui.showSettings();
+        assertTrue(gui.charTyped('z')); // settings has its own search field
+        assertEquals(ClickGuiView.SETTINGS, gui.view());
+        // Module search overlay only activates on Browse/Favorites — settings stays put.
+        FakeRenderContext ctx = new FakeRenderContext(SCREEN_W, 600);
+        gui.render(ctx, 100, 100);
+        assertEquals(ClickGuiView.SETTINGS, gui.view());
+    }
+
+    @Test
+    void favoritesViewIsReachableFromMainMenu() {
+        gui.onOpen();
+        gui.tick(1f);
+        // Favorites is button index 2 on the main menu (after Resume, Modules).
+        ClickGuiView fav = new MainMenuRenderer().viewForButton(2);
+        assertEquals(ClickGuiView.FAVORITES, fav);
+    }
+
+    @Test
+    void escapeFromBrowseGoesBackToMainMenuAfterClearingSelection() {
+        assertTrue(gui.keyPressed(256)); // clear selected module panel
+        assertTrue(gui.keyPressed(256)); // back to main menu
+        assertEquals(ClickGuiView.MAIN_MENU, gui.view());
     }
 }

@@ -244,6 +244,24 @@ class HudEditorTest {
         assertTrue(box.isVisible());
     }
 
+    @Test
+    void hiddenElementIsNotSelectableOnCanvas() {
+        box.setVisible(false);
+        hud.layout(new FakeRenderContext(200, 100), true);
+        assertFalse(editor.mousePressed(5, 5));
+        assertNull(editor.selected());
+    }
+
+    @Test
+    void hiddenElementCannotBeDraggedOnCanvas() {
+        editor.mousePressed(5, 5);
+        box.setVisible(false);
+        editor.mousePressed(150, 90);
+        editor.mouseDragged(180, 90, 200, 100);
+        editor.mouseReleased();
+        assertEquals(0f, box.offsetX());
+    }
+
     /**
      * Panel geometry below assumes FakeRenderContext metrics (6px glyphs, 9px lines)
      * on a 400x300 screen; renderOverlay must run once to lay the panels out.

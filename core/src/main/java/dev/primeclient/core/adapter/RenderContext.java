@@ -67,6 +67,13 @@ public interface RenderContext {
     /** Multiplies alpha on subsequent draw calls until the next {@link #setDrawOpacity(float)}. */
     void setDrawOpacity(float opacity);
 
+    /**
+     * Multiplies RGB of subsequent draw calls by {@code tintArgb} (0 = no tint).
+     * Alpha channel of the tint is ignored — use {@link #setDrawOpacity(float)} for alpha.
+     */
+    default void setDrawTint(int tintArgb) {
+    }
+
     /** Clips subsequent draw calls to the rectangle (screen space). No-op in headless tests. */
     default void pushClip(int x, int y, int width, int height) {
     }

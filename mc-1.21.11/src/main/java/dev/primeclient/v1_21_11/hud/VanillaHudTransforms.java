@@ -18,6 +18,12 @@ public final class VanillaHudTransforms {
     private VanillaHudTransforms() {
     }
 
+    /** True when the vanilla layer should not draw at all (editor hide / user hide). */
+    public static boolean isHidden(VanillaHudComponent component) {
+        HudElement element = PrimeClient.get().hud().get(component.id());
+        return element instanceof VanillaHudProxyElement && !element.isVisible();
+    }
+
     public static void push(GuiGraphics graphics, VanillaHudComponent component) {
         HudElement element = PrimeClient.get().hud().get(component.id());
         if (!(element instanceof VanillaHudProxyElement) || !element.isVisible()) {
